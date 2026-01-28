@@ -94,10 +94,10 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 
 | Platform | CMake | CI/CD | Packaging | Status |
 |----------|-------|-------|-----------|--------|
-| Windows MSVC | ⬜ | ⬜ | ⬜ | NOT STARTED |
-| Windows MinGW | ⬜ | ⬜ | ⬜ | NOT STARTED |
-| Linux GCC | ⬜ | ⬜ | ⬜ | NOT STARTED |
-| Linux Clang | ⬜ | ⬜ | ⬜ | NOT STARTED |
+| Windows MSVC | ✅ | ⬜ | ⬜ | COMPLETED |
+| Windows MinGW | ✅ | ⬜ | ⬜ | COMPLETED |
+| Linux GCC | ✅ | ⬜ | ⬜ | COMPLETED |
+| Linux Clang | ✅ | ⬜ | ⬜ | COMPLETED |
 
 ---
 
@@ -121,6 +121,7 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | 2026-01-28 | - | Porting plan created | COMPLETE |
 | 2026-01-28 | - | Git repository reinitialized | COMPLETE |
 | 2026-01-28 | A1 | FileSystem abstraction created | COMPLETE |
+| 2026-01-28 | A5 | CMake build system modernized | COMPLETE |
 
 ---
 

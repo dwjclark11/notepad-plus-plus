@@ -387,10 +387,22 @@ SET(rcFiles
 			./WinControls/ColourPicker/WordStyleDlg.rc
 )
 
+# ============================================================================
+# Platform Detection and Configuration
+# ============================================================================
 IF (WIN32)
 	SET(option WIN32)
 	SET(win32_LIBRARIES comctl32 shlwapi dbghelp version crypt32 wintrust sensapi wininet imm32 msimg32 uxtheme dwmapi)
 	set(CMAKE_CXX_STANDARD 20)
+	set(NPP_PLATFORM_WINDOWS TRUE)
+
+	# Add Platform abstraction for Windows
+	list(APPEND src_files
+		./Platform/Windows/FileSystem.cpp
+	)
+
+	list(APPEND projIncludDir ./Platform)
+
 if ( MSVC )
 	#do not use for mingw builds
 	SET(CMAKE_CXX_FLAGS "/EHa /MP /W4")
@@ -402,35 +414,178 @@ else ( MSVC )
 	SET(CMAKE_CXX_FLAGS "-include../gcc/gcc-fixes.h -std=c++20 -fpermissive -municode")
 	SET(defs -DUNICODE -D_UNICODE -D_WIN32_WINNT=_WIN32_WINNT_WIN7 -DNTDDI_VERSION=NTDDI_WIN7 -D_USE_64BIT_TIME_T -DTIXML_USE_STL -DNOMINMAX -DOEMRESOURCE)
 endif ( MSVC )
-ENDIF (WIN32)
+
+	# Windows pre-build event
+	execute_process(
+		COMMAND cmd /C "cd ${CMAKE_SOURCE_DIR} && NppLibsVersionH-generator.bat"
+		RESULT_VARIABLE pre-build-result
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	)
+	if(NOT pre-build-result EQUAL 0)
+		message(WARNING "Pre-build event failed with exit code: ${pre-build-result}")
+	endif()
+
+	find_library(SCINTILLA_STATIC_LIBRARY
+		NAMES libscintilla
+		HINTS "../../scintilla/bin"
+		REQUIRED
+	)
+
+	find_library(LEXILLA_STATIC_LIBRARY
+		NAMES liblexilla
+		HINTS "../../lexilla/bin"
+		REQUIRED
+	)
+
+ELSEIF(UNIX AND NOT APPLE)
+	# ============================================================================
+	# Linux Build Configuration
+	# ============================================================================
+	set(CMAKE_CXX_STANDARD 20)
+	set(CMAKE_CXX_STANDARD_REQUIRED ON)
+	set(NPP_PLATFORM_LINUX TRUE)
+
+	message(STATUS "Configuring Notepad++ for Linux")
+
+	# Find Qt6
+	find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network)
+	if(Qt6_FOUND)
+		message(STATUS "Qt6 found: ${Qt6_VERSION}")
+	endif()
+
+	# Enable Qt MOC/UIC/RCC
+	set(CMAKE_AUTOMOC ON)
+	set(CMAKE_AUTORCC ON)
+	set(CMAKE_AUTOUIC ON)
+
+	# Linux-specific definitions
+	SET(defs -DNPP_LINUX -D_USE_64BIT_TIME_T -DTIXML_USE_STL -DQT_NO_KEYWORDS)
+
+	# Add Platform abstraction for Linux
+	list(APPEND src_files
+		./Platform/Linux/FileSystem.cpp
+	)
+
+	# Remove Windows-specific files from Linux build
+	list(REMOVE_ITEM src_files
+		./DarkMode/DarkMode.cpp
+		./MISC/Common/verifySignedfile.cpp
+		./MISC/Process/Processus.cpp
+		./MISC/Exception/Win32Exception.cpp
+		./MISC/Exception/MiniDumper.cpp
+		./Win32Explr/
+		./WinControls/ReadDirectoryChanges/ReadDirectoryChanges.cpp
+		./WinControls/ReadDirectoryChanges/ReadDirectoryChangesPrivate.cpp
+		./WinControls/ReadDirectoryChanges/ReadFileChanges.cpp
+		./MISC/RegExt/regExtDlg.cpp
+		./winmain.cpp
+	)
+
+	# Linux-specific includes
+	list(APPEND projIncludDir
+		./Platform
+		${Qt6Core_INCLUDE_DIRS}
+		${Qt6Widgets_INCLUDE_DIRS}
+		${Qt6Gui_INCLUDE_DIRS}
+	)
+
+	# Find or build Scintilla for Linux
+	# Try to find QScintilla first
+	find_package(QScintilla2 QUIET)
+	if(QScintilla2_FOUND)
+		message(STATUS "QScintilla2 found")
+	else()
+		message(STATUS "QScintilla2 not found - will use built-in Scintilla")
+		# Build Scintilla from source
+		set(SCINTILLA_QT_DIR "${CMAKE_SOURCE_DIR}/../../scintilla/qt")
+		if(EXISTS "${SCINTILLA_QT_DIR}/ScintillaEditBase")
+			file(GLOB SCINTILLA_QT_SOURCES
+				"${SCINTILLA_QT_DIR}/ScintillaEditBase/*.cpp"
+			)
+			file(GLOB SCINTILLA_CORE_SOURCES
+				"${CMAKE_SOURCE_DIR}/../../scintilla/src/*.cxx"
+			)
+			add_library(scintilla_qt STATIC
+				${SCINTILLA_QT_SOURCES}
+				${SCINTILLA_CORE_SOURCES}
+			)
+			target_include_directories(scintilla_qt PUBLIC
+				"${CMAKE_SOURCE_DIR}/../../scintilla/include"
+				"${CMAKE_SOURCE_DIR}/../../scintilla/src"
+				"${SCINTILLA_QT_DIR}/ScintillaEditBase"
+			)
+			target_link_libraries(scintilla_qt PUBLIC Qt6::Widgets)
+			set(SCINTILLA_STATIC_LIBRARY scintilla_qt)
+		endif()
+	endif()
+
+	# Build Lexilla for Linux
+	file(GLOB LEXILLA_SOURCES
+		"${CMAKE_SOURCE_DIR}/../../lexilla/src/*.cxx"
+		"${CMAKE_SOURCE_DIR}/../../lexilla/lexlib/*.cxx"
+		"${CMAKE_SOURCE_DIR}/../../lexilla/lexers/*.cxx"
+	)
+	add_library(lexilla STATIC ${LEXILLA_SOURCES})
+	target_include_directories(lexilla PUBLIC
+		"${CMAKE_SOURCE_DIR}/../../lexilla/include"
+		"${CMAKE_SOURCE_DIR}/../../lexilla/lexlib"
+		"${CMAKE_SOURCE_DIR}/../../scintilla/include"
+	)
+	set(LEXILLA_STATIC_LIBRARY lexilla)
+
+	# Linux libraries
+	SET(linux_LIBRARIES
+		Qt6::Core
+		Qt6::Widgets
+		Qt6::Gui
+		Qt6::Network
+		pthread
+		dl
+	)
+
+	if(QScintilla2_FOUND)
+		list(APPEND linux_LIBRARIES QScintilla2::QScintilla2)
+	endif()
+
+	# No RC files on Linux
+	SET(rcFiles "")
+
+	message(STATUS "Linux configuration complete")
+ENDIF()
 
 ADD_DEFINITIONS(${defs})
 
 INCLUDE_DIRECTORIES(${projIncludDir})
 
-find_library(SCINTILLA_STATIC_LIBRARY
-	NAMES libscintilla
-	HINTS "../../scintilla/bin"
-	REQUIRED
-)
-
-find_library(LEXILLA_STATIC_LIBRARY
-	NAMES liblexilla
-	HINTS "../../lexilla/bin"
-	REQUIRED
-)
-
-execute_process(
-    COMMAND cmd /C "cd ${CMAKE_SOURCE_DIR} && NppLibsVersionH-generator.bat"
-    RESULT_VARIABLE pre-build-result
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-if(NOT pre-build-result EQUAL 0)
-    message(FATAL_ERROR "Pre-build event failed with exit code: ${pre-build-result}")
-endif()
-
+# ============================================================================
+# Executable Target
+# ============================================================================
 ADD_EXECUTABLE(notepad++ ${option} ${src_files} ${include_files} ${rcFiles})
 
+# ============================================================================
+# Link Libraries
+# ============================================================================
+IF(WIN32)
+	TARGET_LINK_LIBRARIES(notepad++ ${SCINTILLA_STATIC_LIBRARY} ${LEXILLA_STATIC_LIBRARY} ${win32_LIBRARIES})
+ELSEIF(UNIX AND NOT APPLE)
+	TARGET_LINK_LIBRARIES(notepad++ ${LEXILLA_STATIC_LIBRARY} ${linux_LIBRARIES})
 
-TARGET_LINK_LIBRARIES (notepad++ ${SCINTILLA_STATIC_LIBRARY} ${LEXILLA_STATIC_LIBRARY} ${win32_LIBRARIES})
+	# Set output name for Linux
+	set_target_properties(notepad++ PROPERTIES
+		OUTPUT_NAME "notepad-plus-plus"
+	)
+ENDIF()
+
+# ============================================================================
+# Installation
+# ============================================================================
+IF(UNIX AND NOT APPLE)
+	install(TARGETS notepad++
+		RUNTIME DESTINATION bin
+	)
+	install(FILES
+		${CMAKE_SOURCE_DIR}/../../LICENSE
+		DESTINATION share/doc/notepad-plus-plus
+	)
+ENDIF()
 
