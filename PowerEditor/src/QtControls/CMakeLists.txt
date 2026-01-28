@@ -30,6 +30,12 @@ set(QTCONTROLS_SOURCES
     WordStyleDlg/WordStyleDlg.cpp
     UserDefineDialog/UserDefineDialog.cpp
     Preference/preferenceDlg.cpp
+    ListView/ListView.cpp
+    ClipboardHistory/ClipboardHistoryPanel.cpp
+    DocumentMap/DocumentMap.cpp
+    FileBrowser/FileBrowser.cpp
+    FunctionList/FunctionListPanel.cpp
+    ProjectPanel/ProjectPanel.cpp
 )
 
 set(QTCONTROLS_HEADERS
@@ -47,6 +53,12 @@ set(QTCONTROLS_HEADERS
     WordStyleDlg/WordStyleDlg.h
     UserDefineDialog/UserDefineDialog.h
     Preference/preferenceDlg.h
+    ListView/ListView.h
+    ClipboardHistory/ClipboardHistoryPanel.h
+    DocumentMap/DocumentMap.h
+    FileBrowser/FileBrowser.h
+    FunctionList/FunctionListPanel.h
+    ProjectPanel/ProjectPanel.h
 )
 
 # Create static library
@@ -67,6 +79,12 @@ target_include_directories(QtControls PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/WordStyleDlg
     ${CMAKE_CURRENT_SOURCE_DIR}/UserDefineDialog
     ${CMAKE_CURRENT_SOURCE_DIR}/Preference
+    ${CMAKE_CURRENT_SOURCE_DIR}/ListView
+    ${CMAKE_CURRENT_SOURCE_DIR}/ClipboardHistory
+    ${CMAKE_CURRENT_SOURCE_DIR}/DocumentMap
+    ${CMAKE_CURRENT_SOURCE_DIR}/FileBrowser
+    ${CMAKE_CURRENT_SOURCE_DIR}/FunctionList
+    ${CMAKE_CURRENT_SOURCE_DIR}/ProjectPanel
 )
 
 target_link_libraries(QtControls PUBLIC
