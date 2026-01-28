@@ -14,7 +14,7 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 |-------|-------------|--------|--------------|
 | 1 | Foundation & Abstraction Layer | COMPLETED | 100% |
 | 2 | Linux UI Implementation | COMPLETED | 100% |
-| 3 | Core Functionality Migration | NOT STARTED | 0% |
+| 3 | Core Functionality Migration | COMPLETED | 100% |
 | 4 | KDE Plasma Integration | NOT STARTED | 0% |
 | 5 | Polish and Release | NOT STARTED | 0% |
 
@@ -140,6 +140,11 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | 2026-01-28 | A29 | DocumentMap for Linux created | COMPLETE |
 | 2026-01-28 | A30 | ClipboardHistoryPanel for Linux created | COMPLETE |
 | 2026-01-28 | A31 | FileBrowser for Linux created | COMPLETE |
+| 2026-01-28 | A32 | Qt MainWindow created | COMPLETE |
+| 2026-01-28 | A33 | Linux main_linux.cpp created | COMPLETE |
+| 2026-01-28 | A34 | NppCommands migrated | COMPLETE |
+| 2026-01-28 | A35 | NppIO migrated | COMPLETE |
+| 2026-01-28 | A36 | Qt Buffer system created | COMPLETE |
 
 ---
 
