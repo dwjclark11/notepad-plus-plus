@@ -400,6 +400,7 @@ IF (WIN32)
 	list(APPEND src_files
 		./Platform/Windows/FileSystem.cpp
 		./Platform/Windows/Settings.cpp
+		./Platform/Windows/Process.cpp
 	)
 
 	list(APPEND projIncludDir ./Platform)
@@ -466,6 +467,7 @@ ELSEIF(UNIX AND NOT APPLE)
 	list(APPEND src_files
 		./Platform/Linux/FileSystem.cpp
 		./Platform/Linux/Settings.cpp
+		./Platform/Linux/Process.cpp
 	)
 
 	# Remove Windows-specific files from Linux build

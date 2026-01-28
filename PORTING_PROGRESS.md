@@ -28,7 +28,7 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 |----------|------|--------|----------|-------|
 | A1 | Platform Abstraction Layer - FileSystem | IN PROGRESS | adfdf20 | Creating abstraction header + implementations |
 | A2 | Platform Abstraction Layer - Settings | PENDING | - | Create Platform/Settings.h + Win32/Linux impls |
-| A3 | Platform Abstraction Layer - Process | PENDING | - | Create Platform/Process.h + Win32/Linux impls |
+| A3 | Platform Abstraction Layer - Process | COMPLETED | adfdf20 | Process.h + Windows/Linux implementations |
 | A4 | Platform Abstraction Layer - FileWatcher | PENDING | - | Create Platform/FileWatcher.h + Win32/Linux impls |
 | A5 | CMake Build System Modernization | IN PROGRESS | a01e86d | Updating CMakeLists.txt for dual-platform |
 | A6 | QtControls Framework Setup | IN PROGRESS | a81c510 | Creating QtControls/ directory structure |
@@ -45,7 +45,7 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 |-----------|--------|------------|------------|-------|--------|
 | FileSystem | ✅ | ✅ | ✅ | ⬜ | COMPLETED |
 | Settings | ✅ | ✅ | ✅ | ⬜ | COMPLETED |
-| Process | ⬜ | ⬜ | ⬜ | ⬜ | NOT STARTED |
+| Process | ✅ | ✅ | ✅ | ⬜ | COMPLETED |
 | FileWatcher | ⬜ | ⬜ | ⬜ | ⬜ | NOT STARTED |
 | Clipboard | ⬜ | ⬜ | ⬜ | ⬜ | NOT STARTED |
 | Dialogs | ⬜ | ⬜ | ⬜ | ⬜ | NOT STARTED |
@@ -123,7 +123,7 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | 2026-01-28 | A1 | FileSystem abstraction created | COMPLETE |
 | 2026-01-28 | A5 | CMake build system modernized | COMPLETE |
 | 2026-01-28 | A6 | QtControls framework created | COMPLETE |
-| 2026-01-28 | A9 | Settings abstraction created | COMPLETE |
+| 2026-01-28 | A10 | Process abstraction created | COMPLETE |
 
 ---
 
