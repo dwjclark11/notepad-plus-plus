@@ -78,6 +78,8 @@ Example agent tasks:
 - "Create Platform/Linux/FileSystem.cpp using std::filesystem"
 - "Update CMakeLists.txt to support both platforms"
 
+There are agents available for C++ that be used to improve the code: cpp-pro The sub agents should use this to launch their work to ensure it's of the highest quality.
+
 ### Repository Status
 
 ```bash
