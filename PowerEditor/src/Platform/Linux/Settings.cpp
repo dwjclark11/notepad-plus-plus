@@ -18,7 +18,7 @@
 #include <pwd.h>
 #include <unistd.h>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Helper functions
 namespace {
@@ -499,4 +499,4 @@ void createDefaultSession(const std::wstring& path) {
 
 } // namespace SettingsUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

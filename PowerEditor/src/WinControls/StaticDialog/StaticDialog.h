@@ -15,6 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include "Common.h"
+#endif
+
 #include "dpiManagerV2.h"
 #include "Notepad_plus_msgs.h"
 #include "Window.h"

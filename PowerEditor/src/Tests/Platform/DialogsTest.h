@@ -76,7 +76,7 @@ private Q_SLOTS:
     void testProgressDialog();
 
 private:
-    Platform::IDialogs* _dialogs = nullptr;
+    PlatformLayer::IDialogs* _dialogs = nullptr;
     std::unique_ptr<MockDialogsProvider> _mockProvider;
 
     // Helper to create a test dialog handle
@@ -87,13 +87,13 @@ private:
 // Mock implementation for testing
 class MockDialogsProvider {
 public:
-    void setNextResult(Platform::DialogResult result);
+    void setNextResult(PlatformLayer::DialogResult result);
     void setNextFileName(const QString& fileName);
     void setNextFileNames(const QStringList& fileNames);
     void setNextBoolResult(bool result);
     void setNextIntResult(int result);
 
-    Platform::DialogResult getNextResult();
+    PlatformLayer::DialogResult getNextResult();
     QString getNextFileName();
     QStringList getNextFileNames();
     bool getNextBoolResult();
@@ -102,7 +102,7 @@ public:
     void reset();
 
 private:
-    std::vector<Platform::DialogResult> _results;
+    std::vector<PlatformLayer::DialogResult> _results;
     std::vector<QString> _fileNames;
     std::vector<QStringList> _fileNamesList;
     std::vector<bool> _boolResults;

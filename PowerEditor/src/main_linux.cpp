@@ -221,7 +221,7 @@ std::wstring getEasterEggNameFromParam(std::vector<std::wstring>& params, unsign
     if (type == 2)
     {
         // Resolve relative path to full path
-        std::wstring fullPath = Platform::IFileSystem::getInstance().getFullPathName(easterEggName);
+        std::wstring fullPath = PlatformLayer::IFileSystem::getInstance().getFullPathName(easterEggName);
         easterEggName = fullPath;
     }
 
@@ -352,13 +352,13 @@ public:
         // Send command line parameters as JSON-like structure
         QByteArray data;
         data.append("CMDLINE_PARAMS\n");
-        data.append(QString::number(params._line2go) + "\n");
-        data.append(QString::number(params._column2go) + "\n");
-        data.append(QString::number(params._pos2go) + "\n");
-        data.append(QString(params._isReadOnly ? "1" : "0") + "\n");
-        data.append(QString(params._isNoSession ? "1" : "0") + "\n");
-        data.append(QString(params._isSessionFile ? "1" : "0") + "\n");
-        data.append(QString(params._monitorFiles ? "1" : "0") + "\n");
+        data.append((QString::number(params._line2go) + "\n").toUtf8());
+        data.append((QString::number(params._column2go) + "\n").toUtf8());
+        data.append((QString::number(params._pos2go) + "\n").toUtf8());
+        data.append((QString(params._isReadOnly ? "1" : "0") + "\n").toUtf8());
+        data.append((QString(params._isNoSession ? "1" : "0") + "\n").toUtf8());
+        data.append((QString(params._isSessionFile ? "1" : "0") + "\n").toUtf8());
+        data.append((QString(params._monitorFiles ? "1" : "0") + "\n").toUtf8());
         data.append("END_PARAMS\n");
 
         // Send files
@@ -720,10 +720,10 @@ int main(int argc, char* argv[])
     // ============================================================================
 
     // Initialize file system
-    Platform::IFileSystem& fileSystem = Platform::IFileSystem::getInstance();
+    PlatformLayer::IFileSystem& fileSystem = PlatformLayer::IFileSystem::getInstance();
 
     // Initialize settings
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     // Set custom settings directory if specified
     if (parser.isSet(settingsDirOption))

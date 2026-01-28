@@ -22,13 +22,19 @@
 #include <windows.h>
 #else
 // Linux type definitions
+#include <cstdint>
 typedef unsigned int DWORD;
 typedef unsigned int UINT;
-const UINT CP_UTF8 = 65001;
+
+// Code page constants - only define if not already defined
+#ifndef CP_UTF8_DEFINED
+#define CP_UTF8_DEFINED
 const UINT CP_ACP = 0;
+const UINT CP_UTF8 = 65001;
+#endif
 #endif
 
-namespace Platform {
+namespace PlatformLayer {
 
 // File attribute flags (cross-platform abstraction)
 enum class FileAttr : uint32_t {
@@ -274,4 +280,4 @@ std::string wcharToChar(const std::wstring& str);
 
 } // namespace FileSystemUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

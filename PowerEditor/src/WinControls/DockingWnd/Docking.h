@@ -17,7 +17,59 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+// Linux: Define basic Windows types for compatibility
+#include <cstdint>
+using HWND = void*;
+using HINSTANCE = void*;
+using WPARAM = uintptr_t;
+using LPARAM = intptr_t;
+using LRESULT = intptr_t;
+using UINT = unsigned int;
+using BOOL = int;
+using HICON = void*;
+using HBITMAP = void*;
+using HIMAGELIST = void*;
+using DWORD_PTR = uintptr_t;
+#ifndef TRUE
+#define TRUE 1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
+#ifndef CALLBACK
+#define CALLBACK
+#endif
+
+// Only define if not already defined by Common.h
+#ifndef RECT_DEFINED
+#define RECT_DEFINED
+struct RECT {
+    long left;
+    long top;
+    long right;
+    long bottom;
+};
+#endif
+
+#ifndef POINT_DEFINED
+#define POINT_DEFINED
+struct POINT {
+    long x;
+    long y;
+};
+#endif
+
+#ifndef SIZE_DEFINED
+#define SIZE_DEFINED
+struct SIZE {
+    long cx;
+    long cy;
+};
+#endif
+#endif
 
 // ATTENTION : It's a part of interface header, so don't include the others header here
 

@@ -13,7 +13,7 @@
 #include <QString>
 #include <memory>
 
-namespace Platform {
+namespace PlatformLayer {
     class IFileSystem;
 }
 
@@ -95,7 +95,7 @@ private Q_SLOTS:
     void testGetTempFilePath();
 
 private:
-    Platform::IFileSystem* _fileSystem = nullptr;
+    PlatformLayer::IFileSystem* _fileSystem = nullptr;
     std::unique_ptr<QTemporaryDir> _tempDir;
     QString _tempPath;
 

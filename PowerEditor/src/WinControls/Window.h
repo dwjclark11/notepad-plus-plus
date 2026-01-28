@@ -16,7 +16,32 @@
 
 
 #pragma once
+
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include <cstdint>
+using HWND = void*;
+using HINSTANCE = void*;
+using WPARAM = uintptr_t;
+using LPARAM = intptr_t;
+using LRESULT = intptr_t;
+using UINT = unsigned int;
+using BOOL = int;
+
+struct RECT {
+    long left;
+    long top;
+    long right;
+    long bottom;
+};
+
+#define SW_SHOW 1
+#define SW_HIDE 0
+inline void ShowWindow(HWND, int) {}
+inline void MoveWindow(HWND, int, int, int, int, BOOL) {}
+inline void redraw() {}
+#endif
 
 class Window
 {

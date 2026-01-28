@@ -16,7 +16,18 @@
 
 
 #pragma once
+
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include <cstdint>
+using UINT = unsigned int;
+using WPARAM = uintptr_t;
+using LPARAM = intptr_t;
+using LRESULT = intptr_t;
+using HWND = void*;
+#define WM_USER 0x0400
+#endif
 
 #ifndef WM_DPICHANGED
 #define WM_DPICHANGED 0x02E0

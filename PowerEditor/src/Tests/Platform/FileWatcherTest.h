@@ -14,7 +14,7 @@
 #include <QSignalSpy>
 #include <memory>
 
-namespace Platform {
+namespace PlatformLayer {
     class IFileWatcher;
 }
 
@@ -66,7 +66,7 @@ private Q_SLOTS:
     void testFileChangeDetection();
 
 private:
-    Platform::IFileWatcher* _watcher = nullptr;
+    PlatformLayer::IFileWatcher* _watcher = nullptr;
     std::unique_ptr<QTemporaryDir> _tempDir;
     QString _tempPath;
 

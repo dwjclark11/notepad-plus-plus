@@ -22,7 +22,24 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include <cstdint>
+using WPARAM = uintptr_t;
+using LPARAM = intptr_t;
+using LRESULT = intptr_t;
+using HWND = void*;
+using UINT = unsigned int;
+using BOOL = int;
+using HBITMAP = void*;
+using HICON = void*;
+using HINSTANCE = void*;
+using ULONG = unsigned long;
+#define TRUE 1
+#define FALSE 0
+#define WM_USER 0x0400
+#endif
 
 enum LangType {L_TEXT, L_PHP , L_C, L_CPP, L_CS, L_OBJC, L_JAVA, L_RC,\
 			   L_HTML, L_XML, L_MAKEFILE, L_PASCAL, L_BATCH, L_INI, L_ASCII, L_USER,\

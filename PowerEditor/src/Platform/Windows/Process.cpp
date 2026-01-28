@@ -15,7 +15,7 @@
 #include <tlhelp32.h>
 #include <sstream>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // ============================================================================
 // Windows Implementation of IProcess
@@ -465,4 +465,4 @@ bool runDetached(const std::wstring& command,
 
 } // namespace ProcessUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

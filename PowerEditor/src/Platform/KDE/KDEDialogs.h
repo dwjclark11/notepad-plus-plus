@@ -16,7 +16,7 @@ class QWidget;
 class QString;
 class QStringList;
 
-namespace Platform {
+namespace PlatformLayer {
 namespace KDE {
 
 // ============================================================================
@@ -185,4 +185,4 @@ bool openFileWithKDE(const std::wstring& filePath);
 } // namespace KDEDialogsUtils
 
 } // namespace KDE
-} // namespace Platform
+} // namespace PlatformLayer

@@ -13,7 +13,7 @@
 #include <QString>
 #include <memory>
 
-namespace Platform {
+namespace PlatformLayer {
     class ISettings;
 }
 
@@ -75,7 +75,7 @@ private Q_SLOTS:
     void testOverwriteExisting();
 
 private:
-    Platform::ISettings* _settings = nullptr;
+    PlatformLayer::ISettings* _settings = nullptr;
     std::unique_ptr<QTemporaryDir> _tempDir;
     QString _tempPath;
 

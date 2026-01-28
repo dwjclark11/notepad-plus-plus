@@ -17,6 +17,7 @@
 #pragma once
 
 #include "Common.h"
+#include "StaticDialog.h"
 #include "RunDlg_rc.h"
 
 #define CURRENTWORD_MAXLENGTH 2048

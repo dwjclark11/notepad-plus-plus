@@ -13,7 +13,7 @@
 #include <commdlg.h>
 #include <cderr.h>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Helper function to convert FileFilter to Windows format
 static std::wstring buildFilterString(const std::vector<FileFilter>& filters) {
@@ -505,4 +505,4 @@ std::vector<FileFilter> combine(const std::vector<FileFilter>& a,
 
 } // namespace DialogFilters
 
-} // namespace Platform
+} // namespace PlatformLayer

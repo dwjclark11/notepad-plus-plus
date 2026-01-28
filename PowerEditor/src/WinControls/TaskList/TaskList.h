@@ -17,8 +17,12 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
 #include <commctrl.h>
+#else
+#include "Common.h"
+#endif
 #include "Window.h"
 
 #ifndef WM_MOUSEWHEEL

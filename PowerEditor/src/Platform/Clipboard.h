@@ -13,7 +13,7 @@
 #include <functional>
 #include <cstdint>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Clipboard format types
 enum class ClipboardFormat {
@@ -254,4 +254,4 @@ std::string extractTextFromHtml(const std::string& html);
 
 } // namespace ClipboardUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

@@ -13,7 +13,7 @@
 #include <memory>
 #include <functional>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Process execution options
 struct ProcessOptions {
@@ -215,4 +215,4 @@ bool runDetached(const std::wstring& command,
 
 } // namespace ProcessUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

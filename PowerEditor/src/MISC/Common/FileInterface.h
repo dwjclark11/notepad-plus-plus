@@ -17,7 +17,15 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include <cstdint>
+using HANDLE = void*;
+using DWORD = uint32_t;
+#define INVALID_HANDLE_VALUE ((HANDLE)(intptr_t)-1)
+#endif
+
 #include <string>
 #include <cstdint>
 

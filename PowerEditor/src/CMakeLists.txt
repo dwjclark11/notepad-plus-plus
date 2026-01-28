@@ -578,8 +578,12 @@ ELSEIF(UNIX AND NOT APPLE)
 	endif()
 
 	# Linux-specific includes
-	list(APPEND projIncludDir
+	# Insert QtControls directories at the BEGINNING so they take precedence over WinControls
+	list(INSERT projIncludDir 0
 		./Platform
+		./QtCore
+		./MISC
+		./MISC/Common
 		./QtControls
 		./QtControls/StaticDialog
 		./QtControls/ToolBar
@@ -593,7 +597,6 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtControls/FindReplace
 		./QtControls/ShortcutMapper
 		./QtControls/KDEStyle
-		./QtCore
 		${Qt6Core_INCLUDE_DIRS}
 		${Qt6Widgets_INCLUDE_DIRS}
 		${Qt6Gui_INCLUDE_DIRS}

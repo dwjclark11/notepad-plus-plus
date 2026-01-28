@@ -12,7 +12,7 @@
 #include <QWidget>
 #include <memory>
 
-namespace Platform {
+namespace NppFindReplace {
     class FindReplaceDlg;
     class FindIncrementDlg;
 }
@@ -64,7 +64,7 @@ private Q_SLOTS:
 
 private:
     std::unique_ptr<QWidget> _parentWidget;
-    std::unique_ptr<Platform::FindReplaceDlg> _findDlg;
+    std::unique_ptr<NppFindReplace::FindReplaceDlg> _findDlg;
 };
 
 } // namespace Tests

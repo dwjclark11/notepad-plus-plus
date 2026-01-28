@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Helper functions
 namespace {
@@ -680,6 +680,6 @@ bool isContentModified(FileChangeType type) {
 
 } // namespace FileWatcherUtils
 
-} // namespace Platform
+} // namespace PlatformLayer
 
 #include "FileWatcher.moc"

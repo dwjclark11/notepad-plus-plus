@@ -14,7 +14,7 @@
 #include <mutex>
 #include <queue>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // ============================================================================
 // Windows Implementation of IFileWatcher
@@ -433,4 +433,4 @@ bool isContentModified(FileChangeType type) {
 
 } // namespace FileWatcherUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

@@ -12,7 +12,7 @@
 #include <QString>
 #include <vector>
 
-namespace Platform {
+namespace PlatformLayer {
     class IProcess;
 }
 
@@ -64,7 +64,7 @@ private Q_SLOTS:
     void testRunDetached();
 
 private:
-    Platform::IProcess* _process = nullptr;
+    PlatformLayer::IProcess* _process = nullptr;
 
     // Helper to check if a command exists
     bool commandExists(const QString& command);

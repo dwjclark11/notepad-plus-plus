@@ -15,7 +15,7 @@
 #include <shlwapi.h>
 #include <tinyxml.h>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // ============================================================================
 // Windows Implementation of ISettings
@@ -346,4 +346,4 @@ void createDefaultSession(const std::wstring& path) {
 
 } // namespace SettingsUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

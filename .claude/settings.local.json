@@ -15,7 +15,9 @@
       "Bash(cmake -P:*)",
       "Bash(cmake --version:*)",
       "Bash(make:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(cmake:*)",
+      "Bash(grep:*)"
     ]
   }
 }

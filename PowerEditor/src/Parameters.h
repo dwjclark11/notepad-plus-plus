@@ -17,9 +17,47 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
-
 #include <shlwapi.h>
+#else
+// Linux/Qt platform abstraction
+#include <cstdint>
+#include <string>
+
+// Define Windows types for Linux
+using HWND = void*;
+using HINSTANCE = void*;
+using WPARAM = uintptr_t;
+using LPARAM = intptr_t;
+using LRESULT = intptr_t;
+using UINT = unsigned int;
+using COLORREF = uint32_t;
+using BYTE = uint8_t;
+using WORD = uint16_t;
+using DWORD = uint32_t;
+using BOOL = int;
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+// Code page constants - only define if not already defined
+#ifndef CP_UTF8_DEFINED
+#define CP_UTF8_DEFINED
+const UINT CP_ACP = 0;
+const UINT CP_OEMCP = 1;
+const UINT CP_MACCP = 2;
+const UINT CP_THREAD_ACP = 3;
+const UINT CP_SYMBOL = 42;
+const UINT CP_UTF7 = 65000;
+const UINT CP_UTF8 = 65001;
+#endif
+
+#endif // _WIN32
 
 #include <algorithm>
 #include <array>

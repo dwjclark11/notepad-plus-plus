@@ -19,7 +19,7 @@
 #include <QWidget>
 #include <QApplication>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Helper to convert FileFilter to Qt format
 static QString buildQtFilterString(const std::vector<FileFilter>& filters) {
@@ -460,4 +460,4 @@ std::vector<FileFilter> combine(const std::vector<FileFilter>& a,
 
 } // namespace DialogFilters
 
-} // namespace Platform
+} // namespace PlatformLayer

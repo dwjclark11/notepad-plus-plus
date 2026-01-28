@@ -17,7 +17,15 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include <cstdint>
+using HWND = void*;
+using UINT = unsigned int;
+using WPARAM = uintptr_t;
+using LPARAM = intptr_t;
+#endif
 
 #include <cwchar>
 #include <memory>

@@ -17,7 +17,27 @@
 
 #pragma once
 
+// On Linux/Unix, 'unix' is a predefined macro, so we need to temporarily undef it
+#ifdef unix
+#undef unix
+#endif
+
+#ifdef _WIN32
 #include <windows.h>
+#else
+// Linux: Define basic types without Windows headers
+#include <cstdint>
+using WPARAM = uintptr_t;
+using LPARAM = intptr_t;
+using LRESULT = intptr_t;
+using UINT = unsigned int;
+using COLORREF = uint32_t;
+#define WM_USER 0x0400
+#define RGB(r,g,b) ((uint32_t)((uint8_t)(r) | ((uint8_t)(g) << 8) | ((uint8_t)(b) << 16)))
+#ifndef MAX_PATH
+#define MAX_PATH 260
+#endif
+#endif
 
 #include <cstdint>
 
@@ -160,6 +180,11 @@ inline constexpr int TAB_SHOWONLYPINNEDBUTTON  =    0x2000;    // 0010 0000 0000
 
 inline constexpr bool activeText = true;
 inline constexpr bool activeNumeric = false;
+
+// On Linux/Unix, 'unix' is a predefined macro, so we need to temporarily undef it
+#ifdef unix
+#undef unix
+#endif
 
 enum class EolType : std::uint8_t
 {

@@ -17,7 +17,30 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+// Linux/Qt platform abstraction
+#include <cstdint>
+
+// Define Windows types for Linux
+using HWND = void*;
+using HINSTANCE = void*;
+using WPARAM = uintptr_t;
+using LPARAM = intptr_t;
+using LRESULT = intptr_t;
+using UINT = unsigned int;
+using COLORREF = uint32_t;
+
+// Window messages (not used on Linux but defined for compatibility)
+#define WM_USER 0x0400
+// SCINTILLA_USER defined in resource.h
+
+// Define common Windows constants
+#define MB_OK 0
+#define MB_ICONHAND 0
+
+#endif // _WIN32
 
 #include <sstream>
 #include <string>
@@ -31,7 +54,9 @@
 
 #include "Buffer.h"
 #include "colors.h"
+#ifdef _WIN32
 #include "UserDefineDialog.h"
+#endif
 #include "NppConstants.h"
 
 class NppParameters;
@@ -354,6 +379,7 @@ public:
 			getGenericText(str, strLen, startPos, caretPos);
 	}
 
+#ifdef _WIN32
 	void doUserDefineDlg(bool willBeShown = true, bool isRTL = false) {
 		_userDefineDlg.doDialog(willBeShown, isRTL);
 	}
@@ -363,6 +389,12 @@ public:
 	void beSwitched() {
 		_userDefineDlg.setScintilla(this);
 	}
+#else
+	// Linux: UserDefineDialog not implemented yet
+	void doUserDefineDlg(bool willBeShown = true, bool isRTL = false) {}
+	static void* getUserDefineDlg() { return nullptr; }
+	void beSwitched() {}
+#endif
 
     //Marge member and method
     static const int _SC_MARGE_LINENUMBER;
@@ -690,7 +722,9 @@ protected:
 
 	static int _refCount;
 
+#ifdef _WIN32
     static UserDefineDialog _userDefineDlg;
+#endif
 
     static const int _markersArray[][NB_FOLDER_STATE];
 

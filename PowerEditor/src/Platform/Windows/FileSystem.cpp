@@ -15,7 +15,7 @@
 #include <cstdio>
 #include <chrono>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // ============================================================================
 // Windows Implementation of IFileSystem
@@ -791,4 +791,4 @@ std::string wcharToChar(const std::wstring& str) {
 
 } // namespace FileSystemUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

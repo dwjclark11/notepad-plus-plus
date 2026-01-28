@@ -15,7 +15,7 @@
 #include <QTimer>
 #include <QDebug>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Helper functions
 namespace {
@@ -513,4 +513,4 @@ std::string extractTextFromHtml(const std::string& html) {
 
 } // namespace ClipboardUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

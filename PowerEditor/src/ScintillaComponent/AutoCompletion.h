@@ -19,7 +19,11 @@
 
 #include "FunctionCallTip.h"
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include "Common.h"
+#endif
 
 #include <string>
 #include <vector>

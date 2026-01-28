@@ -867,7 +867,7 @@ private:
     QVector<CategoryInfo> _categories;
 
     // Settings interface
-    Platform::ISettings* _settings = nullptr;
+    PlatformLayer::ISettings* _settings = nullptr;
 };
 
 } // namespace QtControls

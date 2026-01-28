@@ -16,7 +16,7 @@
 #define CF_RTF L"Rich Text Format"
 #define CF_NPPTEXTLEN L"Notepad++ Binary Length"
 
-namespace Platform {
+namespace PlatformLayer {
 
 // ============================================================================
 // ClipboardData implementation
@@ -889,4 +889,4 @@ std::string extractTextFromHtml(const std::string& html) {
 
 } // namespace ClipboardUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

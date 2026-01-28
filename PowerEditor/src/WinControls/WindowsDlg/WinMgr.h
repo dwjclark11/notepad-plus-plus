@@ -15,7 +15,12 @@
 
 #include <algorithm>
 #include <assert.h>
+
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include "Common.h"
+#endif
 
 
 const SIZE SIZEZERO = {0, 0};

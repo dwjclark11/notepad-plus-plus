@@ -17,7 +17,11 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include "Common.h"
+#endif
 
 #include <locale>
 #include <memory>

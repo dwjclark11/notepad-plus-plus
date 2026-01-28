@@ -99,8 +99,8 @@ void GeneralSubDlg::connectSignals()
 
 void GeneralSubDlg::loadSettings()
 {
-    // Load from Platform::Settings
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    // Load from PlatformLayer::Settings
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _statusBarShow = settings.readBool(L"General", L"StatusBarShow", true);
     _menuBarShow = settings.readBool(L"General", L"MenuBarShow", true);
@@ -119,7 +119,7 @@ void GeneralSubDlg::loadSettings()
 
 void GeneralSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeBool(L"General", L"StatusBarShow", _statusBarShow);
     settings.writeBool(L"General", L"MenuBarShow", _menuBarShow);
@@ -282,7 +282,7 @@ void EditingSubDlg::connectSignals()
 
 void EditingSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _lineNumberShow = settings.readBool(L"Scintillas", L"LineNumberShow", true);
     _lineNumberDynamicWidth = settings.readBool(L"Scintillas", L"LineNumberDynamicWidth", true);
@@ -312,7 +312,7 @@ void EditingSubDlg::loadSettings()
 
 void EditingSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeBool(L"Scintillas", L"LineNumberShow", _lineNumberShow);
     settings.writeBool(L"Scintillas", L"LineNumberDynamicWidth", _lineNumberDynamicWidth);
@@ -481,7 +481,7 @@ void NewDocumentSubDlg::connectSignals()
 
 void NewDocumentSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _defaultEncoding = settings.readInt(L"NewDoc", L"DefaultEncoding", 0);
     _defaultFormat = settings.readInt(L"NewDoc", L"DefaultFormat", 0);
@@ -496,7 +496,7 @@ void NewDocumentSubDlg::loadSettings()
 
 void NewDocumentSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeInt(L"NewDoc", L"DefaultEncoding", _defaultEncoding);
     settings.writeInt(L"NewDoc", L"DefaultFormat", _defaultFormat);
@@ -579,7 +579,7 @@ void DefaultDirectorySubDlg::connectSignals()
 
 void DefaultDirectorySubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _defaultDirectoryType = settings.readInt(L"DefaultDir", L"DefaultDirectoryType", 0);
     _customDefaultDirectory = QString::fromStdWString(settings.readString(L"DefaultDir", L"CustomDefaultDirectory", L""));
@@ -592,7 +592,7 @@ void DefaultDirectorySubDlg::loadSettings()
 
 void DefaultDirectorySubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeInt(L"DefaultDir", L"DefaultDirectoryType", _defaultDirectoryType);
     settings.writeString(L"DefaultDir", L"CustomDefaultDirectory", _customDefaultDirectory.toStdWString());
@@ -682,7 +682,7 @@ void RecentFilesHistorySubDlg::connectSignals()
 
 void RecentFilesHistorySubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _maxRecentFiles = settings.readInt(L"RecentFilesHistory", L"MaxRecentFiles", 10);
     _customLength = settings.readInt(L"RecentFilesHistory", L"CustomLength", 0);
@@ -695,7 +695,7 @@ void RecentFilesHistorySubDlg::loadSettings()
 
 void RecentFilesHistorySubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeInt(L"RecentFilesHistory", L"MaxRecentFiles", _maxRecentFiles);
     settings.writeInt(L"RecentFilesHistory", L"CustomLength", _customLength);
@@ -794,7 +794,7 @@ void LanguageSubDlg::connectSignals()
 
 void LanguageSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _selectedLanguage = settings.readInt(L"Language", L"SelectedLanguage", 0);
     _tabSize = settings.readInt(L"Language", L"TabSize", 4);
@@ -809,7 +809,7 @@ void LanguageSubDlg::loadSettings()
 
 void LanguageSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeInt(L"Language", L"SelectedLanguage", _selectedLanguage);
     settings.writeInt(L"Language", L"TabSize", _tabSize);
@@ -898,7 +898,7 @@ void HighlightingSubDlg::connectSignals()
 
 void HighlightingSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _enableSmartHighlight = settings.readBool(L"Highlighting", L"EnableSmartHighlight", true);
     _smartHighlightMatchCase = settings.readBool(L"Highlighting", L"SmartHighlightMatchCase", false);
@@ -917,7 +917,7 @@ void HighlightingSubDlg::loadSettings()
 
 void HighlightingSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeBool(L"Highlighting", L"EnableSmartHighlight", _enableSmartHighlight);
     settings.writeBool(L"Highlighting", L"SmartHighlightMatchCase", _smartHighlightMatchCase);
@@ -1059,7 +1059,7 @@ void PrintSubDlg::connectSignals()
 
 void PrintSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _printLineNumber = settings.readBool(L"Print", L"PrintLineNumber", true);
     _printSelection = settings.readBool(L"Print", L"PrintSelection", false);
@@ -1086,7 +1086,7 @@ void PrintSubDlg::loadSettings()
 
 void PrintSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeBool(L"Print", L"PrintLineNumber", _printLineNumber);
     settings.writeBool(L"Print", L"PrintSelection", _printSelection);
@@ -1225,7 +1225,7 @@ void SearchingSubDlg::connectSignals()
 
 void SearchingSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _stopAtFirstMatch = settings.readBool(L"Searching", L"StopAtFirstMatch", false);
     _wrapAround = settings.readBool(L"Searching", L"WrapAround", true);
@@ -1244,7 +1244,7 @@ void SearchingSubDlg::loadSettings()
 
 void SearchingSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeBool(L"Searching", L"StopAtFirstMatch", _stopAtFirstMatch);
     settings.writeBool(L"Searching", L"WrapAround", _wrapAround);
@@ -1374,7 +1374,7 @@ void BackupSubDlg::connectSignals()
 
 void BackupSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _backupMode = settings.readInt(L"Backup", L"BackupMode", 0);
     _backupDirectoryType = settings.readInt(L"Backup", L"BackupDirectoryType", 0);
@@ -1393,7 +1393,7 @@ void BackupSubDlg::loadSettings()
 
 void BackupSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeInt(L"Backup", L"BackupMode", _backupMode);
     settings.writeInt(L"Backup", L"BackupDirectoryType", _backupDirectoryType);
@@ -1540,7 +1540,7 @@ void AutoCompletionSubDlg::connectSignals()
 
 void AutoCompletionSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _enableAutoCompletion = settings.readBool(L"AutoCompletion", L"EnableAutoCompletion", true);
     _autoCompletionThreshold = settings.readInt(L"AutoCompletion", L"AutoCompletionThreshold", 1);
@@ -1561,7 +1561,7 @@ void AutoCompletionSubDlg::loadSettings()
 
 void AutoCompletionSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeBool(L"AutoCompletion", L"EnableAutoCompletion", _enableAutoCompletion);
     settings.writeInt(L"AutoCompletion", L"AutoCompletionThreshold", _autoCompletionThreshold);
@@ -1674,7 +1674,7 @@ void MultiInstanceSubDlg::connectSignals()
 
 void MultiInstanceSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _multiInstanceMode = settings.readInt(L"MultiInstance", L"MultiInstanceMode", 0);
     _useCustomDateTime = settings.readBool(L"MultiInstance", L"UseCustomDateTime", false);
@@ -1688,7 +1688,7 @@ void MultiInstanceSubDlg::loadSettings()
 
 void MultiInstanceSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeInt(L"MultiInstance", L"MultiInstanceMode", _multiInstanceMode);
     settings.writeBool(L"MultiInstance", L"UseCustomDateTime", _useCustomDateTime);
@@ -1780,7 +1780,7 @@ void DelimiterSubDlg::connectSignals()
 
 void DelimiterSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _delimiterList = QString::fromStdWString(settings.readString(L"Delimiter", L"DelimiterList", L""));
     _useDefaultWordChars = settings.readBool(L"Delimiter", L"UseDefaultWordChars", true);
@@ -1795,7 +1795,7 @@ void DelimiterSubDlg::loadSettings()
 
 void DelimiterSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeString(L"Delimiter", L"DelimiterList", _delimiterList.toStdWString());
     settings.writeBool(L"Delimiter", L"UseDefaultWordChars", _useDefaultWordChars);
@@ -1873,7 +1873,7 @@ void CloudLinkSubDlg::connectSignals()
 
 void CloudLinkSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _cloudSyncEnabled = settings.readBool(L"Cloud", L"CloudSyncEnabled", false);
     _cloudPath = QString::fromStdWString(settings.readString(L"Cloud", L"CloudPath", L""));
@@ -1887,7 +1887,7 @@ void CloudLinkSubDlg::loadSettings()
 
 void CloudLinkSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeBool(L"Cloud", L"CloudSyncEnabled", _cloudSyncEnabled);
     settings.writeString(L"Cloud", L"CloudPath", _cloudPath.toStdWString());
@@ -1981,7 +1981,7 @@ void SearchEngineSubDlg::connectSignals()
 
 void SearchEngineSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _selectedSearchEngine = settings.readInt(L"SearchEngine", L"SelectedSearchEngine", 0);
     _customSearchUrl = QString::fromStdWString(settings.readString(L"SearchEngine", L"CustomSearchUrl", L""));
@@ -1995,7 +1995,7 @@ void SearchEngineSubDlg::loadSettings()
 
 void SearchEngineSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeInt(L"SearchEngine", L"SelectedSearchEngine", _selectedSearchEngine);
     settings.writeString(L"SearchEngine", L"CustomSearchUrl", _customSearchUrl.toStdWString());
@@ -2098,7 +2098,7 @@ void MISCSubDlg::connectSignals()
 
 void MISCSubDlg::loadSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     _minimizeToTray = settings.readBool(L"MISC", L"MinimizeToTray", false);
     _autoUpdate = settings.readBool(L"MISC", L"AutoUpdate", true);
@@ -2119,7 +2119,7 @@ void MISCSubDlg::loadSettings()
 
 void MISCSubDlg::saveSettings()
 {
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
 
     settings.writeBool(L"MISC", L"MinimizeToTray", _minimizeToTray);
     settings.writeBool(L"MISC", L"AutoUpdate", _autoUpdate);
@@ -2177,7 +2177,7 @@ void MISCSubDlg::onConfirmDeleteToggled(bool checked)
 PreferenceDlg::PreferenceDlg(QWidget* parent)
 {
     init(parent);
-    _settings = &Platform::ISettings::getInstance();
+    _settings = &PlatformLayer::ISettings::getInstance();
 }
 
 PreferenceDlg::~PreferenceDlg()

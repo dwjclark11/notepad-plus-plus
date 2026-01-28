@@ -24,7 +24,7 @@ class QLabel;
 class QGroupBox;
 class QRadioButton;
 
-namespace Platform {
+namespace NppFindReplace {
 
 // Search types matching Windows version
 enum class SearchType {
@@ -398,4 +398,4 @@ private:
     void gotoFoundLine(size_t index);
 };
 
-} // namespace Platform
+} // namespace NppFindReplace

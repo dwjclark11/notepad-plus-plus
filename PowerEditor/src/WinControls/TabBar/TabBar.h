@@ -21,8 +21,12 @@
 #define _WIN32_IE	0x0600
 #endif //_WIN32_IE
 
+#ifdef _WIN32
 #include <windows.h>
 #include <commctrl.h>
+#else
+#include "Common.h"
+#endif
 #include "Window.h"
 #include "dpiManagerV2.h"
 

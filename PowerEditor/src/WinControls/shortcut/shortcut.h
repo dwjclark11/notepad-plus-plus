@@ -19,7 +19,7 @@
 
 #include "shortcutRc.h"
 #include "Scintilla.h"
-#include "StaticDialog.h"
+#include "StaticDialog/StaticDialog.h"
 #include "Common.h"
 #include "menuCmdID.h"
 

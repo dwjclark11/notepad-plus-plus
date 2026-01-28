@@ -689,7 +689,7 @@ void NppIO::updateRecentFilesMenu() {
 
 void NppIO::loadRecentFiles() {
     // Load from platform settings
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
     std::vector<std::wstring> recent = settings.getRecentFiles();
 
     _recentFiles.clear();
@@ -700,7 +700,7 @@ void NppIO::loadRecentFiles() {
 
 void NppIO::saveRecentFiles() {
     // Save to platform settings via individual adds
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
     settings.clearRecentFiles();
     for (const QString& path : _recentFiles) {
         settings.addToRecentFiles(IOUtils::qstringToWstring(path));
@@ -1340,7 +1340,7 @@ bool NppIO::isFileSession(const QString& filePath) const {
     }
 
     // Check user-defined session extension from settings
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
     QString customExt = QString::fromStdWString(
         settings.readString(L"Session", L"FileExt", L"")
     );
@@ -1364,7 +1364,7 @@ bool NppIO::isFileWorkspace(const QString& filePath) const {
     }
 
     // Check user-defined workspace extension from settings
-    Platform::ISettings& settings = Platform::ISettings::getInstance();
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
     QString customExt = QString::fromStdWString(
         settings.readString(L"Workspace", L"FileExt", L"")
     );

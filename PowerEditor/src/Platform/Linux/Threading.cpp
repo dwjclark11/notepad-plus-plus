@@ -14,7 +14,7 @@
 #include <chrono>
 #include <cstring>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Thread implementation for Linux
 class Thread::Impl {
@@ -523,4 +523,4 @@ void setMainThreadId() {
 
 } // namespace ThreadUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

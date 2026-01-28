@@ -27,7 +27,7 @@
 #include <QtCore/QFileInfo>
 #include <QtGui/QKeyEvent>
 
-namespace Platform {
+namespace NppFindReplace {
 
 // Static members
 FindOptions FindReplaceDlg::options;
@@ -1285,4 +1285,4 @@ void FinderPanel::gotoFoundLine(size_t index) {
     view->execute(SCI_SETSEL, info.start, info.end);
 }
 
-} // namespace Platform
+} // namespace NppFindReplace

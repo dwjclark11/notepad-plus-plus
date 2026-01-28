@@ -14,7 +14,7 @@
 #include <memory>
 #include <cstdint>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // File change types
 enum class FileChangeType {
@@ -218,4 +218,4 @@ bool isContentModified(FileChangeType type);
 
 } // namespace FileWatcherUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

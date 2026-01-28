@@ -19,7 +19,7 @@
 #include <queue>
 #include <vector>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // ============================================================================
 // Thread Priority
@@ -624,4 +624,4 @@ auto ThreadPool::submit(Func&& func, Args&&... args) -> std::future<typename std
     return result;
 }
 
-} // namespace Platform
+} // namespace PlatformLayer

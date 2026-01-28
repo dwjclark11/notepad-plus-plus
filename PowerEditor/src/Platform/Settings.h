@@ -14,7 +14,7 @@
 #include <memory>
 #include <cstdint>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Forward declarations
 struct SessionInfo;
@@ -151,4 +151,4 @@ void createDefaultSession(const std::wstring& path);
 
 } // namespace SettingsUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

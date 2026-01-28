@@ -19,15 +19,22 @@
 #include "resource.h"
 #include "Docking.h"
 #include <vector>
-#include "StaticDialog.h"
+#include "StaticDialog/StaticDialog.h"
 #include "Common.h"
 
 
 // window styles
+#ifdef _WIN32
 #define POPUP_STYLES		(WS_POPUP|WS_CLIPSIBLINGS|WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_MAXIMIZEBOX)
 #define POPUP_EXSTYLES		(WS_EX_CONTROLPARENT|WS_EX_WINDOWEDGE|WS_EX_TOOLWINDOW)
 #define CHILD_STYLES		(WS_CHILD)
 #define CHILD_EXSTYLES		(0x00000000L)
+#else
+#define POPUP_STYLES		0
+#define POPUP_EXSTYLES		0
+#define CHILD_STYLES		0
+#define CHILD_EXSTYLES		0
+#endif
 
 
 enum eMousePos {

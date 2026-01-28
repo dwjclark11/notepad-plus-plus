@@ -13,7 +13,7 @@
 #include <functional>
 #include <memory>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // ============================================================================
 // Dialog Result Codes
@@ -340,4 +340,4 @@ inline bool input(const std::wstring& title,
 
 } // namespace Dialogs
 
-} // namespace Platform
+} // namespace PlatformLayer

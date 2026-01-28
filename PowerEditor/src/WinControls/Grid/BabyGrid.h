@@ -7,7 +7,11 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include "Common.h"
+#endif
 #include "resource.h"
 
 #ifndef WM_MOUSEWHEEL

@@ -16,8 +16,12 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
 #include <commctrl.h>
+#else
+#include "Common.h"
+#endif
 #include "Window.h"
 #include "Common.h"
 #include "NppDarkMode.h"

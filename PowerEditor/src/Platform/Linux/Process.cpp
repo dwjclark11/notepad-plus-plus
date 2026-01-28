@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <cstring>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Helper functions
 namespace {
@@ -525,4 +525,4 @@ bool runDetached(const std::wstring& command,
 
 } // namespace ProcessUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

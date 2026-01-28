@@ -17,7 +17,14 @@
 #pragma once
 
 #include <string>
+
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include <cstdint>
+using COLORREF = uint32_t;
+using HWND = void*;
+#endif
 
 enum class FluentColor;
 struct TbIconInfo;

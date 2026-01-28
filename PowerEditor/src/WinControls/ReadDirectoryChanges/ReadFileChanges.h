@@ -8,7 +8,11 @@
 #endif
 
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include "Common.h"
+#endif
 
 
 class CReadFileChanges

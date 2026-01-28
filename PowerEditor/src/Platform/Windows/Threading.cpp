@@ -12,7 +12,7 @@
 #include <chrono>
 #include <string>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Thread implementation for Windows
 class Thread::Impl {
@@ -502,4 +502,4 @@ void setMainThreadId() {
 
 } // namespace ThreadUtils
 
-} // namespace Platform
+} // namespace PlatformLayer

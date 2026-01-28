@@ -12,7 +12,7 @@
 #include <QString>
 #include <vector>
 
-namespace Platform {
+namespace PlatformLayer {
     class IClipboard;
 }
 
@@ -78,7 +78,7 @@ private Q_SLOTS:
     void testTruncateForDisplay();
 
 private:
-    Platform::IClipboard* _clipboard = nullptr;
+    PlatformLayer::IClipboard* _clipboard = nullptr;
 
     // Helper to ensure clipboard is in known state
     void clearClipboard();

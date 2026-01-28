@@ -19,7 +19,7 @@
 #include <cstring>
 #include <pwd.h>
 
-namespace Platform {
+namespace PlatformLayer {
 
 // Helper functions for string conversion
 namespace {
@@ -923,4 +923,4 @@ std::string wcharToChar(const std::wstring& str) {
 
 } // namespace FileSystemUtils
 
-} // namespace Platform
+} // namespace PlatformLayer
