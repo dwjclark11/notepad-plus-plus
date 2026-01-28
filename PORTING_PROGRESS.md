@@ -13,7 +13,7 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | Phase | Description | Status | Completion % |
 |-------|-------------|--------|--------------|
 | 1 | Foundation & Abstraction Layer | COMPLETED | 100% |
-| 2 | Linux UI Implementation | IN PROGRESS | 35% |
+| 2 | Linux UI Implementation | IN PROGRESS | 70% |
 | 3 | Core Functionality Migration | NOT STARTED | 0% |
 | 4 | KDE Plasma Integration | NOT STARTED | 0% |
 | 5 | Polish and Release | NOT STARTED | 0% |
@@ -70,13 +70,13 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | Dialog | UI File | Implementation | Tests | Status |
 |--------|---------|----------------|-------|--------|
 | FindReplaceDlg | ✅ | ✅ | ⬜ | COMPLETED |
-| preferenceDlg | ⬜ | ⬜ | ⬜ | NOT STARTED |
+| preferenceDlg | ✅ | ✅ | ⬜ | COMPLETED |
 | GoToLineDlg | ✅ | ✅ | ⬜ | COMPLETED |
 | RunDlg | ✅ | ✅ | ⬜ | COMPLETED |
 | AboutDlg | ✅ | ✅ | ⬜ | COMPLETED |
-| UserDefineDialog | ⬜ | ⬜ | ⬜ | NOT STARTED |
-| WordStyleDlg | ⬜ | ⬜ | ⬜ | NOT STARTED |
-| ShortcutMapper | ⬜ | ⬜ | ⬜ | NOT STARTED |
+| UserDefineDialog | ✅ | ✅ | ⬜ | COMPLETED |
+| WordStyleDlg | ✅ | ✅ | ⬜ | COMPLETED |
+| ShortcutMapper | ✅ | ✅ | ⬜ | COMPLETED |
 
 ### Linux Panels
 
@@ -131,6 +131,10 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | 2026-01-28 | A20 | GoToLineDlg for Linux created | COMPLETE |
 | 2026-01-28 | A21 | AboutDlg for Linux created | COMPLETE |
 | 2026-01-28 | A22 | RunDlg for Linux created | COMPLETE |
+| 2026-01-28 | A23 | preferenceDlg for Linux created | COMPLETE |
+| 2026-01-28 | A24 | UserDefineDialog for Linux created | COMPLETE |
+| 2026-01-28 | A25 | WordStyleDlg for Linux created | COMPLETE |
+| 2026-01-28 | A26 | ShortcutMapper for Linux created | COMPLETE |
 
 ---
 
