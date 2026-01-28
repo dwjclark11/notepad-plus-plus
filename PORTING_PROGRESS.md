@@ -48,7 +48,7 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | Process | ✅ | ✅ | ✅ | ⬜ | COMPLETED |
 | FileWatcher | ✅ | ✅ | ✅ | ⬜ | COMPLETED |
 | Clipboard | ✅ | ✅ | ✅ | ⬜ | COMPLETED |
-| Dialogs | ⬜ | ⬜ | ⬜ | ⬜ | NOT STARTED |
+| Dialogs | ✅ | ✅ | ✅ | ⬜ | COMPLETED |
 | Threading | ✅ | ✅ | ✅ | ⬜ | COMPLETED |
 
 ### QtControls (Linux UI)
@@ -123,7 +123,7 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | 2026-01-28 | A1 | FileSystem abstraction created | COMPLETE |
 | 2026-01-28 | A5 | CMake build system modernized | COMPLETE |
 | 2026-01-28 | A6 | QtControls framework created | COMPLETE |
-| 2026-01-28 | A14 | Threading abstraction created | COMPLETE |
+| 2026-01-28 | A15 | Dialogs abstraction created | COMPLETE |
 
 ---
 

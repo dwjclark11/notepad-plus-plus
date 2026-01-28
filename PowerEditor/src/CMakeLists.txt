@@ -404,6 +404,7 @@ IF (WIN32)
 		./Platform/Windows/FileWatcher.cpp
 		./Platform/Windows/Clipboard.cpp
 		./Platform/Windows/Threading.cpp
+		./Platform/Windows/Dialogs.cpp
 	)
 
 	list(APPEND projIncludDir ./Platform)
@@ -474,6 +475,7 @@ ELSEIF(UNIX AND NOT APPLE)
 		./Platform/Linux/FileWatcher.cpp
 		./Platform/Linux/Clipboard.cpp
 		./Platform/Linux/Threading.cpp
+		./Platform/Linux/Dialogs.cpp
 	)
 
 	# Add QtControls for Linux
