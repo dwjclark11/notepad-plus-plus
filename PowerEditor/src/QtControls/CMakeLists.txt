@@ -37,6 +37,8 @@ set(QTCONTROLS_SOURCES
     FunctionList/FunctionListPanel.cpp
     ProjectPanel/ProjectPanel.cpp
     MainWindow/Notepad_plus_Window.cpp
+    KDEStyle/KDEStyleManager.cpp
+    KDEStyle/KDEUtils.cpp
 )
 
 set(QTCONTROLS_HEADERS
@@ -61,6 +63,8 @@ set(QTCONTROLS_HEADERS
     FunctionList/FunctionListPanel.h
     ProjectPanel/ProjectPanel.h
     MainWindow/Notepad_plus_Window.h
+    KDEStyle/KDEStyleManager.h
+    KDEStyle/KDEUtils.h
 )
 
 # Create static library
@@ -88,6 +92,7 @@ target_include_directories(QtControls PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/FunctionList
     ${CMAKE_CURRENT_SOURCE_DIR}/ProjectPanel
     ${CMAKE_CURRENT_SOURCE_DIR}/MainWindow
+    ${CMAKE_CURRENT_SOURCE_DIR}/KDEStyle
 )
 
 target_link_libraries(QtControls PUBLIC

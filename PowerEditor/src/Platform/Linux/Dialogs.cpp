@@ -7,6 +7,12 @@
 // at your option any later version.
 
 #include "../Dialogs.h"
+
+// Include KDE dialogs if available
+#ifdef NPP_KDE_AVAILABLE
+#include "../KDE/KDEDialogs.h"
+#endif
+
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QInputDialog>
@@ -391,6 +397,13 @@ private:
 // Singleton Accessor
 // ============================================================================
 IDialogs& IDialogs::getInstance() {
+#ifdef NPP_KDE_AVAILABLE
+    // Check if KDE is available at runtime and use it if so
+    if (KDE::KDEDialogs::isKDEAvailable()) {
+        static KDE::KDEDialogs kdeInstance;
+        return kdeInstance;
+    }
+#endif
     static DialogsLinux instance;
     return instance;
 }

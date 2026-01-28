@@ -480,7 +480,6 @@ ELSEIF(UNIX AND NOT APPLE)
 
 	# Add QtControls for Linux
 	list(APPEND src_files
-		./QtControls/Window.cpp
 		./QtControls/StaticDialog/StaticDialog.cpp
 		./QtControls/ToolBar/ToolBar.cpp
 		./QtControls/StatusBar/StatusBar.cpp
@@ -492,6 +491,8 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtControls/TreeView/TreeView.cpp
 		./QtControls/FindReplace/FindReplaceDlg.cpp
 		./QtControls/ShortcutMapper/ShortcutMapper.cpp
+		./QtControls/KDEStyle/KDEStyleManager.cpp
+		./QtControls/KDEStyle/KDEUtils.cpp
 	)
 
 	# Add QtCore for Linux
@@ -521,6 +522,60 @@ ELSEIF(UNIX AND NOT APPLE)
 		./winmain.cpp
 	)
 
+	# ============================================================================
+	# Optional KDE Frameworks Integration
+	# ============================================================================
+	option(NPP_ENABLE_KDE "Enable KDE Frameworks integration for native Plasma dialogs" OFF)
+
+	if(NPP_ENABLE_KDE)
+		# Find KDE Frameworks components
+		find_package(ECM QUIET)
+		if(ECM_FOUND)
+			set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
+			find_package(KF6 COMPONENTS CoreAddons WidgetsAddons KIO Notifications Wallet Config)
+
+			if(KF6CoreAddons_FOUND AND KF6WidgetsAddons_FOUND AND KF6KIO_FOUND)
+				message(STATUS "KDE Frameworks 6 found - enabling native Plasma integration")
+				set(NPP_KDE_AVAILABLE TRUE)
+				list(APPEND defs -DNPP_KDE_AVAILABLE)
+
+				# Add KDE Dialogs implementation
+				list(APPEND src_files
+					./Platform/KDE/KDEDialogs.cpp
+				)
+				list(APPEND projIncludDir
+					./Platform/KDE
+					${KF6CoreAddons_INCLUDE_DIRS}
+					${KF6WidgetsAddons_INCLUDE_DIRS}
+					${KF6KIO_INCLUDE_DIRS}
+				)
+				list(APPEND linux_LIBRARIES
+					KF6::CoreAddons
+					KF6::WidgetsAddons
+					KF6::KIOWidgets
+				)
+
+				if(KF6Notifications_FOUND)
+					list(APPEND linux_LIBRARIES KF6::Notifications)
+				endif()
+
+				if(KF6Wallet_FOUND)
+					list(APPEND linux_LIBRARIES KF6::Wallet)
+				endif()
+
+				if(KF6Config_FOUND)
+					list(APPEND linux_LIBRARIES KF6::ConfigCore KF6::ConfigGui)
+				endif()
+			else()
+				message(WARNING "KDE Frameworks components not found - falling back to Qt dialogs")
+			endif()
+		else()
+			message(STATUS "ECM not found - KDE integration disabled")
+		endif()
+	else()
+		message(STATUS "KDE integration disabled (use -DNPP_ENABLE_KDE=ON to enable)")
+	endif()
+
 	# Linux-specific includes
 	list(APPEND projIncludDir
 		./Platform
@@ -536,6 +591,7 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtControls/TreeView
 		./QtControls/FindReplace
 		./QtControls/ShortcutMapper
+		./QtControls/KDEStyle
 		./QtCore
 		${Qt6Core_INCLUDE_DIRS}
 		${Qt6Widgets_INCLUDE_DIRS}
@@ -633,12 +689,92 @@ ENDIF()
 # Installation
 # ============================================================================
 IF(UNIX AND NOT APPLE)
+	# Install binary
 	install(TARGETS notepad++
 		RUNTIME DESTINATION bin
 	)
+
+	# Install documentation
 	install(FILES
 		${CMAKE_SOURCE_DIR}/../../LICENSE
+		${CMAKE_SOURCE_DIR}/../../README.md
+		${CMAKE_SOURCE_DIR}/../../BUILD.md
+		${CMAKE_SOURCE_DIR}/../../CONTRIBUTING.md
 		DESTINATION share/doc/notepad-plus-plus
 	)
+
+	# Install desktop file (if it exists in source)
+	if(EXISTS "${CMAKE_SOURCE_DIR}/../../packaging/common/notepad-plus-plus.desktop")
+		install(FILES
+			${CMAKE_SOURCE_DIR}/../../packaging/common/notepad-plus-plus.desktop
+			DESTINATION share/applications
+		)
+	endif()
+
+	# Install metainfo/appdata (if it exists)
+	if(EXISTS "${CMAKE_SOURCE_DIR}/../../packaging/common/org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml")
+		install(FILES
+			${CMAKE_SOURCE_DIR}/../../packaging/common/org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml
+			DESTINATION share/metainfo
+		)
+	endif()
+
+	# Install MIME type definition (if it exists)
+	if(EXISTS "${CMAKE_SOURCE_DIR}/../../packaging/common/notepad-plus-plus-mime.xml")
+		install(FILES
+			${CMAKE_SOURCE_DIR}/../../packaging/common/notepad-plus-plus-mime.xml
+			DESTINATION share/mime/packages
+		)
+	endif()
+
+	# Install icons (if they exist)
+	if(EXISTS "${CMAKE_SOURCE_DIR}/../../packaging/common/notepad-plus-plus.svg")
+		install(FILES
+			${CMAKE_SOURCE_DIR}/../../packaging/common/notepad-plus-plus.svg
+			DESTINATION share/icons/hicolor/scalable/apps
+		)
+	endif()
+
+	# Create symlink for notepad++
+	install(CODE "
+		execute_process(
+			COMMAND ${CMAKE_COMMAND} -E create_symlink
+				notepad-plus-plus
+				notepad++
+			WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}/bin
+		)
+	")
+
+	# Install localization files (if they exist)
+	if(EXISTS "${CMAKE_SOURCE_DIR}/../../PowerEditor/installer/nativeLang")
+		install(DIRECTORY
+			${CMAKE_SOURCE_DIR}/../../PowerEditor/installer/nativeLang/
+			DESTINATION share/notepad-plus-plus/localization
+			FILES_MATCHING PATTERN "*.xml"
+		)
+	endif()
+
+	# Install themes (if they exist)
+	if(EXISTS "${CMAKE_SOURCE_DIR}/../../PowerEditor/installer/themes")
+		install(DIRECTORY
+			${CMAKE_SOURCE_DIR}/../../PowerEditor/installer/themes/
+			DESTINATION share/notepad-plus-plus/themes
+			FILES_MATCHING PATTERN "*.xml"
+		)
+	endif()
+
+	# Install plugin directory structure
+	install(DIRECTORY
+		DESTINATION lib/notepad-plus-plus/plugins
+	)
+
+	# ============================================================================
+	# Tests (Linux only)
+	# ============================================================================
+	option(BUILD_TESTS "Build test suite" ON)
+	if(BUILD_TESTS)
+		message(STATUS "Tests enabled - configure Tests/ directory")
+		add_subdirectory(Tests)
+	endif()
 ENDIF()
 

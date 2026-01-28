@@ -133,13 +133,13 @@ target_link_libraries(PlatformTests PRIVATE
 # Link with Platform implementation
 if(UNIX AND NOT APPLE)
     target_sources(PlatformTests PRIVATE
-        ${CMAKE_SOURCE_DIR}/../Platform/Linux/FileSystem.cpp
-        ${CMAKE_SOURCE_DIR}/../Platform/Linux/Settings.cpp
-        ${CMAKE_SOURCE_DIR}/../Platform/Linux/Process.cpp
-        ${CMAKE_SOURCE_DIR}/../Platform/Linux/FileWatcher.cpp
-        ${CMAKE_SOURCE_DIR}/../Platform/Linux/Clipboard.cpp
-        ${CMAKE_SOURCE_DIR}/../Platform/Linux/Dialogs.cpp
-        ${CMAKE_SOURCE_DIR}/../Platform/Linux/Threading.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/Linux/FileSystem.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/Linux/Settings.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/Linux/Process.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/Linux/FileWatcher.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/Linux/Clipboard.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/Linux/Dialogs.cpp
+        ${CMAKE_SOURCE_DIR}/Platform/Linux/Threading.cpp
     )
 endif()
 
@@ -183,7 +183,7 @@ add_test(NAME IntegrationTests COMMAND IntegrationTests)
 
 # Test runner script
 configure_file(
-    ${CMAKE_SOURCE_DIR}/run_tests.sh.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.sh.in
     ${CMAKE_BINARY_DIR}/run_tests.sh
     @ONLY
 )
