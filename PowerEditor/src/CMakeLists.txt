@@ -399,6 +399,7 @@ IF (WIN32)
 	# Add Platform abstraction for Windows
 	list(APPEND src_files
 		./Platform/Windows/FileSystem.cpp
+		./Platform/Windows/Settings.cpp
 	)
 
 	list(APPEND projIncludDir ./Platform)
@@ -464,6 +465,7 @@ ELSEIF(UNIX AND NOT APPLE)
 	# Add Platform abstraction for Linux
 	list(APPEND src_files
 		./Platform/Linux/FileSystem.cpp
+		./Platform/Linux/Settings.cpp
 	)
 
 	# Remove Windows-specific files from Linux build
