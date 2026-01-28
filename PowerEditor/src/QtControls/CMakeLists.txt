@@ -26,6 +26,10 @@ set(QTCONTROLS_SOURCES
     RunDlg/RunDlg.cpp
     AboutDlg/AboutDlg.cpp
     TreeView/TreeView.cpp
+    ShortcutMapper/ShortcutMapper.cpp
+    WordStyleDlg/WordStyleDlg.cpp
+    UserDefineDialog/UserDefineDialog.cpp
+    Preference/preferenceDlg.cpp
 )
 
 set(QTCONTROLS_HEADERS
@@ -39,6 +43,10 @@ set(QTCONTROLS_HEADERS
     RunDlg/RunDlg.h
     AboutDlg/AboutDlg.h
     TreeView/TreeView.h
+    ShortcutMapper/ShortcutMapper.h
+    WordStyleDlg/WordStyleDlg.h
+    UserDefineDialog/UserDefineDialog.h
+    Preference/preferenceDlg.h
 )
 
 # Create static library
@@ -55,6 +63,10 @@ target_include_directories(QtControls PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/RunDlg
     ${CMAKE_CURRENT_SOURCE_DIR}/AboutDlg
     ${CMAKE_CURRENT_SOURCE_DIR}/TreeView
+    ${CMAKE_CURRENT_SOURCE_DIR}/ShortcutMapper
+    ${CMAKE_CURRENT_SOURCE_DIR}/WordStyleDlg
+    ${CMAKE_CURRENT_SOURCE_DIR}/UserDefineDialog
+    ${CMAKE_CURRENT_SOURCE_DIR}/Preference
 )
 
 target_link_libraries(QtControls PUBLIC

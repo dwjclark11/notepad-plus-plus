@@ -480,12 +480,18 @@ ELSEIF(UNIX AND NOT APPLE)
 
 	# Add QtControls for Linux
 	list(APPEND src_files
-		./QtControls/Window/Window.cpp
+		./QtControls/Window.cpp
 		./QtControls/StaticDialog/StaticDialog.cpp
 		./QtControls/ToolBar/ToolBar.cpp
 		./QtControls/StatusBar/StatusBar.cpp
 		./QtControls/TabBar/TabBar.cpp
+		./QtControls/Splitter/Splitter.cpp
+		./QtControls/GoToLine/GoToLineDlg.cpp
+		./QtControls/RunDlg/RunDlg.cpp
+		./QtControls/AboutDlg/AboutDlg.cpp
+		./QtControls/TreeView/TreeView.cpp
 		./QtControls/FindReplace/FindReplaceDlg.cpp
+		./QtControls/ShortcutMapper/ShortcutMapper.cpp
 	)
 
 	# Remove Windows-specific files from Linux build
@@ -507,12 +513,17 @@ ELSEIF(UNIX AND NOT APPLE)
 	list(APPEND projIncludDir
 		./Platform
 		./QtControls
-		./QtControls/Window
 		./QtControls/StaticDialog
 		./QtControls/ToolBar
 		./QtControls/StatusBar
 		./QtControls/TabBar
+		./QtControls/Splitter
+		./QtControls/GoToLine
+		./QtControls/RunDlg
+		./QtControls/AboutDlg
+		./QtControls/TreeView
 		./QtControls/FindReplace
+		./QtControls/ShortcutMapper
 		${Qt6Core_INCLUDE_DIRS}
 		${Qt6Widgets_INCLUDE_DIRS}
 		${Qt6Gui_INCLUDE_DIRS}
