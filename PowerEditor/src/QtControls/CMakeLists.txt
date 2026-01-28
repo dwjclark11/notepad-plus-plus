@@ -21,6 +21,11 @@ set(QTCONTROLS_SOURCES
     ToolBar/ToolBar.cpp
     StatusBar/StatusBar.cpp
     TabBar/TabBar.cpp
+    Splitter/Splitter.cpp
+    GoToLine/GoToLineDlg.cpp
+    RunDlg/RunDlg.cpp
+    AboutDlg/AboutDlg.cpp
+    TreeView/TreeView.cpp
 )
 
 set(QTCONTROLS_HEADERS
@@ -29,6 +34,11 @@ set(QTCONTROLS_HEADERS
     ToolBar/ToolBar.h
     StatusBar/StatusBar.h
     TabBar/TabBar.h
+    Splitter/Splitter.h
+    GoToLine/GoToLineDlg.h
+    RunDlg/RunDlg.h
+    AboutDlg/AboutDlg.h
+    TreeView/TreeView.h
 )
 
 # Create static library
@@ -40,6 +50,11 @@ target_include_directories(QtControls PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/ToolBar
     ${CMAKE_CURRENT_SOURCE_DIR}/StatusBar
     ${CMAKE_CURRENT_SOURCE_DIR}/TabBar
+    ${CMAKE_CURRENT_SOURCE_DIR}/Splitter
+    ${CMAKE_CURRENT_SOURCE_DIR}/GoToLine
+    ${CMAKE_CURRENT_SOURCE_DIR}/RunDlg
+    ${CMAKE_CURRENT_SOURCE_DIR}/AboutDlg
+    ${CMAKE_CURRENT_SOURCE_DIR}/TreeView
 )
 
 target_link_libraries(QtControls PUBLIC
