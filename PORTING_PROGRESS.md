@@ -15,8 +15,8 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | 1 | Foundation & Abstraction Layer | COMPLETED | 100% |
 | 2 | Linux UI Implementation | COMPLETED | 100% |
 | 3 | Core Functionality Migration | COMPLETED | 100% |
-| 4 | KDE Plasma Integration | NOT STARTED | 0% |
-| 5 | Polish and Release | NOT STARTED | 0% |
+| 4 | KDE Plasma Integration | COMPLETED | 100% |
+| 5 | Polish and Release | COMPLETED | 100% |
 
 ---
 
@@ -145,6 +145,12 @@ Adding native Linux/KDE Plasma support to Notepad++ while maintaining full Windo
 | 2026-01-28 | A34 | NppCommands migrated | COMPLETE |
 | 2026-01-28 | A35 | NppIO migrated | COMPLETE |
 | 2026-01-28 | A36 | Qt Buffer system created | COMPLETE |
+| 2026-01-28 | A37 | KDE Dialogs created | COMPLETE |
+| 2026-01-28 | A38 | KDE Styling created | COMPLETE |
+| 2026-01-28 | A39 | Testing framework created | COMPLETE |
+| 2026-01-28 | A40 | CI/CD pipeline created | COMPLETE |
+| 2026-01-28 | A41 | Packaging created | COMPLETE |
+| 2026-01-28 | A42 | Documentation created | COMPLETE |
 
 ---
 
