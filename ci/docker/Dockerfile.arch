@@ -1,0 +1,46 @@
+# Dockerfile for Notepad++ Linux Build Environment (Arch Linux)
+# Usage: docker build -f ci/docker/Dockerfile.arch -t notepad-plus-plus-build:arch .
+
+FROM archlinux:latest
+
+# Update system and install build dependencies
+RUN pacman -Syu --noconfirm && pacman -S --noconfirm \
+    # Build tools
+    base-devel \
+    cmake \
+    ninja \
+    git \
+    wget \
+    curl \
+    # Qt6 development
+    qt6-base \
+    qt6-tools \
+    # QScintilla
+    qscintilla-qt6 \
+    # Code quality tools
+    clang \
+    cppcheck \
+    valgrind \
+    # Coverage tools
+    lcov \
+    gcovr \
+    # Other utilities
+    xorg-server-xvfb \
+    && pacman -Scc --noconfirm
+
+# Set up working directory
+WORKDIR /workspace
+
+# Copy entrypoint script
+COPY ci/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set environment variables
+ENV CC=gcc
+ENV CXX=g++
+ENV CMAKE_GENERATOR=Ninja
+ENV QT_SELECT=qt6
+
+# Default command
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["bash"]

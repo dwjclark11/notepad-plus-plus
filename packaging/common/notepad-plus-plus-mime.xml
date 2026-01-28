@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-notepad-plus-plus-session">
+    <comment>Notepad++ Session</comment>
+    <comment xml:lang="de">Notepad++-Sitzung</comment>
+    <comment xml:lang="es">Sesión de Notepad++</comment>
+    <comment xml:lang="fr">Session Notepad++</comment>
+    <comment xml:lang="it">Sessione Notepad++</comment>
+    <comment xml:lang="ja">Notepad++ セッション</comment>
+    <comment xml:lang="ko">Notepad++ 세션</comment>
+    <comment xml:lang="pt">Sessão do Notepad++</comment>
+    <comment xml:lang="ru">Сеанс Notepad++</comment>
+    <comment xml:lang="zh">Notepad++ 会话</comment>
+    <glob pattern="*.npp"/>
+    <glob pattern="*.session"/>
+  </mime-type>
+
+  <mime-type type="application/x-notepad-plus-plus-workspace">
+    <comment>Notepad++ Workspace</comment>
+    <comment xml:lang="de">Notepad++-Arbeitsbereich</comment>
+    <comment xml:lang="es">Espacio de trabajo de Notepad++</comment>
+    <comment xml:lang="fr">Espace de travail Notepad++</comment>
+    <comment xml:lang="it">Area di lavoro Notepad++</comment>
+    <comment xml:lang="ja">Notepad++ ワークスペース</comment>
+    <comment xml:lang="ko">Notepad++ 작업 공간</comment>
+    <comment xml:lang="pt">Área de trabalho do Notepad++</comment>
+    <comment xml:lang="ru">Рабочая область Notepad++</comment>
+    <comment xml:lang="zh">Notepad++ 工作区</comment>
+    <glob pattern="*.nppw"/>
+    <glob pattern="*.workspace"/>
+  </mime-type>
+
+  <mime-type type="application/x-notepad-plus-plus-shortcut">
+    <comment>Notepad++ Shortcut</comment>
+    <comment xml:lang="de">Notepad++-Tastenkürzel</comment>
+    <comment xml:lang="es">Atajo de Notepad++</comment>
+    <comment xml:lang="fr">Raccourci Notepad++</comment>
+    <comment xml:lang="it">Scorciatoia Notepad++</comment>
+    <comment xml:lang="ja">Notepad++ ショートカット</comment>
+    <comment xml:lang="ko">Notepad++ 바로 가기</comment>
+    <comment xml:lang="pt">Atalho do Notepad++</comment>
+    <comment xml:lang="ru">Ярлык Notepad++</comment>
+    <comment xml:lang="zh">Notepad++ 快捷方式</comment>
+    <glob pattern="*.npp_shortcut"/>
+  </mime-type>
+</mime-info>

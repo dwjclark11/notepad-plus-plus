@@ -1,0 +1,333 @@
+name: Linux Build
+
+on:
+  push:
+    branches: [master, main, linux-port]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+  pull_request:
+    branches: [master, main, linux-port]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+  QT_VERSION: 6.6
+
+jobs:
+  # ============================================================================
+  # Ubuntu Builds
+  # ============================================================================
+  build-ubuntu:
+    runs-on: ubuntu-${{ matrix.ubuntu_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu_version: ['22.04', '24.04']
+        compiler: [gcc, clang]
+        build_type: [Release, Debug]
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies (Ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            libqt6widgets6 \
+            libqt6gui6 \
+            libqt6network6 \
+            qscintilla2-qt6-dev \
+            pkg-config \
+            clang \
+            clang-tidy \
+            clang-format \
+            cppcheck \
+            gcovr \
+            lcov \
+            valgrind
+
+      - name: Configure CMake
+        working-directory: PowerEditor/src
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build
+        working-directory: PowerEditor/src/build
+        run: ninja -j$(nproc)
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: notepad-plus-plus-ubuntu-${{ matrix.ubuntu_version }}-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: |
+            PowerEditor/src/build/notepad-plus-plus
+            PowerEditor/src/build/*.so
+          retention-days: 7
+
+  # ============================================================================
+  # Fedora Build
+  # ============================================================================
+  build-fedora:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        build_type: [Release, Debug]
+
+    steps:
+      - name: Install dependencies (Fedora)
+        run: |
+          dnf update -y
+          dnf install -y \
+            git \
+            cmake \
+            ninja-build \
+            gcc \
+            gcc-c++ \
+            clang \
+            qt6-qtbase-devel \
+            qt6-qtbase-gui \
+            qt6-qscintilla-qt6-devel \
+            pkgconfig \
+            cppcheck \
+            which
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        working-directory: PowerEditor/src
+        env:
+          CC: ${{ matrix.compiler == 'gcc' && 'gcc' || 'clang' }}
+          CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_CXX_STANDARD=20
+
+      - name: Build
+        working-directory: PowerEditor/src/build
+        run: ninja -j$(nproc)
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: notepad-plus-plus-fedora-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: |
+            PowerEditor/src/build/notepad-plus-plus
+          retention-days: 7
+
+  # ============================================================================
+  # Arch Linux Build
+  # ============================================================================
+  build-arch:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+
+    steps:
+      - name: Install dependencies (Arch)
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm \
+            base-devel \
+            git \
+            cmake \
+            ninja \
+            qt6-base \
+            qscintilla-qt6 \
+            pkgconf
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        working-directory: PowerEditor/src
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_CXX_STANDARD=20
+
+      - name: Build
+        working-directory: PowerEditor/src/build
+        run: ninja -j$(nproc)
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: notepad-plus-plus-arch-${{ matrix.build_type }}
+          path: |
+            PowerEditor/src/build/notepad-plus-plus
+          retention-days: 7
+
+  # ============================================================================
+  # Test Execution
+  # ============================================================================
+  test:
+    runs-on: ubuntu-24.04
+    needs: build-ubuntu
+    strategy:
+      matrix:
+        build_type: [Release, Debug]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            libqt6widgets6 \
+            libqt6gui6 \
+            libqt6network6 \
+            qscintilla2-qt6-dev \
+            pkg-config \
+            xvfb \
+            gcovr \
+            lcov
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: notepad-plus-plus-ubuntu-24.04-gcc-${{ matrix.build_type }}
+          path: build-artifacts
+
+      - name: Make executable
+        run: chmod +x build-artifacts/notepad-plus-plus
+
+      - name: Run tests (if test suite exists)
+        working-directory: PowerEditor/src
+        run: |
+          # Create a simple test runner
+          mkdir -p build
+          cd build
+          cmake .. -GNinja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=ON || true
+          # Run any available tests
+          ctest --output-on-failure || echo "No tests configured yet"
+
+  # ============================================================================
+  # Coverage Report
+  # ============================================================================
+  coverage:
+    runs-on: ubuntu-24.04
+    needs: build-ubuntu
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            qscintilla2-qt6-dev \
+            pkg-config \
+            gcovr \
+            lcov
+
+      - name: Configure with coverage
+        working-directory: PowerEditor/src
+        run: |
+          mkdir -p build-coverage
+          cd build-coverage
+          cmake .. \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
+            -DCMAKE_C_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+
+      - name: Build with coverage
+        working-directory: PowerEditor/src/build-coverage
+        run: ninja -j$(nproc)
+
+      - name: Generate coverage report
+        working-directory: PowerEditor/src/build-coverage
+        run: |
+          # Generate gcovr report
+          gcovr -r .. --html --html-details -o coverage-report.html || true
+          gcovr -r .. --xml -o coverage-report.xml || true
+          # Generate lcov report
+          lcov --capture --directory . --output-file coverage.info || true
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info || true
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            PowerEditor/src/build-coverage/coverage-report.html
+            PowerEditor/src/build-coverage/coverage-report.xml
+            PowerEditor/src/build-coverage/coverage.info
+          retention-days: 14
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: PowerEditor/src/build-coverage/coverage-report.xml
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}

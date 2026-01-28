@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.notepad-plus-plus.NotepadPlusPlus</id>
+  <launchable type="desktop-id">notepad-plus-plus.desktop</launchable>
+  <name>Notepad++</name>
+  <summary>Free source code editor and Notepad replacement</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0+</project_license>
+
+  <description>
+    <p>
+      Notepad++ is a free source code editor and Notepad replacement that supports several languages.
+      Running in the MS Windows environment, its use is governed by GPL License.
+    </p>
+    <p>
+      Based on the powerful editing component Scintilla, Notepad++ is written in C++ and uses pure Win32 API
+      and STL which ensures a higher execution speed and smaller program size. By optimizing as many routines
+      as possible without losing user friendliness, Notepad++ is trying to reduce the world carbon dioxide emissions.
+      When using less CPU power, the PC can throttle down and reduce power consumption, resulting in a greener environment.
+    </p>
+    <p>
+      This is the Linux port of Notepad++ using Qt6 for the user interface.
+    </p>
+  </description>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main editing interface</caption>
+      <image>https://notepad-plus-plus.org/assets/images/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://notepad-plus-plus.org/</url>
+  <url type="bugtracker">https://github.com/notepad-plus-plus/notepad-plus-plus/issues</url>
+  <url type="vcs-browser">https://github.com/notepad-plus-plus/notepad-plus-plus</url>
+
+  <developer_name>Don Ho</developer_name>
+  <update_contact>don.h@free.fr</update_contact>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="8.6.0" date="2024-01-01">
+      <description>
+        <p>Linux port with Qt6 interface</p>
+        <ul>
+          <li>Initial Linux release</li>
+          <li>Qt6-based UI</li>
+          <li>Native Linux file dialogs</li>
+          <li>Linux platform integration</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <provides>
+    <binary>notepad-plus-plus</binary>
+    <mediatype>text/plain</mediatype>
+    <mediatype>text/css</mediatype>
+    <mediatype>text/html</mediatype>
+    <mediatype>text/x-c++hdr</mediatype>
+    <mediatype>text/x-c++src</mediatype>
+    <mediatype>text/x-chdr</mediatype>
+    <mediatype>text/x-csrc</mediatype>
+  </provides>
+
+  <keywords>
+    <keyword>text</keyword>
+    <keyword>editor</keyword>
+    <keyword>code</keyword>
+    <keyword>programming</keyword>
+    <keyword>development</keyword>
+    <keyword>notepad</keyword>
+    <keyword>scintilla</keyword>
+    <keyword>syntax</keyword>
+    <keyword>highlighting</keyword>
+  </keywords>
+
+  <categories>
+    <category>TextEditor</category>
+    <category>Development</category>
+    <category>IDE</category>
+  </categories>
+
+  <requires>
+    <display_length compare="ge">800</display_length>
+  </requires>
+
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </recommends>
+</component>

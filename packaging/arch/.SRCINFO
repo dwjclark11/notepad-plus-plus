@@ -1,0 +1,30 @@
+pkgbase = notepad-plus-plus
+	pkgdesc = Free source code editor and Notepad replacement
+	pkgver = 8.6.0
+	pkgrel = 1
+	url = https://notepad-plus-plus.org/
+	arch = x86_64
+	license = GPL2
+	makedepends = cmake>=3.10
+	makedepends = gcc>=11
+	makedepends = ninja
+	makedepends = git
+	depends = qt6-base>=6.2
+	depends = qt6-tools
+	depends = hicolor-icon-theme
+	optdepends = notepad-plus-plus-lang: Localization files
+	optdepends = notepad-plus-plus-plugins: Additional plugins
+	provides = notepad++
+	provides = npp
+	conflicts = notepad++
+	conflicts = npp
+	source = notepad-plus-plus-8.6.0.tar.gz::https://github.com/notepad-plus-plus/notepad-plus-plus/archive/v8.6.0.tar.gz
+	source = notepad-plus-plus.desktop
+	source = notepad-plus-plus-mime.xml
+	source = org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml
+	sha256sums = SKIP
+	sha256sums = SKIP
+	sha256sums = SKIP
+	sha256sums = SKIP
+
+pkgname = notepad-plus-plus

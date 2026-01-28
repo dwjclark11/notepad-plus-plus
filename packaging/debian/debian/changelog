@@ -1,0 +1,9 @@
+notepad-plus-plus (8.6.0-1) unstable; urgency=medium
+
+  * Initial release of Linux port
+  * Qt6-based user interface
+  * Native Linux file dialogs and platform integration
+  * Scintilla and Lexilla integration
+  * Plugin architecture support
+
+ -- Notepad++ Team <don.h@free.fr>  Mon, 01 Jan 2024 00:00:00 +0000

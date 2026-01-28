@@ -1,0 +1,54 @@
+# Dockerfile for Notepad++ Linux Build Environment (Fedora)
+# Usage: docker build -f ci/docker/Dockerfile.fedora -t notepad-plus-plus-build:fedora .
+
+FROM fedora:latest
+
+# Install build dependencies
+RUN dnf update -y && dnf install -y \
+    # Build tools
+    gcc \
+    gcc-c++ \
+    cmake \
+    ninja-build \
+    pkgconfig \
+    git \
+    wget \
+    curl \
+    which \
+    # Qt6 development
+    qt6-qtbase-devel \
+    qt6-qtbase-gui \
+    qt6-qttools-devel \
+    # QScintilla
+    qt6-qscintilla-qt6-devel \
+    # Code quality tools
+    clang \
+    clang-tools-extra \
+    cppcheck \
+    valgrind \
+    # Coverage tools
+    lcov \
+    gcovr \
+    # Packaging tools
+    rpm-build \
+    rpmdevtools \
+    # Other utilities
+    xorg-x11-server-Xvfb \
+    && dnf clean all
+
+# Set up working directory
+WORKDIR /workspace
+
+# Copy entrypoint script
+COPY ci/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set environment variables
+ENV CC=gcc
+ENV CXX=g++
+ENV CMAKE_GENERATOR=Ninja
+ENV QT_SELECT=qt6
+
+# Default command
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["bash"]

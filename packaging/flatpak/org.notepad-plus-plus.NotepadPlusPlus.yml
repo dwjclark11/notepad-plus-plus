@@ -1,0 +1,139 @@
+app-id: org.notepad-plus-plus.NotepadPlusPlus
+runtime: org.kde.Platform
+runtime-version: '6.6'
+sdk: org.kde.Sdk
+command: notepad-plus-plus
+finish-args:
+  # X11 + Wayland access
+  - --socket=x11
+  - --socket=wayland
+  - --share=ipc
+  # Network access for updates and plugins
+  - --share=network
+  # Filesystem access
+  - --filesystem=host
+  # Home directory access
+  - --filesystem=home
+  # Config directory for settings
+  - --filesystem=xdg-config/notepad-plus-plus:create
+  # Cache directory
+  - --filesystem=xdg-cache/notepad-plus-plus:create
+  # Documents
+  - --filesystem=xdg-documents
+  # Downloads
+  - --filesystem=xdg-download
+  # D-Bus access for desktop integration
+  - --talk-name=org.freedesktop.DBus
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.freedesktop.portal.FileChooser
+  # Session bus for Qt
+  - --socket=session-bus
+  # System bus for hardware access
+  - --system-talk-name=org.freedesktop.UDisks2
+  # Allow notifications
+  - --talk-name=org.freedesktop.Notifications
+  # Allow opening URLs in browser
+  - --talk-name=org.freedesktop.portal.OpenURI
+  # GPU acceleration
+  - --device=dri
+  # For file monitoring
+  - --talk-name=org.freedesktop.portal.Fcitx
+  # KDE integration
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=com.canonical.indicator.application
+  # Environment variables
+  - --env=QT_QPA_PLATFORM=xcb
+  - --env=QT_QPA_PLATFORMTHEME=gtk2
+
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - /share/man
+  - /share/doc
+  - /share/gtk-doc
+  - '*.la'
+  - '*.a'
+
+modules:
+  # Build Scintilla first
+  - name: scintilla
+    buildsystem: simple
+    build-commands:
+      - cd qt/ScintillaEditBase && qmake6 ScintillaEditBase.pro && make -j$(nproc)
+      - install -d /app/lib
+      - cp -P qt/ScintillaEditBase/libscintilla* /app/lib/ || true
+      - cp -P qt/ScintillaEditBase/*.a /app/lib/ || true
+      - install -d /app/include/scintilla
+      - cp include/*.h /app/include/scintilla/
+    sources:
+      - type: dir
+        path: ../../scintilla
+
+  # Build Lexilla
+  - name: lexilla
+    buildsystem: simple
+    build-commands:
+      - make -j$(nproc) -C src
+      - install -d /app/lib
+      - cp src/liblexilla.so* /app/lib/ || true
+      - cp src/*.a /app/lib/ || true
+      - install -d /app/include/lexilla
+      - cp include/*.h /app/include/lexilla/
+    sources:
+      - type: dir
+        path: ../../lexilla
+
+  # Build Notepad++
+  - name: notepad-plus-plus
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_PREFIX=/app
+      - -DCMAKE_PREFIX_PATH=/app/lib/cmake
+    build-commands:
+      - ninja -C build
+      - ninja -C build install
+    sources:
+      - type: dir
+        path: ../../PowerEditor/src
+    post-install:
+      # Install desktop file
+      - install -Dm644 packaging/common/notepad-plus-plus.desktop /app/share/applications/org.notepad-plus-plus.NotepadPlusPlus.desktop
+      # Install icons
+      - install -Dm644 packaging/common/notepad-plus-plus.svg /app/share/icons/hicolor/scalable/apps/org.notepad-plus-plus.NotepadPlusPlus.svg
+      # Install metainfo
+      - install -Dm644 packaging/common/org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml /app/share/metainfo/org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml
+      # Install MIME type
+      - install -Dm644 packaging/common/notepad-plus-plus-mime.xml /app/share/mime/packages/org.notepad-plus-plus.NotepadPlusPlus.xml
+      # Update desktop file to use correct icon name
+      - desktop-file-edit --set-icon=org.notepad-plus-plus.NotepadPlusPlus /app/share/applications/org.notepad-plus-plus.NotepadPlusPlus.desktop
+      # Install localization files
+      - install -d /app/share/notepad-plus-plus/localization
+      - cp -r ../../PowerEditor/installer/nativeLang/* /app/share/notepad-plus-plus/localization/ 2>/dev/null || true
+      # Install themes
+      - install -d /app/share/notepad-plus-plus/themes
+      - cp -r ../../PowerEditor/installer/themes/* /app/share/notepad-plus-plus/themes/ 2>/dev/null || true
+      # Update MIME database
+      - update-mime-database /app/share/mime
+      # Update desktop database
+      - update-desktop-database /app/share/applications
+
+  # Create wrapper script
+  - name: wrapper
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 notepad-plus-plus-wrapper.sh /app/bin/notepad-plus-plus-wrapper
+    sources:
+      - type: script
+        dest-filename: notepad-plus-plus-wrapper.sh
+        commands:
+          - '#!/bin/bash'
+          - '# Wrapper script for Notepad++ Flatpak'
+          - ''
+          - '# Set up environment'
+          - 'export NPP_LOCALIZATION_DIR=/app/share/notepad-plus-plus/localization'
+          - 'export NPP_THEMES_DIR=/app/share/notepad-plus-plus/themes'
+          - ''
+          - '# Launch the application'
+          - 'exec /app/bin/notepad-plus-plus "$@"'

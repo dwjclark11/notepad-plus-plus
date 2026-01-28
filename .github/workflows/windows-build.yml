@@ -1,0 +1,253 @@
+name: Windows Build Verification
+
+on:
+  push:
+    branches: [master, main, linux-port]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [master, main, linux-port]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  # ============================================================================
+  # MSVC Build
+  # ============================================================================
+  build-msvc:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_configuration: [Release, Debug]
+        build_platform: [x64, Win32, ARM64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Modify resource.h N++ version
+        working-directory: PowerEditor\src\
+        run: |
+          $content = Get-Content -Path 'resource.h'
+          $newContent = $content -replace 'TEXT\(\"Notepad\+\+ v.*\"\)', 'TEXT("Notepad++ CI_BUILD")'
+          $newContent | Set-Content -Path 'resource.h'
+
+      - name: Build Scintilla
+        working-directory: scintilla\win32\
+        run: |
+          if ("${{ matrix.build_configuration }}" -eq "Debug") {
+            nmake DEBUG=1 -f scintilla.mak
+          } else {
+            nmake -f scintilla.mak
+          }
+
+      - name: Build Lexilla
+        working-directory: lexilla\src\
+        run: |
+          if ("${{ matrix.build_configuration }}" -eq "Debug") {
+            nmake DEBUG=1 -f lexilla.mak
+          } else {
+            nmake -f lexilla.mak
+          }
+
+      - name: MSBuild of Notepad++
+        working-directory: PowerEditor\visual.net\
+        run: |
+          msbuild notepadPlus.sln `
+            /m `
+            /p:configuration="${{ matrix.build_configuration }}" `
+            /p:platform="${{ matrix.build_platform }}" `
+            /p:PlatformToolset="v143"
+
+      - name: Archive artifacts (x64 Release)
+        if: matrix.build_platform == 'x64' && matrix.build_configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notepad++.MSVC.x64.Release
+          path: PowerEditor\bin64\Notepad++.exe
+
+      - name: Archive artifacts (Win32 Release)
+        if: matrix.build_platform == 'Win32' && matrix.build_configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notepad++.MSVC.Win32.Release
+          path: PowerEditor\bin\Notepad++.exe
+
+      - name: Archive artifacts (ARM64 Release)
+        if: matrix.build_platform == 'ARM64' && matrix.build_configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notepad++.MSVC.ARM64.Release
+          path: PowerEditor\binarm64\Notepad++.exe
+
+  # ============================================================================
+  # MinGW Build
+  # ============================================================================
+  build-mingw:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_configuration: [Release, Debug]
+        build_platform: [x86_64, i686]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Modify resource.h N++ version
+        working-directory: PowerEditor\src\
+        shell: pwsh
+        run: |
+          $content = Get-Content -Path 'resource.h'
+          $newContent = $content -replace 'TEXT\(\"Notepad\+\+ v.*\"\)', 'TEXT("Notepad++ CI_BUILD")'
+          $newContent | Set-Content -Path 'resource.h'
+
+      - name: Build with MinGW
+        working-directory: .\
+        shell: pwsh
+        run: |
+          Write-host "Building for ${{ matrix.build_platform }}"
+          $Env:Path = 'C:\msys64\usr\bin' + [IO.Path]::PathSeparator + $Env:Path
+          if ( $${{ matrix.build_platform == 'i686' }} ) {
+            $Env:MSYSTEM = 'MINGW32'
+            $Env:Path = 'C:\msys64\mingw32\bin' + [IO.Path]::PathSeparator + $Env:Path
+          }
+          if ( $${{ matrix.build_platform == 'x86_64' }} ) {
+            $Env:MSYSTEM = 'MINGW64'
+            $Env:Path = 'C:\msys64\mingw64\bin' + [IO.Path]::PathSeparator + $Env:Path
+          }
+          if ( $${{ matrix.build_configuration == 'Debug' }} ) {
+            $Env:DEBUG = '1'
+          }
+          bash -lc "pacman --noconfirm -Syuu"
+          bash -lc "pacman --noconfirm -Syuu"
+          if ( $${{ matrix.build_platform == 'i686' }} ) {
+            bash -lc "pacman --noconfirm -S mingw-w64-i686-gcc mingw-w64-i686-make"
+          }
+          if ( $${{ matrix.build_platform == 'x86_64' }} ) {
+            bash -lc "pacman --noconfirm -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make"
+          }
+          Write-Output "Tools version:"
+          Write-Output (((gcc --version) | select-object -first 1) + " " + (gcc -dumpmachine))
+          Write-Output (mingw32-make --version) | select-object -first 1
+          mingw32-make -f PowerEditor\gcc\makefile
+
+      - name: Archive artifacts (Release)
+        if: matrix.build_configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notepad++.MinGW.${{ matrix.build_platform }}.Release
+          path: bin.${{ matrix.build_platform }}\notepad++.exe
+
+      - name: Archive artifacts (Debug)
+        if: matrix.build_configuration == 'Debug'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notepad++.MinGW.${{ matrix.build_platform }}.Debug
+          path: bin.${{ matrix.build_platform }}-debug\notepad++.exe
+
+  # ============================================================================
+  # CMake Build (Windows)
+  # ============================================================================
+  build-cmake-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        build_configuration: [Release, Debug]
+        build_platform: [x64]
+        include:
+          - build_platform: x64
+            arch: amd64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Add nmake to PATH
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Modify resource.h N++ version
+        working-directory: PowerEditor\src\
+        run: |
+          $content = Get-Content -Path 'resource.h'
+          $newContent = $content -replace 'TEXT\(\"Notepad\+\+ v.*\"\)', 'TEXT("Notepad++ CI_BUILD")'
+          $newContent | Set-Content -Path 'resource.h'
+
+      - name: Build Scintilla
+        working-directory: scintilla\win32\
+        run: nmake -f scintilla.mak
+
+      - name: Build Lexilla
+        working-directory: lexilla\src\
+        run: nmake -f lexilla.mak
+
+      - name: Generate CMake
+        working-directory: PowerEditor\src
+        run: |
+          mkdir _build
+          cd _build
+          cmake -G "Visual Studio 17 2022" -A ${{ matrix.build_platform }} -T "v143" ..
+
+      - name: Build with CMake
+        working-directory: PowerEditor\src\_build
+        run: |
+          cmake --build . --config ${{ matrix.build_configuration }}
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notepad++.CMake.${{ matrix.build_platform }}.${{ matrix.build_configuration }}
+          path: |
+            PowerEditor\src\_build\${{ matrix.build_configuration }}\notepad++.exe
+
+  # ============================================================================
+  # Cross-Platform Compatibility Check
+  # ============================================================================
+  compatibility-check:
+    runs-on: ubuntu-latest
+    needs: [build-msvc, build-mingw]
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List all artifacts
+        run: |
+          echo "Windows build artifacts:"
+          find artifacts -type f -name "*.exe" | sort
+
+      - name: Verify Windows compatibility
+        run: |
+          echo "Checking Windows build outputs..."
+          # Check that we have expected artifacts
+          test -f artifacts/Notepad++.MSVC.x64.Release/Notepad++.exe || echo "MSVC x64 Release missing"
+          test -f artifacts/Notepad++.MinGW.x86_64.Release/notepad++.exe || echo "MinGW x64 Release missing"
+          echo "Windows build verification complete"

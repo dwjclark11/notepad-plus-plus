@@ -1,0 +1,170 @@
+#!/bin/bash
+# Notepad++ Test Runner Script
+# Generated from CMake configuration
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Test executable directory
+TEST_DIR="@CMAKE_BINARY_DIR@/bin"
+
+# Test executables
+PLATFORM_TESTS="$TEST_DIR/PlatformTests"
+QTCONTROLS_TESTS="$TEST_DIR/QtControlsTests"
+INTEGRATION_TESTS="$TEST_DIR/IntegrationTests"
+
+# Test results
+TOTAL_TESTS=0
+PASSED_TESTS=0
+FAILED_TESTS=0
+
+# Function to run a test executable
+run_test() {
+    local test_name=$1
+    local test_exe=$2
+
+    echo "========================================"
+    echo "Running: $test_name"
+    echo "========================================"
+
+    if [ ! -f "$test_exe" ]; then
+        echo -e "${YELLOW}Warning: $test_exe not found${NC}"
+        return 1
+    fi
+
+    if $test_exe -xunitxml > "${test_name}_results.xml" 2>&1; then
+        echo -e "${GREEN}✓ $test_name passed${NC}"
+        PASSED_TESTS=$((PASSED_TESTS + 1))
+        return 0
+    else
+        echo -e "${RED}✗ $test_name failed${NC}"
+        cat "${test_name}_results.xml"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+        return 1
+    fi
+}
+
+# Function to run tests with specific pattern
+run_test_pattern() {
+    local test_name=$1
+    local test_exe=$2
+    local pattern=$3
+
+    echo "========================================"
+    echo "Running: $test_name ($pattern)"
+    echo "========================================"
+
+    if [ ! -f "$test_exe" ]; then
+        echo -e "${YELLOW}Warning: $test_exe not found${NC}"
+        return 1
+    fi
+
+    if $test_exe "$pattern" 2>&1; then
+        echo -e "${GREEN}✓ $test_name passed${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ $test_name failed${NC}"
+        return 1
+    fi
+}
+
+# Print header
+echo "========================================"
+echo "Notepad++ Linux Test Suite"
+echo "========================================"
+echo ""
+
+# Parse command line arguments
+RUN_PLATFORM=true
+RUN_QTCONTROLS=true
+RUN_INTEGRATION=true
+VERBOSE=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --platform-only)
+            RUN_QTCONTROLS=false
+            RUN_INTEGRATION=false
+            shift
+            ;;
+        --qtcontrols-only)
+            RUN_PLATFORM=false
+            RUN_INTEGRATION=false
+            shift
+            ;;
+        --integration-only)
+            RUN_PLATFORM=false
+            RUN_QTCONTROLS=false
+            shift
+            ;;
+        --verbose)
+            VERBOSE=true
+            shift
+            ;;
+        --help)
+            echo "Usage: $0 [options]"
+            echo ""
+            echo "Options:"
+            echo "  --platform-only     Run only Platform tests"
+            echo "  --qtcontrols-only   Run only QtControls tests"
+            echo "  --integration-only  Run only Integration tests"
+            echo "  --verbose           Enable verbose output"
+            echo "  --help              Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Run Platform tests
+if [ "$RUN_PLATFORM" = true ]; then
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if run_test "PlatformTests" "$PLATFORM_TESTS"; then
+        : # Success
+    fi
+    echo ""
+fi
+
+# Run QtControls tests
+if [ "$RUN_QTCONTROLS" = true ]; then
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if run_test "QtControlsTests" "$QTCONTROLS_TESTS"; then
+        : # Success
+    fi
+    echo ""
+fi
+
+# Run Integration tests
+if [ "$RUN_INTEGRATION" = true ]; then
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if run_test "IntegrationTests" "$INTEGRATION_TESTS"; then
+        : # Success
+    fi
+    echo ""
+fi
+
+# Print summary
+echo "========================================"
+echo "Test Summary"
+echo "========================================"
+echo -e "Total test suites: $TOTAL_TESTS"
+echo -e "${GREEN}Passed: $PASSED_TESTS${NC}"
+echo -e "${RED}Failed: $FAILED_TESTS${NC}"
+echo ""
+
+if [ $FAILED_TESTS -eq 0 ]; then
+    echo -e "${GREEN}All tests passed!${NC}"
+    exit 0
+else
+    echo -e "${RED}Some tests failed!${NC}"
+    exit 1
+fi

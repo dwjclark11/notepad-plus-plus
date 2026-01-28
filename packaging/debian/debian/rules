@@ -1,0 +1,74 @@
+#!/usr/bin/make -f
+# Debian rules file for Notepad++
+
+export DH_VERBOSE = 1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+export QT_SELECT = qt6
+
+# Determine number of parallel jobs
+DEB_BUILD_OPTIONS ?= parallel=$(shell nproc)
+
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_CXX_STANDARD=20 \
+		-DCMAKE_CXX_FLAGS="$(CXXFLAGS) $(CPPFLAGS)" \
+		-DCMAKE_EXE_LINKER_FLAGS="$(LDFLAGS)" \
+		-DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS)"
+
+override_dh_auto_build:
+	dh_auto_build -- -j$(shell nproc)
+
+override_dh_auto_install:
+	dh_auto_install
+
+	# Install desktop file
+	install -D -m 644 debian/notepad-plus-plus.desktop \
+		$(CURDIR)/debian/notepad-plus-plus/usr/share/applications/notepad-plus-plus.desktop
+
+	# Install icons
+	install -D -m 644 debian/notepad-plus-plus.svg \
+		$(CURDIR)/debian/notepad-plus-plus/usr/share/icons/hicolor/scalable/apps/notepad-plus-plus.svg
+
+	# Install metainfo
+	install -D -m 644 debian/org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml \
+		$(CURDIR)/debian/notepad-plus-plus/usr/share/metainfo/org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml
+
+	# Install MIME type
+	install -D -m 644 debian/notepad-plus-plus-mime.xml \
+		$(CURDIR)/debian/notepad-plus-plus/usr/share/mime/packages/notepad-plus-plus.xml
+
+	# Install localization files
+	install -d $(CURDIR)/debian/notepad-plus-plus-l10n/usr/share/notepad-plus-plus/localization
+	cp -r $(CURDIR)/PowerEditor/installer/nativeLang/* \
+		$(CURDIR)/debian/notepad-plus-plus-l10n/usr/share/notepad-plus-plus/localization/ 2>/dev/null || true
+
+	# Install themes
+	install -d $(CURDIR)/debian/notepad-plus-plus/usr/share/notepad-plus-plus/themes
+	cp -r $(CURDIR)/PowerEditor/installer/themes/* \
+		$(CURDIR)/debian/notepad-plus-plus/usr/share/notepad-plus-plus/themes/ 2>/dev/null || true
+
+	# Install documentation
+	install -D -m 644 $(CURDIR)/LICENSE \
+		$(CURDIR)/debian/notepad-plus-plus/usr/share/doc/notepad-plus-plus/copyright
+	install -D -m 644 $(CURDIR)/README.md \
+		$(CURDIR)/debian/notepad-plus-plus/usr/share/doc/notepad-plus-plus/README.md
+
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
+
+override_dh_strip:
+	dh_strip --dbg-package=notepad-plus-plus-dbg
+
+override_dh_clean:
+	dh_clean
+	rm -rf $(CURDIR)/build
+
+override_dh_auto_test:
+	# Tests are not enabled yet
+	@echo "Skipping tests (not yet implemented)"

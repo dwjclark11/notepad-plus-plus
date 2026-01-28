@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=Notepad++
+GenericName=Text Editor
+Comment=Free source code editor and Notepad replacement
+Exec=notepad-plus-plus %F
+Icon=notepad-plus-plus
+Type=Application
+Terminal=false
+MimeType=text/plain;text/css;text/html;text/x-c++hdr;text/x-c++src;text/x-chdr;text/x-csrc;text/x-java;text/x-makefile;text/x-moc;text/x-pascal;text/x-tcl;text/x-tex;application/x-shellscript;text/xml;
+Categories=TextEditor;Development;IDE;
+Keywords=text;editor;source;code;programming;development;
+StartupNotify=true
+StartupWMClass=notepad-plus-plus
+X-AppImage-Version=8.6.0
+X-Flatpak=org.notepad-plus-plus.NotepadPlusPlus

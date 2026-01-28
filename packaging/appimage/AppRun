@@ -1,0 +1,78 @@
+#!/bin/bash
+# AppRun script for Notepad++ AppImage
+# This script sets up the environment and launches the application
+
+# Get the directory where this script is located (the AppDir)
+APPDIR="$(dirname "$(readlink -f "$0")")"
+
+# Export library paths for bundled libraries
+export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+
+# Export Qt plugin path
+export QT_PLUGIN_PATH="${APPDIR}/usr/plugins:${APPDIR}/usr/lib/qt6/plugins:${QT_PLUGIN_PATH}"
+
+# Export QML import path
+export QML_IMPORT_PATH="${APPDIR}/usr/qml:${QML_IMPORT_PATH}"
+
+# Export QML2 import path
+export QML2_IMPORT_PATH="${APPDIR}/usr/qml:${QML2_IMPORT_PATH}"
+
+# Set Qt platform plugin path
+export QT_QPA_PLATFORM_PLUGIN_PATH="${APPDIR}/usr/plugins/platforms"
+
+# Set XDG data directories for desktop integration
+export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
+# Set path for additional binaries
+export PATH="${APPDIR}/usr/bin:${PATH}"
+
+# Check if we need to use a specific Qt platform
+if [ -z "$QT_QPA_PLATFORM" ]; then
+    # Auto-detect platform
+    if [ -n "$WAYLAND_DISPLAY" ]; then
+        export QT_QPA_PLATFORM="wayland;xcb"
+    elif [ -n "$DISPLAY" ]; then
+        export QT_QPA_PLATFORM="xcb"
+    fi
+fi
+
+# Handle desktop integration (optional)
+if [ "$1" = "--install-desktop-file" ]; then
+    echo "Installing desktop file..."
+    if [ -d "$HOME/.local/share/applications" ]; then
+        cp "${APPDIR}/notepad-plus-plus.desktop" "$HOME/.local/share/applications/"
+        echo "Desktop file installed to ~/.local/share/applications/"
+    fi
+    if [ -d "$HOME/.local/share/icons" ]; then
+        cp "${APPDIR}/notepad-plus-plus.svg" "$HOME/.local/share/icons/" 2>/dev/null || \
+        cp "${APPDIR}/usr/share/icons/hicolor/scalable/apps/notepad-plus-plus.svg" "$HOME/.local/share/icons/" 2>/dev/null || true
+        echo "Icon installed to ~/.local/share/icons/"
+    fi
+    exit 0
+fi
+
+# Handle help
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    echo "Notepad++ - Free source code editor"
+    echo ""
+    echo "Usage: $0 [options] [files...]"
+    echo ""
+    echo "Options:"
+    echo "  --help, -h              Show this help message"
+    echo "  --version, -v           Show version information"
+    echo "  --install-desktop-file  Install desktop integration files"
+    echo ""
+    echo "Arguments:"
+    echo "  files...                Files to open"
+    echo ""
+    exit 0
+fi
+
+# Handle version
+if [ "$1" = "--version" ] || [ "$1" = "-v" ]; then
+    echo "Notepad++ 8.6.0 (Linux AppImage)"
+    exit 0
+fi
+
+# Launch the application
+exec "${APPDIR}/usr/bin/notepad-plus-plus" "$@"

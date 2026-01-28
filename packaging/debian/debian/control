@@ -1,0 +1,85 @@
+Source: notepad-plus-plus
+Section: editors
+Priority: optional
+Maintainer: Notepad++ Team <don.h@free.fr>
+Uploaders: Notepad++ Developers <dev@notepad-plus-plus.org>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.10),
+               qt6-base-dev (>= 6.2),
+               qt6-base-dev-tools,
+               qt6-tools-dev,
+               libqt6widgets6,
+               libqt6gui6,
+               libqt6network6,
+               libqt6core6,
+               g++ (>= 11),
+               pkg-config,
+               libgl1-mesa-dev,
+               libvulkan-dev [linux-any]
+Standards-Version: 4.6.2
+Homepage: https://notepad-plus-plus.org/
+Vcs-Browser: https://github.com/notepad-plus-plus/notepad-plus-plus
+Vcs-Git: https://github.com/notepad-plus-plus/notepad-plus-plus.git
+Rules-Requires-Root: no
+
+Package: notepad-plus-plus
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         qt6-base-dev,
+         libqt6widgets6,
+         libqt6gui6,
+         libqt6network6,
+         libqt6core6,
+         libqt6core5compat6
+Recommends: notepad-plus-plus-l10n,
+            notepad-plus-plus-plugins
+Suggests: notepad-plus-plus-doc
+Description: Free source code editor and Notepad replacement
+ Notepad++ is a free source code editor and Notepad replacement that supports
+ several languages. Running in the MS Windows environment, its use is governed
+ by GPL License.
+ .
+ Based on the powerful editing component Scintilla, Notepad++ is written in
+ C++ and uses pure Win32 API and STL which ensures a higher execution speed
+ and smaller program size. By optimizing as many routines as possible without
+ losing user friendliness, Notepad++ is trying to reduce the world carbon
+ dioxide emissions. When using less CPU power, the PC can throttle down and
+ reduce power consumption, resulting in a greener environment.
+ .
+ This package provides the Linux port of Notepad++ using Qt6 for the user
+ interface.
+
+Package: notepad-plus-plus-l10n
+Architecture: all
+Depends: ${misc:Depends},
+         notepad-plus-plus (>= ${source:Version})
+Recommends: notepad-plus-plus
+Description: Localization files for Notepad++
+ This package contains the localization files for Notepad++.
+ .
+ Notepad++ is a free source code editor and Notepad replacement that supports
+ several languages.
+
+Package: notepad-plus-plus-plugins
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         notepad-plus-plus (>= ${source:Version})
+Recommends: notepad-plus-plus
+Description: Plugin support for Notepad++
+ This package provides additional plugins for Notepad++.
+ .
+ Notepad++ is a free source code editor and Notepad replacement that supports
+ several languages.
+
+Package: notepad-plus-plus-doc
+Architecture: all
+Section: doc
+Depends: ${misc:Depends}
+Recommends: notepad-plus-plus
+Description: Documentation for Notepad++
+ This package contains the documentation for Notepad++.
+ .
+ Notepad++ is a free source code editor and Notepad replacement that supports
+ several languages.

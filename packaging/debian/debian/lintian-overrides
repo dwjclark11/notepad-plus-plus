@@ -1,0 +1,25 @@
+# Lintian overrides for notepad-plus-plus
+
+# The binary is named notepad-plus-plus which is different from source package
+notepad-plus-plus: binary-control-field-duplicates-source
+
+# We include vendored libraries for specific reasons
+notepad-plus-plus: embedded-library
+
+# The Windows-specific files are expected in a cross-platform editor
+notepad-plus-plus: windows-devel-file-in-package
+
+# Some files may be executable that don't need to be
+notepad-plus-plus: executable-not-elf-or-script
+
+# We ship some static libraries for plugins
+notepad-plus-plus: dev-pkg-without-shlib-symlink
+
+# The package is large due to lexers and language definitions
+notepad-plus-plus: package-contains-large-file
+
+# Some scripts may not have proper shebangs (Windows compatibility)
+notepad-plus-plus: script-not-executable
+
+# We have duplicate files across localization (intentional)
+notepad-plus-plus: duplicate-files

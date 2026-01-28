@@ -1,0 +1,261 @@
+name: CI Linux Full Pipeline
+
+on:
+  push:
+    branches: [master, main, linux-port]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+  pull_request:
+    branches: [master, main, linux-port]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+  schedule:
+    # Run nightly builds at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  # ============================================================================
+  # Pre-check
+  # ============================================================================
+  pre-check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+
+    steps:
+      - name: Check for skip flags in commit message
+        id: skip_check
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B 2>/dev/null || echo "")
+          if echo "$COMMIT_MSG" | grep -q "\[skip ci\]"; then
+            echo "should_skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping CI due to [skip ci] flag"
+          elif echo "$COMMIT_MSG" | grep -q "\[ci skip\]"; then
+            echo "should_skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping CI due to [ci skip] flag"
+          else
+            echo "should_skip=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================================
+  # Quick Check - Fast feedback
+  # ============================================================================
+  quick-check:
+    runs-on: ubuntu-24.04
+    needs: pre-check
+    if: needs.pre-check.outputs.should_skip != 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qscintilla2-qt6-dev \
+            pkg-config \
+            clang-format
+
+      - name: Quick format check
+        run: |
+          # Only check files changed in this PR/commit
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA=${{ github.event.pull_request.base.sha }}
+            HEAD_SHA=${{ github.event.pull_request.head.sha }}
+            CHANGED_FILES=$(git diff --name-only $BASE_SHA $HEAD_SHA | grep -E '\.(cpp|h|hpp)$' || true)
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1 | grep -E '\.(cpp|h|hpp)$' || true)
+          fi
+
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "Checking formatting for changed files..."
+            echo "$CHANGED_FILES" | xargs -I {} clang-format --dry-run --Werror {} 2>&1 || echo "::warning::Formatting issues found"
+          else
+            echo "No C++ files changed"
+          fi
+
+      - name: Configure CMake
+        working-directory: PowerEditor/src
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=20
+
+      - name: Quick build test
+        working-directory: PowerEditor/src/build
+        run: ninja -j$(nproc) 2>&1 | head -100
+
+  # ============================================================================
+  # Full Build Matrix
+  # ============================================================================
+  build-matrix:
+    runs-on: ${{ matrix.os }}
+    needs: quick-check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu builds
+          - os: ubuntu-22.04
+            compiler: gcc
+            build_type: Release
+          - os: ubuntu-22.04
+            compiler: clang
+            build_type: Release
+          - os: ubuntu-24.04
+            compiler: gcc
+            build_type: Release
+          - os: ubuntu-24.04
+            compiler: gcc
+            build_type: Debug
+          - os: ubuntu-24.04
+            compiler: clang
+            build_type: Release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            qscintilla2-qt6-dev \
+            pkg-config \
+            clang
+
+      - name: Configure CMake
+        working-directory: PowerEditor/src
+        env:
+          CC: ${{ matrix.compiler == 'gcc' && 'gcc' || 'clang' }}
+          CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_CXX_STANDARD=20
+
+      - name: Build
+        working-directory: PowerEditor/src/build
+        run: ninja -j$(nproc)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: notepad-plus-plus-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: PowerEditor/src/build/notepad-plus-plus
+          retention-days: 7
+
+  # ============================================================================
+  # Static Analysis
+  # ============================================================================
+  static-analysis:
+    runs-on: ubuntu-24.04
+    needs: quick-check
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qscintilla2-qt6-dev \
+            pkg-config \
+            clang-tidy \
+            cppcheck
+
+      - name: Configure CMake
+        working-directory: PowerEditor/src
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run cppcheck
+        working-directory: PowerEditor/src
+        run: |
+          cppcheck \
+            --enable=all \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedFunction \
+            --error-exitcode=0 \
+            --std=c++20 \
+            --xml \
+            --xml-version=2 \
+            -I. \
+            -I../../scintilla/include \
+            -I../../lexilla/include \
+            -iTinyXml \
+            -ipugixml \
+            -iuchardet \
+            -ijson \
+            -ibuild \
+            . 2> cppcheck-report.xml || true
+
+      - name: Upload analysis results
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-analysis-report
+          path: |
+            PowerEditor/src/cppcheck-report.xml
+          retention-days: 14
+
+  # ============================================================================
+  # Summary
+  # ============================================================================
+  summary:
+    runs-on: ubuntu-latest
+    needs: [build-matrix, static-analysis]
+    if: always()
+
+    steps:
+      - name: Build Summary
+        run: |
+          echo "========================================"
+          echo "CI Linux Full Pipeline Summary"
+          echo "========================================"
+          echo ""
+          echo "Build Matrix: ${{ needs.build-matrix.result }}"
+          echo "Static Analysis: ${{ needs.static-analysis.result }}"
+          echo ""
+
+          if [ "${{ needs.build-matrix.result }}" == "success" ] && \
+             [ "${{ needs.static-analysis.result }}" == "success" ]; then
+            echo "All checks passed!"
+            exit 0
+          else
+            echo "Some checks failed!"
+            exit 1
+          fi

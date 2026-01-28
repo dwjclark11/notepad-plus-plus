@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Notepad++ Icon - Simplified representation -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#90EE90;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#228B22;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="paperGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F0F0F0;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect x="16" y="16" width="224" height="224" rx="32" ry="32" fill="url(#bgGradient)"/>
+
+  <!-- Paper/Notepad -->
+  <rect x="56" y="48" width="144" height="160" rx="8" ry="8" fill="url(#paperGradient)"/>
+
+  <!-- Text lines -->
+  <rect x="72" y="80" width="112" height="8" rx="2" fill="#CCCCCC"/>
+  <rect x="72" y="104" width="96" height="8" rx="2" fill="#CCCCCC"/>
+  <rect x="72" y="128" width="112" height="8" rx="2" fill="#CCCCCC"/>
+  <rect x="72" y="152" width="80" height="8" rx="2" fill="#CCCCCC"/>
+  <rect x="72" y="176" width="96" height="8" rx="2" fill="#CCCCCC"/>
+
+  <!-- Plus sign (++) -->
+  <g transform="translate(180, 180)">
+    <rect x="0" y="12" width="32" height="8" rx="2" fill="#FFFFFF"/>
+    <rect x="12" y="0" width="8" height="32" rx="2" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Second plus -->
+  <g transform="translate(148, 180)">
+    <rect x="0" y="12" width="24" height="8" rx="2" fill="#FFFFFF"/>
+    <rect x="8" y="4" width="8" height="24" rx="2" fill="#FFFFFF"/>
+  </g>
+</svg>

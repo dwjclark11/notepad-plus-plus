@@ -1,0 +1,135 @@
+# Maintainer: Notepad++ Team <don.h@free.fr>
+# Contributor: Notepad++ Developers <dev@notepad-plus-plus.org>
+
+pkgname=notepad-plus-plus
+pkgver=8.6.0
+pkgrel=1
+pkgdesc="Free source code editor and Notepad replacement"
+arch=('x86_64')
+url="https://notepad-plus-plus.org/"
+license=('GPL2')
+depends=(
+    'qt6-base>=6.2'
+    'qt6-tools'
+    'hicolor-icon-theme'
+)
+makedepends=(
+    'cmake>=3.10'
+    'gcc>=11'
+    'ninja'
+    'git'
+)
+optdepends=(
+    'notepad-plus-plus-lang: Localization files'
+    'notepad-plus-plus-plugins: Additional plugins'
+)
+provides=('notepad++' 'npp')
+conflicts=('notepad++' 'npp')
+source=(
+    "${pkgname}-${pkgver}.tar.gz::https://github.com/notepad-plus-plus/notepad-plus-plus/archive/v${pkgver}.tar.gz"
+    "notepad-plus-plus.desktop"
+    "notepad-plus-plus-mime.xml"
+    "org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml"
+)
+sha256sums=(
+    'SKIP'
+    'SKIP'
+    'SKIP'
+    'SKIP'
+)
+
+prepare() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    # Create build directory
+    mkdir -p build
+}
+
+build() {
+    cd "${srcdir}/${pkgname}-${pkgver}/build"
+
+    # Configure with CMake
+    cmake ../PowerEditor/src \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_CXX_STANDARD=20 \
+        -G Ninja
+
+    # Build
+    ninja -j$(nproc)
+}
+
+package() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    # Install binary
+    install -Dm755 "build/notepad-plus-plus" "${pkgdir}/usr/bin/notepad-plus-plus"
+
+    # Create symlink
+    ln -sf notepad-plus-plus "${pkgdir}/usr/bin/notepad++"
+
+    # Install desktop file
+    install -Dm644 "${srcdir}/notepad-plus-plus.desktop" \
+        "${pkgdir}/usr/share/applications/notepad-plus-plus.desktop"
+
+    # Install icons
+    install -d "${pkgdir}/usr/share/icons/hicolor/scalable/apps"
+    # Icon will be installed if available
+
+    # Install metainfo
+    install -Dm644 "${srcdir}/org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml" \
+        "${pkgdir}/usr/share/metainfo/org.notepad-plus-plus.NotepadPlusPlus.metainfo.xml"
+
+    # Install MIME type
+    install -Dm644 "${srcdir}/notepad-plus-plus-mime.xml" \
+        "${pkgdir}/usr/share/mime/packages/notepad-plus-plus.xml"
+
+    # Install localization files
+    install -d "${pkgdir}/usr/share/notepad-plus-plus/localization"
+    if [ -d "PowerEditor/installer/nativeLang" ]; then
+        cp -r PowerEditor/installer/nativeLang/* \
+            "${pkgdir}/usr/share/notepad-plus-plus/localization/" 2>/dev/null || true
+    fi
+
+    # Install themes
+    install -d "${pkgdir}/usr/share/notepad-plus-plus/themes"
+    if [ -d "PowerEditor/installer/themes" ]; then
+        cp -r PowerEditor/installer/themes/* \
+            "${pkgdir}/usr/share/notepad-plus-plus/themes/" 2>/dev/null || true
+    fi
+
+    # Install documentation
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+    install -Dm644 BUILD.md "${pkgdir}/usr/share/doc/${pkgname}/BUILD.md"
+    install -Dm644 CONTRIBUTING.md "${pkgdir}/usr/share/doc/${pkgname}/CONTRIBUTING.md"
+}
+
+# Hook for post-installation
+post_install() {
+    # Update MIME database
+    update-mime-database /usr/share/mime > /dev/null 2>&1
+
+    # Update desktop database
+    update-desktop-database /usr/share/applications > /dev/null 2>&1
+
+    # Update icon cache
+    gtk-update-icon-cache -f /usr/share/icons/hicolor > /dev/null 2>&1 || true
+}
+
+# Hook for post-upgrade
+post_upgrade() {
+    post_install
+}
+
+# Hook for post-removal
+post_remove() {
+    # Update MIME database
+    update-mime-database /usr/share/mime > /dev/null 2>&1
+
+    # Update desktop database
+    update-desktop-database /usr/share/applications > /dev/null 2>&1
+
+    # Update icon cache
+    gtk-update-icon-cache -f /usr/share/icons/hicolor > /dev/null 2>&1 || true
+}

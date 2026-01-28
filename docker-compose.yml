@@ -1,0 +1,113 @@
+# Docker Compose for Notepad++ Linux CI/CD
+# Usage:
+#   docker-compose build ubuntu    # Build Ubuntu image
+#   docker-compose run ubuntu      # Run Ubuntu container
+#   docker-compose run --rm ubuntu build Release  # Build in container
+
+version: '3.8'
+
+services:
+  # Ubuntu build environment
+  ubuntu:
+    build:
+      context: .
+      dockerfile: ci/docker/Dockerfile.ubuntu
+    image: notepad-plus-plus-build:ubuntu
+    container_name: npp-build-ubuntu
+    volumes:
+      - .:/workspace
+      - build-cache-ubuntu:/workspace/PowerEditor/src/build
+    environment:
+      - CC=gcc
+      - CXX=g++
+    working_dir: /workspace
+    command: bash
+
+  # Fedora build environment
+  fedora:
+    build:
+      context: .
+      dockerfile: ci/docker/Dockerfile.fedora
+    image: notepad-plus-plus-build:fedora
+    container_name: npp-build-fedora
+    volumes:
+      - .:/workspace
+      - build-cache-fedora:/workspace/PowerEditor/src/build
+    environment:
+      - CC=gcc
+      - CXX=g++
+    working_dir: /workspace
+    command: bash
+
+  # Arch Linux build environment
+  arch:
+    build:
+      context: .
+      dockerfile: ci/docker/Dockerfile.arch
+    image: notepad-plus-plus-build:arch
+    container_name: npp-build-arch
+    volumes:
+      - .:/workspace
+      - build-cache-arch:/workspace/PowerEditor/src/build
+    environment:
+      - CC=gcc
+      - CXX=g++
+    working_dir: /workspace
+    command: bash
+
+  # Ubuntu with Clang
+  ubuntu-clang:
+    build:
+      context: .
+      dockerfile: ci/docker/Dockerfile.ubuntu
+    image: notepad-plus-plus-build:ubuntu
+    container_name: npp-build-ubuntu-clang
+    volumes:
+      - .:/workspace
+      - build-cache-ubuntu-clang:/workspace/PowerEditor/src/build
+    environment:
+      - CC=clang
+      - CXX=clang++
+    working_dir: /workspace
+    command: bash
+
+  # Code quality check environment
+  code-quality:
+    build:
+      context: .
+      dockerfile: ci/docker/Dockerfile.ubuntu
+    image: notepad-plus-plus-build:ubuntu
+    container_name: npp-code-quality
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: >
+      bash -c "
+        echo 'Running code quality checks...' &&
+        /usr/local/bin/entrypoint.sh format &&
+        /usr/local/bin/entrypoint.sh cppcheck
+      "
+
+  # Build and test environment
+  build-test:
+    build:
+      context: .
+      dockerfile: ci/docker/Dockerfile.ubuntu
+    image: notepad-plus-plus-build:ubuntu
+    container_name: npp-build-test
+    volumes:
+      - .:/workspace
+      - build-cache-test:/workspace/PowerEditor/src/build
+    working_dir: /workspace
+    command: >
+      bash -c "
+        /usr/local/bin/entrypoint.sh build Release &&
+        /usr/local/bin/entrypoint.sh test
+      "
+
+volumes:
+  build-cache-ubuntu:
+  build-cache-fedora:
+  build-cache-arch:
+  build-cache-ubuntu-clang:
+  build-cache-test:
