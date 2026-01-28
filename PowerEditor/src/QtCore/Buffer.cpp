@@ -375,13 +375,7 @@ static QString getLanguageName(DocLangType type)
 
 Buffer::Buffer(QObject* parent)
     : QObject(parent)
-    , _textCodec(QTextCodec::codecForName("UTF-8"))
 {
-    // Setup default text codec
-    if (!_textCodec) {
-        _textCodec = QTextCodec::codecForLocale();
-    }
-
     // Determine default line ending from OS
 #if defined(Q_OS_WIN)
     _lineEnding = LineEnding::Windows;
@@ -443,16 +437,15 @@ bool Buffer::loadFromFile(const QString& filePath)
     _lastModifiedTime = fileInfo.lastModified();
     _isFileReadOnly = !fileInfo.isWritable();
 
-    // Detect encoding
-    QTextCodec* detectedCodec = QTextCodec::codecForUtfText(content, nullptr);
-    if (!detectedCodec) {
-        // Try to detect from content
-        detectedCodec = QTextCodec::codecForName("UTF-8");
-    }
-
-    if (detectedCodec) {
-        _textCodec = detectedCodec;
-        _encoding = QString::fromLatin1(detectedCodec->name());
+    // Detect encoding from BOM
+    QString detectedEncoding = detectEncodingFromBOM(content);
+    if (!detectedEncoding.isEmpty()) {
+        _encoding = detectedEncoding;
+        _useBOM = true;
+    } else {
+        // Default to UTF-8 if no BOM detected
+        _encoding = "UTF-8";
+        _useBOM = false;
     }
 
     // Detect line endings
@@ -638,20 +631,18 @@ void Buffer::setContent(const QByteArray& content)
 QString Buffer::getText() const
 {
     QByteArray content = getContent();
-    if (_textCodec) {
-        return _textCodec->toUnicode(content);
-    }
-    return QString::fromUtf8(content);
+    auto encoding = QStringDecoder::encodingForName(_encoding.toUtf8().constData())
+                        .value_or(QStringDecoder::Utf8);
+    QStringDecoder decoder(encoding);
+    return decoder.decode(content);
 }
 
 void Buffer::setText(const QString& text)
 {
-    QByteArray content;
-    if (_textCodec) {
-        content = _textCodec->fromUnicode(text);
-    } else {
-        content = text.toUtf8();
-    }
+    auto encoding = QStringEncoder::encodingForName(_encoding.toUtf8().constData())
+                        .value_or(QStringEncoder::Utf8);
+    QStringEncoder encoder(encoding);
+    QByteArray content = encoder.encode(text);
     setContent(content);
 }
 
@@ -824,14 +815,12 @@ void Buffer::setEncoding(const QString& encoding)
     QMutexLocker locker(&_mutex);
 
     if (_encoding != encoding) {
-        _encoding = encoding;
-        _textCodec = QTextCodec::codecForName(encoding.toLatin1());
-
-        if (!_textCodec) {
-            _textCodec = QTextCodec::codecForLocale();
+        // Validate encoding using QStringDecoder::encodingForName
+        auto encodingOpt = QStringDecoder::encodingForName(encoding.toUtf8().constData());
+        if (encodingOpt.has_value()) {
+            _encoding = encoding;
+            emit encodingChanged(encoding);
         }
-
-        emit encodingChanged(encoding);
     }
 }
 
@@ -847,10 +836,25 @@ void Buffer::setUseBOM(bool use)
     _useBOM = use;
 }
 
-QTextCodec* Buffer::getTextCodec() const
-{
-    QMutexLocker locker(&_mutex);
-    return _textCodec;
+QString Buffer::detectEncodingFromBOM(const QByteArray& content) {
+    if (content.size() >= 3) {
+        if (static_cast<unsigned char>(content[0]) == 0xEF &&
+            static_cast<unsigned char>(content[1]) == 0xBB &&
+            static_cast<unsigned char>(content[2]) == 0xBF) {
+            return "UTF-8";
+        }
+    }
+    if (content.size() >= 2) {
+        if (static_cast<unsigned char>(content[0]) == 0xFE &&
+            static_cast<unsigned char>(content[1]) == 0xFF) {
+            return "UTF-16 BE";
+        }
+        if (static_cast<unsigned char>(content[0]) == 0xFF &&
+            static_cast<unsigned char>(content[1]) == 0xFE) {
+            return "UTF-16 LE";
+        }
+    }
+    return QString();  // No BOM detected
 }
 
 LineEnding Buffer::getLineEnding() const

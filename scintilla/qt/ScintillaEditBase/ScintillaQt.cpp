@@ -18,7 +18,8 @@
 #endif
 #include <QMimeData>
 #include <QMenu>
-#include <QTextCodec>
+#include <QStringEncoder>
+#include <QStringDecoder>
 #include <QScrollBar>
 #include <QTimer>
 
@@ -161,14 +162,13 @@ bool ScintillaQt::DragThreshold(Point ptStart, Point ptNow)
 		(yMove > QApplication::startDragDistance());
 }
 
-static QString StringFromSelectedText(const SelectionText &selectedText)
-{
+static QString StringFromSelectedText(const SelectionText &selectedText) {
 	if (selectedText.codePage == SC_CP_UTF8) {
 		return QString::fromUtf8(selectedText.Data(), static_cast<int>(selectedText.Length()));
 	} else {
-		QTextCodec *codec = QTextCodec::codecForName(
-				CharacterSetID(selectedText.characterSet));
-		return codec->toUnicode(selectedText.Data(), static_cast<int>(selectedText.Length()));
+		QStringDecoder decoder(QStringDecoder::encodingForName(
+			CharacterSetID(selectedText.characterSet)).value_or(QStringDecoder::Utf8));
+		return decoder.decode(QByteArrayView(selectedText.Data(), static_cast<int>(selectedText.Length())));
 	}
 }
 
@@ -253,9 +253,9 @@ std::string ScintillaQt::UTF8FromEncoded(std::string_view encoded) const {
 	if (IsUnicodeMode()) {
 		return std::string(encoded);
 	} else {
-		QTextCodec *codec = QTextCodec::codecForName(
-				CharacterSetID(CharacterSetOfDocument()));
-		QString text = codec->toUnicode(encoded.data(), static_cast<int>(encoded.length()));
+		QStringDecoder decoder(QStringDecoder::encodingForName(
+			CharacterSetID(CharacterSetOfDocument())).value_or(QStringDecoder::Utf8));
+		QString text = decoder.decode(QByteArrayView(encoded.data(), static_cast<int>(encoded.length())));
 		return text.toStdString();
 	}
 }
@@ -265,9 +265,9 @@ std::string ScintillaQt::EncodedFromUTF8(std::string_view utf8) const {
 		return std::string(utf8);
 	} else {
 		QString text = QString::fromUtf8(utf8.data(), static_cast<int>(utf8.length()));
-		QTextCodec *codec = QTextCodec::codecForName(
-				CharacterSetID(CharacterSetOfDocument()));
-		QByteArray ba = codec->fromUnicode(text);
+		QStringEncoder encoder(QStringEncoder::encodingForName(
+			CharacterSetID(CharacterSetOfDocument())).value_or(QStringEncoder::Utf8));
+		QByteArray ba = encoder.encode(text);
 		return std::string(ba.data(), ba.length());
 	}
 }
@@ -535,9 +535,9 @@ QString ScintillaQt::StringFromDocument(const char *s) const
 	if (IsUnicodeMode()) {
 		return QString::fromUtf8(s);
 	} else {
-		QTextCodec *codec = QTextCodec::codecForName(
-				CharacterSetID(CharacterSetOfDocument()));
-		return codec->toUnicode(s);
+		QStringDecoder decoder(QStringDecoder::encodingForName(
+				CharacterSetID(CharacterSetOfDocument())).value_or(QStringDecoder::Utf8));
+		return decoder.decode(QByteArrayView(s, static_cast<int>(strlen(s))));
 	}
 }
 
@@ -546,27 +546,29 @@ QByteArray ScintillaQt::BytesForDocument(const QString &text) const
 	if (IsUnicodeMode()) {
 		return text.toUtf8();
 	} else {
-		QTextCodec *codec = QTextCodec::codecForName(
-				CharacterSetID(CharacterSetOfDocument()));
-		return codec->fromUnicode(text);
+		QStringEncoder encoder(QStringEncoder::encodingForName(
+				CharacterSetID(CharacterSetOfDocument())).value_or(QStringEncoder::Utf8));
+		return encoder.encode(text);
 	}
 }
 
 namespace {
 
 class CaseFolderDBCS : public CaseFolderTable {
-	QTextCodec *codec;
+	QStringDecoder::Encoding encoding;
 public:
-	explicit CaseFolderDBCS(QTextCodec *codec_) : codec(codec_) {
+	explicit CaseFolderDBCS(QStringDecoder::Encoding encoding_) : encoding(encoding_) {
 	}
 	size_t Fold(char *folded, size_t sizeFolded, const char *mixed, size_t lenMixed) override {
 		if ((lenMixed == 1) && (sizeFolded > 0)) {
 			folded[0] = mapping[static_cast<unsigned char>(mixed[0])];
 			return 1;
-		} else if (codec) {
-			QString su = codec->toUnicode(mixed, static_cast<int>(lenMixed));
+		} else {
+			QStringDecoder decoder(encoding);
+			QString su = decoder.decode(QByteArrayView(mixed, static_cast<int>(lenMixed)));
 			QString suFolded = su.toCaseFolded();
-			QByteArray bytesFolded = codec->fromUnicode(suFolded);
+			QStringEncoder encoder(encoding);
+			QByteArray bytesFolded = encoder.encode(suFolded);
 
 			if (bytesFolded.length() < static_cast<int>(sizeFolded)) {
 				memcpy(folded, bytesFolded,  bytesFolded.length());
@@ -588,25 +590,25 @@ std::unique_ptr<CaseFolder> ScintillaQt::CaseFolderForEncoding()
 	} else {
 		const char *charSetBuffer = CharacterSetIDOfDocument();
 		if (charSetBuffer) {
+			QStringDecoder::Encoding encoding = QStringDecoder::encodingForName(charSetBuffer).value_or(QStringDecoder::Utf8);
 			if (pdoc->dbcsCodePage == 0) {
 				std::unique_ptr<CaseFolderTable> pcf = std::make_unique<CaseFolderTable>();
-				QTextCodec *codec = QTextCodec::codecForName(charSetBuffer);
+				QStringDecoder decoder(encoding);
+				QStringEncoder encoder(encoding);
 				// Only for single byte encodings
 				for (int i=0x80; i<0x100; i++) {
 					char sCharacter[2] = "A";
 					sCharacter[0] = static_cast<char>(i);
-					QString su = codec->toUnicode(sCharacter, 1);
+					QString su = decoder.decode(QByteArrayView(sCharacter, 1));
 					QString suFolded = su.toCaseFolded();
-					if (codec->canEncode(suFolded)) {
-						QByteArray bytesFolded = codec->fromUnicode(suFolded);
-						if (bytesFolded.length() == 1) {
-							pcf->SetTranslation(sCharacter[0], bytesFolded[0]);
-						}
+					QByteArray bytesFolded = encoder.encode(suFolded);
+					if (bytesFolded.length() == 1) {
+						pcf->SetTranslation(sCharacter[0], bytesFolded[0]);
 					}
 				}
 				return pcf;
 			} else {
-				return std::make_unique<CaseFolderDBCS>(QTextCodec::codecForName(charSetBuffer));
+				return std::make_unique<CaseFolderDBCS>(encoding);
 			}
 		}
 		return nullptr;
@@ -626,8 +628,8 @@ std::string ScintillaQt::CaseMapString(const std::string &s, CaseMapping caseMap
 		return retMapped;
 	}
 
-	QTextCodec *codec = QTextCodec::codecForName(CharacterSetIDOfDocument());
-	QString text = codec->toUnicode(s.c_str(), static_cast<int>(s.length()));
+	QStringDecoder decoder(QStringDecoder::encodingForName(CharacterSetIDOfDocument()).value_or(QStringDecoder::Utf8));
+	QString text = decoder.decode(QByteArrayView(s.c_str(), static_cast<int>(s.length())));
 
 	if (caseMapping == CaseMapping::upper) {
 		text = text.toUpper();

@@ -26,7 +26,8 @@
 #include <QFileInfo>
 #include <QFileDialog>
 #include <QMessageBox>
-#include <QTextCodec>
+#include <QStringEncoder>
+#include <QStringDecoder>
 #include <QTextStream>
 #include <QDir>
 #include <QStandardPaths>
@@ -797,15 +798,18 @@ QByteArray NppIO::convertEncoding(const QByteArray& data, const QString& fromEnc
         return data;
     }
 
-    QTextCodec* fromCodec = QTextCodec::codecForName(fromEncoding.toUtf8());
-    QTextCodec* toCodec = QTextCodec::codecForName(toEncoding.toUtf8());
+    auto fromEnc = QStringDecoder::encodingForName(fromEncoding.toUtf8().constData());
+    auto toEnc = QStringEncoder::encodingForName(toEncoding.toUtf8().constData());
 
-    if (!fromCodec || !toCodec) {
+    if (!fromEnc.has_value() || !toEnc.has_value()) {
         return data; // Can't convert
     }
 
-    QString unicode = fromCodec->toUnicode(data);
-    return toCodec->fromUnicode(unicode);
+    QStringDecoder decoder(fromEnc.value());
+    QStringEncoder encoder(toEnc.value());
+
+    QString unicode = decoder.decode(data);
+    return encoder.encode(unicode);
 }
 
 QString NppIO::getEncodingName(int encoding) const {
@@ -1449,19 +1453,17 @@ QString wstringToQstring(const std::wstring& str) {
 }
 
 QString byteArrayToQString(const QByteArray& data, const QString& encoding) {
-    QTextCodec* codec = QTextCodec::codecForName(encoding.toUtf8());
-    if (!codec) {
-        codec = QTextCodec::codecForName("UTF-8");
-    }
-    return codec->toUnicode(data);
+    auto enc = QStringDecoder::encodingForName(encoding.toUtf8().constData())
+                   .value_or(QStringDecoder::Utf8);
+    QStringDecoder decoder(enc);
+    return decoder.decode(data);
 }
 
 QByteArray qstringToByteArray(const QString& str, const QString& encoding) {
-    QTextCodec* codec = QTextCodec::codecForName(encoding.toUtf8());
-    if (!codec) {
-        codec = QTextCodec::codecForName("UTF-8");
-    }
-    return codec->fromUnicode(str);
+    auto enc = QStringEncoder::encodingForName(encoding.toUtf8().constData())
+                   .value_or(QStringEncoder::Utf8);
+    QStringEncoder encoder(enc);
+    return encoder.encode(str);
 }
 
 QString getFileName(const QString& filePath) {

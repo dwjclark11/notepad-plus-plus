@@ -31,7 +31,6 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QStandardPaths>
-#include <QTextCodec>
 #include <QTranslator>
 #include <QLocale>
 #include <QTimer>

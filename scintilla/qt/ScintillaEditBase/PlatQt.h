@@ -30,7 +30,8 @@
 #include <QPaintDevice>
 #include <QPainter>
 #include <QHash>
-#include <QTextCodec>
+#include <QStringEncoder>
+#include <QStringDecoder>
 
 namespace Scintilla::Internal {
 
@@ -78,7 +79,8 @@ private:
 	bool painterOwned = false;
 	SurfaceMode mode;
 	const char *codecName = nullptr;
-	QTextCodec *codec = nullptr;
+	std::unique_ptr<QStringDecoder> decoder;
+	std::unique_ptr<QStringEncoder> encoder;
 
 	void Clear();
 

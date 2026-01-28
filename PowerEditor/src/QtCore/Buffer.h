@@ -21,7 +21,8 @@
 #include <QObject>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
-#include <QTextCodec>
+#include <QStringEncoder>
+#include <QStringDecoder>
 #include <QMutex>
 #include <QList>
 
@@ -163,7 +164,6 @@ public:
     void setEncoding(const QString& encoding);
     bool getUseBOM() const;
     void setUseBOM(bool use);
-    QTextCodec* getTextCodec() const;
 
     // Line endings
     LineEnding getLineEnding() const;
@@ -270,7 +270,6 @@ private:
     // Encoding settings
     QString _encoding = "UTF-8";
     bool _useBOM = false;
-    QTextCodec* _textCodec = nullptr;
 
     // Line ending
     LineEnding _lineEnding = LineEnding::OSDefault;
@@ -336,6 +335,7 @@ private:
     void removeFileWatcher();
     bool writeToFile(const QString& filePath, const QByteArray& content);
     QByteArray readFromFile(const QString& filePath);
+    QString detectEncodingFromBOM(const QByteArray& content);
 };
 
 /**
