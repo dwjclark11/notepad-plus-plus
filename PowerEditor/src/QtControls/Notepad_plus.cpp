@@ -20,9 +20,9 @@
 // This file provides Linux/Qt implementations of the Notepad_plus class methods
 // that are implemented in NppIO.cpp on Windows.
 
-// This file contains Windows-specific implementations that don't compile on Linux
-// TODO: Port these implementations to use QtCore::Buffer and QtCore::BufferManager
-#ifndef NPP_LINUX
+// This file contains Qt/Linux-specific implementations
+// These implementations use QtCore::Buffer and QtCore::BufferManager
+#ifdef NPP_LINUX
 
 #include "Notepad_plus.h"
 #include "NppIO.h"
@@ -739,13 +739,13 @@ bool Notepad_plus::doBlockComment(comment_mode currCommentMode)
         return false;
 
     // Get comment symbols for current language
-    const char* commentLineSymbol = buf->getCommentLineSymbol();
-    if (!commentLineSymbol || !commentLineSymbol[0])
+    QString commentLineSymbol = buf->getCommentLineSymbol();
+    if (commentLineSymbol.isEmpty())
     {
         // Try stream comment as fallback
-        const char* commentStart = buf->getCommentStart();
-        const char* commentEnd = buf->getCommentEnd();
-        if (commentStart && commentStart[0] && commentEnd && commentEnd[0])
+        QString commentStart = buf->getCommentStart();
+        QString commentEnd = buf->getCommentEnd();
+        if (!commentStart.isEmpty() && !commentEnd.isEmpty())
         {
             // Use stream comment for block comment
             if (currCommentMode == cm_comment)
@@ -766,7 +766,7 @@ bool Notepad_plus::doBlockComment(comment_mode currCommentMode)
     if (selectionEnd == static_cast<size_t>(_pEditView->execute(SCI_POSITIONFROMLINE, selEndLine)))
         selEndLine--;
 
-    std::string comment(commentLineSymbol);
+    std::string comment = commentLineSymbol.toStdString();
     comment += " ";
     size_t comment_length = comment.length();
 
@@ -795,7 +795,8 @@ bool Notepad_plus::doBlockComment(comment_mode currCommentMode)
             _pEditView->getGenericText(linebuf.get(), bufferSize, lineIndent, lineEnd);
 
             std::string linebufStr = linebuf.get();
-            size_t pos = linebufStr.find(commentLineSymbol);
+            std::string commentSymbolStr = commentLineSymbol.toStdString();
+            size_t pos = linebufStr.find(commentSymbolStr);
             if (pos != std::string::npos)
             {
                 size_t len = comment_length;
@@ -805,7 +806,7 @@ bool Notepad_plus::doBlockComment(comment_mode currCommentMode)
                 }
                 else
                 {
-                    len = strlen(commentLineSymbol);
+                    len = commentSymbolStr.length();
                 }
 
                 _pEditView->execute(SCI_SETSEL, lineIndent + pos, lineIndent + pos + len);
@@ -820,13 +821,14 @@ bool Notepad_plus::doBlockComment(comment_mode currCommentMode)
             _pEditView->getGenericText(linebuf.get(), bufferSize, lineIndent, lineEnd);
 
             std::string linebufStr = linebuf.get();
-            size_t pos = linebufStr.find(commentLineSymbol);
+            std::string commentSymbolStr = commentLineSymbol.toStdString();
+            size_t pos = linebufStr.find(commentSymbolStr);
             if (pos != std::string::npos)
             {
                 // Uncomment
                 size_t len = comment_length;
                 if (pos + len > linebufStr.size() || linebufStr[pos + len - 1] != ' ')
-                    len = strlen(commentLineSymbol);
+                    len = commentSymbolStr.length();
 
                 _pEditView->execute(SCI_SETSEL, lineIndent + pos, lineIndent + pos + len);
                 _pEditView->replaceSelWith("");
@@ -852,10 +854,10 @@ bool Notepad_plus::doStreamComment()
     if (buf->isReadOnly())
         return false;
 
-    const char* commentStart = buf->getCommentStart();
-    const char* commentEnd = buf->getCommentEnd();
+    QString commentStart = buf->getCommentStart();
+    QString commentEnd = buf->getCommentEnd();
 
-    if (!commentStart || !commentStart[0] || !commentEnd || !commentEnd[0])
+    if (commentStart.isEmpty() || commentEnd.isEmpty())
         return false;
 
     size_t selectionStart = _pEditView->execute(SCI_GETSELECTIONSTART);
@@ -872,10 +874,12 @@ bool Notepad_plus::doStreamComment()
     _pEditView->execute(SCI_BEGINUNDOACTION);
 
     // Insert end comment first (so positions don't shift)
-    _pEditView->execute(SCI_INSERTTEXT, selectionEnd, reinterpret_cast<sptr_t>(commentEnd));
+    std::string commentEndStr = commentEnd.toStdString();
+    std::string commentStartStr = commentStart.toStdString();
+    _pEditView->execute(SCI_INSERTTEXT, selectionEnd, reinterpret_cast<sptr_t>(commentEndStr.c_str()));
 
     // Insert start comment
-    _pEditView->execute(SCI_INSERTTEXT, selectionStart, reinterpret_cast<sptr_t>(commentStart));
+    _pEditView->execute(SCI_INSERTTEXT, selectionStart, reinterpret_cast<sptr_t>(commentStartStr.c_str()));
 
     _pEditView->execute(SCI_ENDUNDOACTION);
     return true;
@@ -1664,9 +1668,9 @@ std::wstring Notepad_plus::getMarkedLine(size_t ln)
 
 bool Notepad_plus::undoStreamComment(bool tryBlockComment)
 {
-    const char* commentStart = nullptr;
-    const char* commentEnd = nullptr;
-    const char* commentLineSymbol = nullptr;
+    QString commentStart;
+    QString commentEnd;
+    QString commentLineSymbol;
 
     std::string symbolStart;
     std::string symbolEnd;
@@ -1691,16 +1695,16 @@ bool Notepad_plus::undoStreamComment(bool tryBlockComment)
     }
 
     // If there is no stream-comment symbol and we came not from doBlockComment, try the block comment
-    if ((!commentStart) || (!commentStart[0]) || (!commentEnd) || (!commentEnd[0]))
+    if (commentStart.isEmpty() || commentEnd.isEmpty())
     {
-        if ((commentLineSymbol && commentLineSymbol[0]) && tryBlockComment)
+        if (!commentLineSymbol.isEmpty() && tryBlockComment)
             return doBlockComment(cm_uncomment);
         else
             return false;
     }
 
-    std::string start_comment(commentStart);
-    std::string end_comment(commentEnd);
+    std::string start_comment = commentStart.toStdString();
+    std::string end_comment = commentEnd.toStdString();
     size_t start_comment_length = start_comment.length();
     size_t end_comment_length = end_comment.length();
 

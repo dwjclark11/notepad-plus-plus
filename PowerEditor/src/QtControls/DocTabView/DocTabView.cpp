@@ -244,6 +244,14 @@ BufferID DocTabView::getBufferByIndex(size_t index)
     return BUFFER_INVALID;
 }
 
+size_t DocTabView::nbItem() const
+{
+    QTabWidget* tabWidget = getTabWidget();
+    if (!tabWidget) return 0;
+
+    return static_cast<size_t>(tabWidget->count());
+}
+
 void DocTabView::setBuffer(size_t index, BufferID id)
 {
     QTabWidget* tabWidget = getTabWidget();

@@ -51,6 +51,7 @@
 
 // QtControls includes
 #include "QtControls/Window.h"
+#include "QtControls/MainWindow/Notepad_plus_Window.h"
 
 // ============================================================================
 // Command Line Parameter Types (mirroring Windows version)
@@ -491,96 +492,50 @@ private:
 // MainWindow Wrapper (Qt version of Notepad_plus_Window)
 // ============================================================================
 
-class MainWindow : public QtControls::Window
+class MainWindowWrapper : public QtControls::MainWindow::MainWindow
 {
 public:
-    MainWindow() = default;
-    ~MainWindow() override = default;
+    MainWindowWrapper() = default;
+    ~MainWindowWrapper() override = default;
 
     bool init(CmdLineParams* cmdLineParams)
     {
-        // TODO: Initialize the main Notepad++ window
-        // This will be implemented when the full Qt main window is ready
-
-        // For now, create a basic QWidget as placeholder
-        _widget = new QWidget();
-        _widget->setWindowTitle("Notepad++");
-        _widget->resize(1024, 768);
+        // Initialize the Qt MainWindow without Notepad_plus core for now
+        // TODO: Create and initialize Notepad_plus instance properly
+        setWindowTitle("Notepad++");
+        resize(1024, 768);
 
         // Apply command line parameters
         if (cmdLineParams->_alwaysOnTop)
         {
-            _widget->setWindowFlags(_widget->windowFlags() | Qt::WindowStaysOnTopHint);
+            setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
         }
+
+        // Show the window
+        show();
 
         return true;
     }
 
-    void destroy() override
+    void showWindow()
     {
-        if (_widget)
-        {
-            _widget->deleteLater();
-            _widget = nullptr;
-        }
+        show();
     }
 
-    void show()
+    void raiseAndActivateWindow()
     {
-        if (_widget)
-        {
-            _widget->show();
-        }
-    }
-
-    void raiseAndActivate()
-    {
-        if (_widget)
-        {
-            _widget->raise();
-            _widget->activateWindow();
-        }
-    }
-
-    bool isMaximized() const
-    {
-        return _widget ? _widget->isMaximized() : false;
-    }
-
-    bool isMinimized() const
-    {
-        return _widget ? _widget->isMinimized() : false;
-    }
-
-    void showMaximized()
-    {
-        if (_widget)
-        {
-            _widget->showMaximized();
-        }
-    }
-
-    void showNormal()
-    {
-        if (_widget)
-        {
-            _widget->showNormal();
-        }
+        raise();
+        activateWindow();
     }
 
     void openFiles(const QStringList& files, const CmdLineParams& params)
     {
-        // TODO: Implement file opening
-        // This will integrate with the full Notepad++ core when available
+        // TODO: Implement file opening when Notepad_plus core is integrated
         for (const QString& file : files)
         {
             qDebug() << "Opening file:" << file;
-            // Emit signal or call core to open file
         }
     }
-
-private:
-    // TODO: Add Notepad_plus core integration when available
 };
 
 } // anonymous namespace
@@ -933,7 +888,7 @@ int main(int argc, char* argv[])
     // Create and Initialize Main Window
     // ============================================================================
 
-    auto mainWindow = std::make_unique<MainWindow>();
+    auto mainWindow = std::make_unique<MainWindowWrapper>();
 
     if (!mainWindow->init(&cmdLineParams))
     {
@@ -946,12 +901,12 @@ int main(int argc, char* argv[])
     singleInstanceHandler.setNewInstanceCallback(
         [&mainWindow](const QStringList& files, const CmdLineParams& params)
     {
-        mainWindow->raiseAndActivate();
+        mainWindow->raiseAndActivateWindow();
         mainWindow->openFiles(files, params);
     });
 
     // Show the main window
-    mainWindow->show();
+    mainWindow->showWindow();
 
     // Open files from command line
     if (!filesToOpen.isEmpty())

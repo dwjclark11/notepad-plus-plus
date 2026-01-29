@@ -85,6 +85,9 @@ public:
     // Accessors
     ScintillaEditView* getScintillaEditView() const { return _pView; }
 
+    // Tab count (compatibility with Windows version)
+    size_t nbItem() const;
+
     // Resize override
     void reSizeTo(QRect& rc);
 

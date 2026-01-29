@@ -1823,13 +1823,13 @@ void* Buffer::getDocument() const
     return _document;
 }
 
-Buffer::UniMode Buffer::getUnicodeMode() const
+::UniMode Buffer::getUnicodeMode() const
 {
     QMutexLocker locker(&_mutex);
     return _unicodeMode;
 }
 
-void Buffer::setUnicodeMode(UniMode mode)
+void Buffer::setUnicodeMode(::UniMode mode)
 {
     QMutexLocker locker(&_mutex);
     _unicodeMode = mode;
@@ -1882,6 +1882,34 @@ void Buffer::setNeedsLexing(bool needs)
 {
     QMutexLocker locker(&_mutex);
     _needsLexing = needs;
+}
+
+// ============================================================================
+// File Monitoring
+// ============================================================================
+
+bool Buffer::isMonitoringOn() const
+{
+    QMutexLocker locker(&_mutex);
+    return _isMonitoringOn;
+}
+
+void Buffer::startMonitoring()
+{
+    QMutexLocker locker(&_mutex);
+    _isMonitoringOn = true;
+    if (_fileWatcher && !_filePath.isEmpty()) {
+        _fileWatcher->addPath(_filePath);
+    }
+}
+
+void Buffer::stopMonitoring()
+{
+    QMutexLocker locker(&_mutex);
+    _isMonitoringOn = false;
+    if (_fileWatcher && !_filePath.isEmpty()) {
+        _fileWatcher->removePath(_filePath);
+    }
 }
 
 // ============================================================================

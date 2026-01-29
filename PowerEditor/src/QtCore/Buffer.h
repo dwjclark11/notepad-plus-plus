@@ -271,8 +271,7 @@ public:
     void setPosition(const Position& pos, void* identifier);
     Position getPosition(void* identifier) const;
 
-    // Unicode mode compatibility
-    enum UniMode { uni8Bit, uniUTF8, uni16BE, uni16LE, uniCookie, uni7Bit, uni16BE_NoBOM, uni16LE_NoBOM, uniUTF8_NoBOM };
+    // Unicode mode compatibility - uses global ::UniMode from NppConstants.h
     UniMode getUnicodeMode() const;
     void setUnicodeMode(UniMode mode);
 
@@ -288,6 +287,11 @@ public:
     // Encoding as int (for compatibility with Windows API)
     int getEncodingNumber() const;
     void setEncodingNumber(int encoding);
+
+    // File monitoring
+    bool isMonitoringOn() const;
+    void startMonitoring();
+    void stopMonitoring();
 
 signals:
     void contentChanged();
@@ -339,6 +343,7 @@ private:
 
     // File monitoring
     bool _fileMonitoringEnabled = true;
+    bool _isMonitoringOn = false;
     QFileSystemWatcher* _fileWatcher = nullptr;
 
     // Timestamps
@@ -372,7 +377,7 @@ private:
     mutable QMutex _mutex;
 
     // Compatibility members for ScintillaEditView integration
-    UniMode _unicodeMode = uniUTF8;
+    ::UniMode _unicodeMode = uniUTF8;
     EolType _eolFormat = eolUnix;
     bool _needsLexing = false;
     void* _document = nullptr;
