@@ -87,7 +87,7 @@ public:
 
 private:
     QMainWindow* _mainWindow = nullptr;
-    QMap<QString, std::unique_ptr<PanelInfo>> _panels;
+    QMap<QString, std::shared_ptr<PanelInfo>> _panels;
     int _nextId = 1;
 
     Qt::DockWidgetArea dockAreaToQt(DockArea area) const;

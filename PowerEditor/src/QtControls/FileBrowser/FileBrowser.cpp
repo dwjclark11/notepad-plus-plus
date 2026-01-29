@@ -16,7 +16,7 @@
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMenu>
-#include <QtWidgets/QAction>
+#include <QtGui/QAction>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>

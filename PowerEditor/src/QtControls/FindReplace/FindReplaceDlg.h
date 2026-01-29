@@ -23,6 +23,7 @@ class QTabWidget;
 class QLabel;
 class QGroupBox;
 class QRadioButton;
+class QProgressBar;
 
 namespace NppFindReplace {
 
@@ -81,7 +82,7 @@ enum class FindStatus {
 // ============================================================================
 // FindReplaceDlg - Qt implementation
 // ============================================================================
-class FindReplaceDlg : public StaticDialog {
+class FindReplaceDlg : public QtControls::StaticDialog {
     Q_OBJECT
 
 public:
@@ -118,6 +119,9 @@ public:
     bool findAllInCurrentDoc();
     bool findAllInOpenDocs();
     bool findAllInFiles();
+
+    // Internal search processing (used by FindIncrementDlg)
+    bool processFindNext(const QString& text, const FindOptions& options);
 
     // Count occurrences
     int countMatches();
@@ -240,7 +244,6 @@ private:
     void saveHistory();
     void addToHistory(const QString& text, std::vector<QString>& history);
 
-    bool processFindNext(const QString& text, const FindOptions& options);
     bool processReplace(const QString& findText, const QString& replaceText, const FindOptions& options);
     int processReplaceAll(const QString& findText, const QString& replaceText, const FindOptions& options);
     int processMarkAll(const QString& findText, int styleId, const FindOptions& options);
@@ -269,7 +272,7 @@ private:
 // ============================================================================
 // Incremental Find Dialog
 // ============================================================================
-class FindIncrementDlg : public StaticDialog {
+class FindIncrementDlg : public QtControls::StaticDialog {
     Q_OBJECT
 
 public:
@@ -312,7 +315,7 @@ private:
 // ============================================================================
 // Progress Dialog for long operations
 // ============================================================================
-class FindProgressDlg : public StaticDialog {
+class FindProgressDlg : public QtControls::StaticDialog {
     Q_OBJECT
 
 public:
@@ -338,7 +341,7 @@ private:
     QLabel* _headerLabel = nullptr;
     QLabel* _infoLabel = nullptr;
     QLabel* _hitsLabel = nullptr;
-    class QProgressBar* _progressBar = nullptr;
+    QProgressBar* _progressBar = nullptr;
     QPushButton* _cancelButton = nullptr;
     bool _cancelled = false;
 };
@@ -346,7 +349,7 @@ private:
 // ============================================================================
 // Finder Results Panel (dockable)
 // ============================================================================
-class FinderPanel : public StaticDialog {
+class FinderPanel : public QtControls::StaticDialog {
     Q_OBJECT
 
 public:

@@ -8,6 +8,9 @@
 
 #include "DocumentMap.h"
 
+// Platform types for RECT definition
+#include "../../MISC/Common/LinuxTypes.h"
+
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QSlider>
@@ -111,6 +114,22 @@
 #define MODEVENTMASK_OFF 0
 #endif
 
+// Helper functions to convert between QRect and RECT
+namespace {
+    inline RECT QRectToRECT(const QRect& qr) {
+        RECT rc;
+        rc.left = qr.left();
+        rc.top = qr.top();
+        rc.right = qr.right();
+        rc.bottom = qr.bottom();
+        return rc;
+    }
+
+    inline QRect RECTToQRect(const RECT& rc) {
+        return QRect(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
+    }
+}
+
 namespace QtControls {
 
 // ============================================================================
@@ -128,8 +147,8 @@ static constexpr double zoomRatio[] = {
 // ============================================================================
 ViewZoneWidget::ViewZoneWidget(QWidget* parent)
     : QWidget(parent)
-    , _focusColor(DEFAULT_FOCUS_COLOR)
-    , _frostColor(DEFAULT_FROST_COLOR)
+    , _focusColor(QColor(0xFF, 0x80, 0x00))   // Orange - DEFAULT_FOCUS_COLOR
+    , _frostColor(QColor(0xFF, 0xFF, 0xFF))   // White - DEFAULT_FROST_COLOR
 {
     setAttribute(Qt::WA_TransparentForMouseEvents, false);
     setAttribute(Qt::WA_TransparentForMouseEvents, false);
@@ -376,9 +395,9 @@ void DocumentMap::initWrapMap()
 {
     if (_mapView && _ppEditView && *_ppEditView) {
         // Resize map view to container
-        QRect rect;
-        getClientRect(rect);
-        _mapView->reSizeTo(rect);
+        QRect rect = this->rect();
+        RECT rc = QRectToRECT(rect);
+        _mapView->reSizeTo(rc);
 
         _mapView->wrap(false);
         _mapView->redraw(true);
@@ -424,10 +443,10 @@ void DocumentMap::wrapMap(const ScintillaEditView* editView)
         double docMapWidth = editZoneWidth / zr;
 
         // Resize map view
-        QRect rect;
-        getClientRect(rect);
+        QRect rect = this->rect();
         rect.setWidth(static_cast<int>(docMapWidth));
-        _mapView->reSizeTo(rect);
+        RECT rc = QRectToRECT(rect);
+        _mapView->reSizeTo(rc);
 
         _mapView->wrap(true);
 
@@ -450,12 +469,12 @@ void DocumentMap::scrollMap()
     ScintillaEditView* pEditView = *_ppEditView;
 
     // Get the position of the 1st and last showing chars from the original edit view
-    QRect rcEditView;
+    RECT rcEditView;
     pEditView->getClientRect(rcEditView);
 
     auto higherPos = pEditView->execute(SCI_POSITIONFROMPOINT, 0, 0);
     auto lowerPos = pEditView->execute(SCI_POSITIONFROMPOINT,
-                                       rcEditView.width(), rcEditView.height());
+                                       rcEditView.right - rcEditView.left, rcEditView.bottom - rcEditView.top);
 
     // Let Scintilla scroll the map
     _mapView->execute(SCI_GOTOPOS, higherPos);
@@ -471,7 +490,7 @@ void DocumentMap::scrollMap()
     if (!pEditView->isWrap()) {
         // Not wrapped: mimic height of edit view
         auto lineHeightEditView = pEditView->execute(SCI_TEXTHEIGHT, 0);
-        lowerY = higherY + lineHeightMapView * rcEditView.height() / lineHeightEditView;
+        lowerY = higherY + lineHeightMapView * (rcEditView.bottom - rcEditView.top) / lineHeightEditView;
     } else {
         // Wrapped: ask Scintilla, since in the map view the current range
         // of edit view might be wrapped differently
@@ -574,7 +593,7 @@ void DocumentMap::redrawMap(bool forceUpdate)
     if (_mapView) {
         _mapView->execute(SCI_COLOURISE, 0, -1);
     }
-    redraw(forceUpdate);
+    update();
 }
 
 void DocumentMap::updateMap()
@@ -669,9 +688,9 @@ void DocumentMap::resizeEvent(QResizeEvent* event)
 
     if (_mapView) {
         // Resize the map view to fit the container
-        QRect rect;
-        getClientRect(rect);
-        _mapView->reSizeTo(rect);
+        QRect rect = this->rect();
+        RECT rc = QRectToRECT(rect);
+        _mapView->reSizeTo(rc);
     }
 
     doMove();

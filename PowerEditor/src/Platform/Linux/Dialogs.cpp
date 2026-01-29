@@ -17,6 +17,7 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QWidget>
+#include <QDialog>
 #include <QApplication>
 
 namespace PlatformLayer {
@@ -385,7 +386,10 @@ public:
     void setModal(void* dialogHandle, bool modal) override {
         QWidget* widget = static_cast<QWidget*>(dialogHandle);
         if (widget) {
-            widget->setModal(modal);
+            QDialog* dialog = qobject_cast<QDialog*>(widget);
+            if (dialog) {
+                dialog->setModal(modal);
+            }
         }
     }
 

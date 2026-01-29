@@ -27,6 +27,8 @@
 #include <algorithm>
 #include <cctype>
 
+#include "../../MISC/Common/Common.h"
+
 namespace QtControls {
 
 namespace ShortcutMapper {
@@ -715,21 +717,21 @@ QString ShortcutMapper::keyComboToString(const KeyCombo& combo) const {
         keyStr = QString("F%1").arg(combo._key - VK_F1 + 1);
     } else {
         switch (combo._key) {
-            case VK_SPACE: keyStr = "Space"; break;
-            case VK_RETURN: keyStr = "Enter"; break;
-            case VK_ESCAPE: keyStr = "Esc"; break;
-            case VK_TAB: keyStr = "Tab"; break;
-            case VK_BACK: keyStr = "Backspace"; break;
-            case VK_DELETE: keyStr = "Delete"; break;
-            case VK_INSERT: keyStr = "Insert"; break;
-            case VK_HOME: keyStr = "Home"; break;
-            case VK_END: keyStr = "End"; break;
-            case VK_PRIOR: keyStr = "PageUp"; break;
-            case VK_NEXT: keyStr = "PageDown"; break;
-            case VK_LEFT: keyStr = "Left"; break;
-            case VK_RIGHT: keyStr = "Right"; break;
-            case VK_UP: keyStr = "Up"; break;
-            case VK_DOWN: keyStr = "Down"; break;
+            case VK_SPACE: keyStr = QString("Space"); break;
+            case VK_RETURN: keyStr = QString("Enter"); break;
+            case VK_ESCAPE: keyStr = QString("Esc"); break;
+            case VK_TAB: keyStr = QString("Tab"); break;
+            case VK_BACK: keyStr = QString("Backspace"); break;
+            case VK_DELETE: keyStr = QString("Delete"); break;
+            case VK_INSERT: keyStr = QString("Insert"); break;
+            case VK_HOME: keyStr = QString("Home"); break;
+            case VK_END: keyStr = QString("End"); break;
+            case VK_PRIOR: keyStr = QString("PageUp"); break;
+            case VK_NEXT: keyStr = QString("PageDown"); break;
+            case VK_LEFT: keyStr = QString("Left"); break;
+            case VK_RIGHT: keyStr = QString("Right"); break;
+            case VK_UP: keyStr = QString("Up"); break;
+            case VK_DOWN: keyStr = QString("Down"); break;
             default: keyStr = QString("Key%1").arg(combo._key); break;
         }
     }

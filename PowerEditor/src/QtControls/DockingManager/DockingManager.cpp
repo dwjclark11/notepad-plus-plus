@@ -56,7 +56,7 @@ void Manager::addPanel(const QString& name, QWidget* widget, DockArea area,
         removePanel(name);
     }
 
-    auto info = std::make_unique<PanelInfo>();
+    auto info = std::make_shared<PanelInfo>();
     info->name = name;
     info->widget = widget;
     info->area = area;

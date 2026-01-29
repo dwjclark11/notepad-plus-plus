@@ -14,6 +14,9 @@
 #include <vector>
 #include <map>
 
+#include <QXmlStreamWriter>
+#include <QXmlStreamReader>
+
 // Forward declarations
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -21,6 +24,8 @@ class QToolBar;
 class QAction;
 class QMenu;
 class QFileSystemWatcher;
+class QLineEdit;
+class QPushButton;
 
 namespace QtControls {
 
@@ -244,6 +249,10 @@ public:
 protected:
     void setupUI() override;
     void connectSignals() override;
+    bool run_dlgProc(QEvent* event) override {
+        (void)event;
+        return false;
+    }
 
 private slots:
     void onOkClicked();
@@ -254,7 +263,7 @@ private:
     QString _fullFilePath;
 
     // UI components
-    class QLineEdit* _pathEdit = nullptr;
+    QLineEdit* _pathEdit = nullptr;
     QPushButton* _browseButton = nullptr;
     QPushButton* _okButton = nullptr;
     QPushButton* _cancelButton = nullptr;

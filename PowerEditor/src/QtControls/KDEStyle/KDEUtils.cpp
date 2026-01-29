@@ -320,7 +320,9 @@ qreal GetDevicePixelRatio()
 bool IsHighDPIEnabled()
 {
     // Check if Qt high DPI scaling is enabled
-    return qApp->testAttribute(Qt::AA_EnableHighDpiScaling);
+    // Qt::AA_EnableHighDpiScaling is deprecated in Qt 6 as high DPI is always enabled
+    // Return true as high DPI scaling is always enabled in Qt 6+
+    return true;
 }
 
 qreal GetScaleFactor()

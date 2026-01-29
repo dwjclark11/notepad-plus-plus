@@ -63,6 +63,111 @@ distribution.
 #include "Common.h"
 #include "FileInterface.h"
 
+// Linux/Unix compatibility for Windows-specific functions not defined in LinuxTypes.h
+#ifndef _WIN32
+#include <cwctype>
+#include <cstdio>
+#include <cstdlib>
+#include <cwchar>
+#include <cstdarg>
+
+// String length (if not already defined)
+#ifndef lstrlen
+#define lstrlen wcslen
+#endif
+
+// Character classification (if not already defined)
+#ifndef _istalnum
+#define _istalnum iswalnum
+#endif
+#ifndef _istspace
+#define _istspace iswspace
+#endif
+#ifndef _istalpha
+#define _istalpha iswalpha
+#endif
+
+// Case conversion (if not already defined)
+#ifndef _totlower
+#define _totlower towlower
+#endif
+
+// String comparison (if not already defined)
+#ifndef lstrcmp
+#define lstrcmp wcscmp
+#endif
+
+// Wide string to integer
+inline int _wtoi(const wchar_t* s)
+{
+    if (!s) return 0;
+    return static_cast<int>(wcstol(s, nullptr, 10));
+}
+
+// Wide string to double
+inline double _wtof(const wchar_t* s)
+{
+    if (!s) return 0.0;
+    return wcstod(s, nullptr);
+}
+
+// Wide string sprintf (note: different signature than Windows wsprintf)
+// Windows wsprintf is like sprintf but for wide chars and with limited format support
+// We use swprintf but need to match the buffer-only signature used in the code
+#ifndef wsprintf
+inline int wsprintf(wchar_t* buffer, const wchar_t* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int result = vswprintf(buffer, 64, format, args); // Assume 64 byte buffer for TiXml usage
+    va_end(args);
+    return result;
+}
+#endif
+
+// Wide character file open - convert wchar_t* to char* and use fopen
+inline FILE* _wfopen(const wchar_t* filename, const wchar_t* mode)
+{
+    if (!filename || !mode) return nullptr;
+
+    // Convert filename from wchar_t* to char*
+    size_t filenameLen = wcslen(filename);
+    size_t filenameBufSize = wcstombs(nullptr, filename, 0) + 1;
+    if (filenameBufSize == 0) return nullptr;
+
+    char* filenameMB = new char[filenameBufSize];
+    if (wcstombs(filenameMB, filename, filenameBufSize) == static_cast<size_t>(-1))
+    {
+        delete[] filenameMB;
+        return nullptr;
+    }
+
+    // Convert mode from wchar_t* to char*
+    size_t modeBufSize = wcstombs(nullptr, mode, 0) + 1;
+    if (modeBufSize == 0)
+    {
+        delete[] filenameMB;
+        return nullptr;
+    }
+
+    char* modeMB = new char[modeBufSize];
+    if (wcstombs(modeMB, mode, modeBufSize) == static_cast<size_t>(-1))
+    {
+        delete[] filenameMB;
+        delete[] modeMB;
+        return nullptr;
+    }
+
+    FILE* result = fopen(filenameMB, modeMB);
+
+    delete[] filenameMB;
+    delete[] modeMB;
+
+    return result;
+}
+
+#endif // !_WIN32
+
 class TiXmlDocument;
 class TiXmlElement;
 class TiXmlComment;

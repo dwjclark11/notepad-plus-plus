@@ -23,9 +23,8 @@
 
 namespace QtControls {
 
-AboutDlg::AboutDlg(QWidget* parent)
+AboutDlg::AboutDlg(QWidget* parent) : StaticDialog(parent)
 {
-    init(parent);
 }
 
 void AboutDlg::setupUI()

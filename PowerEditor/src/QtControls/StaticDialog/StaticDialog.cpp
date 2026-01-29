@@ -13,6 +13,11 @@
 
 namespace QtControls {
 
+StaticDialog::StaticDialog(QWidget* parent) : QDialog(parent)
+{
+    _widget = this;
+}
+
 StaticDialog::~StaticDialog()
 {
     destroy();
@@ -20,11 +25,7 @@ StaticDialog::~StaticDialog()
 
 void StaticDialog::create(const QString& title, bool isRTL)
 {
-    if (_parent) {
-        _widget = new QDialog(_parent);
-    } else {
-        _widget = new QDialog();
-    }
+    _widget = this;
 
     QDialog* dialog = getDialog();
     if (dialog) {

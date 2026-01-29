@@ -889,7 +889,6 @@ COLORREF WordStyleDlg::colorRefFromColor(const QColor& color) const {
 ScintillaPreview::ScintillaPreview(QWidget* parent)
     : QWidget(parent) {
     setMinimumSize(200, 100);
-    setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
 }
 
 ScintillaPreview::~ScintillaPreview() = default;

@@ -158,6 +158,14 @@ public:
     QStringList getAvailableThemes() const;
     bool loadTheme(const QString& themeName);
 
+    // KConfig file parsing (public for use by KDEUtils)
+    QVariant readKConfigValue(const QString& file, const QString& group,
+                               const QString& key, const QVariant& defaultValue = QVariant()) const;
+
+    // Path utilities (public for use by KDEUtils)
+    QString getColorSchemePath(const QString& schemeName) const;
+    QString getIconThemePath(const QString& themeName) const;
+
 signals:
     void colorSchemeChanged();
     void iconThemeChanged();
@@ -181,8 +189,6 @@ private:
     void readKDEHighDPI();
 
     // KConfig file parsing
-    QVariant readKConfigValue(const QString& file, const QString& group,
-                               const QString& key, const QVariant& defaultValue = QVariant()) const;
     QMap<QString, QString> readKConfigGroup(const QString& file, const QString& group) const;
 
     // Color scheme loading
@@ -195,8 +201,6 @@ private:
     // Path utilities
     QString getKDEConfigPath() const;
     QString getKDEDataPath() const;
-    QString getColorSchemePath(const QString& schemeName) const;
-    QString getIconThemePath(const QString& themeName) const;
 
     // File system watching
     void setupConfigWatcher();

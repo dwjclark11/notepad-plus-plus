@@ -19,6 +19,7 @@
 #include <QtWidgets/QGroupBox>
 #include <QtWidgets/QRadioButton>
 #include <QtWidgets/QTextEdit>
+#include <QtWidgets/QPlainTextEdit>
 #include <QtWidgets/QSpinBox>
 #include <QtWidgets/QColorDialog>
 #include <QtWidgets/QFileDialog>
@@ -706,7 +707,7 @@ void UserDefineDialog::createKeywordsTab()
         auto* groupBox = new QGroupBox(groupNames[i], container);
         auto* groupLayout = new QVBoxLayout(groupBox);
 
-        _keywordLists[i] = new QTextEdit(groupBox);
+        _keywordLists[i] = new QPlainTextEdit(groupBox);
         _keywordLists[i]->setMaximumBlockCount(1);
         _keywordLists[i]->setPlaceholderText(tr("Enter keywords separated by spaces"));
         groupLayout->addWidget(_keywordLists[i]);
@@ -1135,7 +1136,7 @@ void UserDefineDialog::connectSignals()
     // Keyword text changes
     for (int i = 0; i < 8; ++i) {
         if (_keywordLists[i]) {
-            connect(_keywordLists[i], &QTextEdit::textChanged,
+            connect(_keywordLists[i], &QPlainTextEdit::textChanged,
                     this, &UserDefineDialog::onKeywordsChanged);
         }
     }

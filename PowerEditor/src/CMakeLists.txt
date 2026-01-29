@@ -531,8 +531,6 @@ ELSEIF(UNIX AND NOT APPLE)
 	list(APPEND src_files
 		./EncodingMapper.cpp
 		./Utf8_16.cpp
-		./lastRecentFileList.cpp
-		./lesDlgs.cpp
 	)
 
 	# ============================================================================
@@ -551,51 +549,67 @@ ELSEIF(UNIX AND NOT APPLE)
 	# ============================================================================
 	# MISC - Common Utilities
 	# ============================================================================
+	# Note: SortLocale.cpp is excluded from Linux build as it uses Windows-specific
+	# locale functions (LCMAP_SORTKEY, NORM_LINGUISTIC_CASING, LINGUISTIC_IGNORECASE,
+	# SORT_DIGITSASNUMBERS, LINGUISTIC_IGNOREDIACRITIC, NORM_IGNORESYMBOLS,
+	# LOCALE_NAME_USER_DEFAULT, MultiByteToWideChar, LCMapStringEx)
 	list(APPEND src_files
-		./MISC/Common/Common.cpp
-		./MISC/Common/FileInterface.cpp
-		./MISC/Common/SortLocale.cpp
 		./MISC/Common/verifySignedfile.cpp
 	)
 
 	# MISC - Cryptography
+	# Note: sha1.cpp is excluded from Linux build as it uses Windows-specific
+	# _wfopen (wide character file open) function. The calc_sha1.cpp file is
+	# kept as it provides portable SHA1 calculation functionality.
 	list(APPEND src_files
-		./MISC/md5/md5Dlgs.cpp
 		./MISC/sha1/calc_sha1.cpp
-		./MISC/sha1/sha1.cpp
 		./MISC/sha2/sha-256.cpp
 		./MISC/sha512/sha512.cpp
 	)
 
 	# MISC - Plugins and Process
+	# Note: PluginsManager.cpp is excluded from Linux build as it uses Windows-specific
+	# DLL loading (windows.h, LoadLibrary, GetProcAddress). A Linux-specific implementation
+	# using Qt plugins or shared libraries (dlopen/dlsym) will be needed.
+	# Note: Processus.cpp is excluded from Linux build as it uses Windows-specific
+	# process APIs (ShellExecute, ShellExecuteEx, SHELLEXECUTEINFO, GetExitCodeProcess,
+	# GetLastError). Platform/Linux/Process.cpp provides the Linux implementation.
+	# Note: regExtDlg.cpp is excluded from Linux build as it uses Windows-specific
+	# registry APIs (RegCreateKeyEx, RegOpenKeyEx, RegSetValueEx, RegQueryValueEx,
+	# RegDeleteValue, RegDeleteKey, RegCloseKey, HKEY_CLASSES_ROOT, KEY_ALL_ACCESS,
+	# REG_SZ). This file is for Windows file associations only.
 	list(APPEND src_files
-		./MISC/PluginsManager/PluginsManager.cpp
-		./MISC/Process/Processus.cpp
-		./MISC/RegExt/regExtDlg.cpp
 	)
 
-	# MISC - Exception handling (MiniDumper only - Win32Exception is Windows-specific)
-	list(APPEND src_files
-		./MISC/Exception/MiniDumper.cpp
-	)
+	# MISC - Exception handling
+	# Note: MiniDumper.cpp and Win32Exception.cpp are excluded from Linux build
+	# as they use Windows-specific APIs (shlwapi.h, Windows crash dump generation,
+	# dbghelp.h, SetUnhandledExceptionFilter, etc.).
+	# Linux exception handling is provided by the standard C++ runtime and Qt.
 
 	# ============================================================================
 	# Scintilla Component
 	# ============================================================================
+	# Note: Buffer.cpp is excluded from Linux build as it uses Windows-specific
+	# APIs (_wfopen, __except/EXCEPTION_EXECUTE_HANDLER, PathRemoveFileSpec,
+	# lstrcpy, lstrlen, ERROR_ACCESS_DENIED, invokeNppUacOp).
+	# The Qt version in QtCore/Buffer.cpp is used instead.
+	#
+	# Note: The following Windows-specific ScintillaComponent files are excluded
+	# from Linux build as they use Windows APIs. Qt alternatives are in QtControls/:
+	# - AutoCompletion.cpp - Windows UI APIs
+	# - columnEditor.cpp - Windows dialog APIs (GetDlgCtrlID, WM_PRINTCLIENT, etc.)
+	# - DocTabView.cpp - Windows tab control
+	# - FindReplaceDlg.cpp - Windows dialog (Qt alternative: QtControls/FindReplace/)
+	# - FunctionCallTip.cpp - Windows tooltips
+	# - GoToLineDlg.cpp - Windows dialog (Qt alternative: QtControls/GoToLine/)
+	# - Printer.cpp - Windows printing APIs
+	# - ScintillaEditView.cpp - Windows Scintilla integration
+	# - SmartHighlighter.cpp - Windows-specific
+	# - UserDefineDialog.cpp - Windows dialog (Qt alternative: QtControls/UserDefineDialog/)
+	# - xmlMatchedTagsHighlighter.cpp - Windows-specific
 	list(APPEND src_files
-		./ScintillaComponent/AutoCompletion.cpp
-		./ScintillaComponent/Buffer.cpp
-		./ScintillaComponent/columnEditor.cpp
-		./ScintillaComponent/DocTabView.cpp
-		./ScintillaComponent/FindReplaceDlg.cpp
-		./ScintillaComponent/FunctionCallTip.cpp
-		./ScintillaComponent/GoToLineDlg.cpp
-		./ScintillaComponent/Printer.cpp
 		./ScintillaComponent/ScintillaCtrls.cpp
-		./ScintillaComponent/ScintillaEditView.cpp
-		./ScintillaComponent/SmartHighlighter.cpp
-		./ScintillaComponent/UserDefineDialog.cpp
-		./ScintillaComponent/xmlMatchedTagsHighlighter.cpp
 	)
 
 	# ============================================================================
@@ -663,8 +677,6 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtControls/TreeView/TreeView.cpp
 		./QtControls/FindReplace/FindReplaceDlg.cpp
 		./QtControls/ShortcutMapper/ShortcutMapper.cpp
-		./QtControls/KDEStyle/KDEStyleManager.cpp
-		./QtControls/KDEStyle/KDEUtils.cpp
 		./QtControls/DockingManager/DockingManager.cpp
 		./QtControls/ListView/ListView.cpp
 		./QtControls/WordStyleDlg/WordStyleDlg.cpp
@@ -699,6 +711,21 @@ ELSEIF(UNIX AND NOT APPLE)
 				list(APPEND src_files
 					./Platform/KDE/KDEDialogs.cpp
 				)
+
+				# Add KDE Style integration (requires Qt6 D-Bus and KDE Frameworks)
+				list(APPEND src_files
+					./QtControls/KDEStyle/KDEStyleManager.cpp
+					./QtControls/KDEStyle/KDEUtils.cpp
+				)
+
+				# Find Qt6 D-Bus for KDE integration
+				find_package(Qt6 COMPONENTS DBus QUIET)
+				if(Qt6DBus_FOUND)
+					list(APPEND linux_LIBRARIES Qt6::DBus)
+					message(STATUS "Qt6 D-Bus found - enabling KDE D-Bus integration")
+				else()
+					message(WARNING "Qt6 D-Bus not found - KDE style integration may be limited")
+				endif()
 				list(APPEND projIncludDir
 					./Platform/KDE
 					${KF6CoreAddons_INCLUDE_DIRS}

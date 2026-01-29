@@ -16,4 +16,6 @@
 
 #pragma once
 
+#include <cstddef>
+
 void calc_sha_512(unsigned char hash[64], const void *input, size_t len);

@@ -15,6 +15,7 @@
 #include <cstring>
 #include <cerrno>
 #include <strings.h>  // For strcasecmp
+#include <string>
 
 using HWND = void*;
 using UINT = unsigned int;
@@ -607,6 +608,17 @@ const UINT CP_UTF8 = 65001;
 #define MAKELONG(a, b) ((LONG)(((WORD)((DWORD_PTR)(a) & 0xffff)) | ((DWORD)((WORD)((DWORD_PTR)(b) & 0xffff))) << 16))
 #define MAKEINTRESOURCE(i) ((wchar_t*)(uintptr_t)(i))
 
+// RGB color component extraction macros
+#ifndef GetRValue
+#define GetRValue(rgb) ((rgb) & 0xFF)
+#endif
+#ifndef GetGValue
+#define GetGValue(rgb) (((rgb) >> 8) & 0xFF)
+#endif
+#ifndef GetBValue
+#define GetBValue(rgb) (((rgb) >> 16) & 0xFF)
+#endif
+
 #define S_OK 0
 #define SUCCEEDED(hr) (((HRESULT)(hr)) >= 0)
 #define ERROR_SUCCESS 0L
@@ -645,14 +657,30 @@ const UINT CP_UTF8 = 65001;
 #define WH_CALLWNDPROCRET 12
 
 // Virtual keys
+#ifndef VK_DOWN
 #define VK_DOWN 0x28
+#endif
+#ifndef VK_UP
 #define VK_UP 0x26
+#endif
+#ifndef VK_LEFT
 #define VK_LEFT 0x25
+#endif
+#ifndef VK_RIGHT
 #define VK_RIGHT 0x27
+#endif
+#ifndef VK_HOME
 #define VK_HOME 0x24
+#endif
+#ifndef VK_END
 #define VK_END 0x23
+#endif
+#ifndef VK_PRIOR
 #define VK_PRIOR 0x21
+#endif
+#ifndef VK_NEXT
 #define VK_NEXT 0x22
+#endif
 #define VK_DELETE 0x2E
 #define VK_INSERT 0x2D
 #define VK_ESCAPE 0x1B
@@ -672,6 +700,42 @@ const UINT CP_UTF8 = 65001;
 #define VK_F10 0x79
 #define VK_F11 0x7A
 #define VK_F12 0x7B
+#ifndef VK_F13
+#define VK_F13 0x7C
+#endif
+#ifndef VK_F14
+#define VK_F14 0x7D
+#endif
+#ifndef VK_F15
+#define VK_F15 0x7E
+#endif
+#ifndef VK_F16
+#define VK_F16 0x7F
+#endif
+#ifndef VK_F17
+#define VK_F17 0x80
+#endif
+#ifndef VK_F18
+#define VK_F18 0x81
+#endif
+#ifndef VK_F19
+#define VK_F19 0x82
+#endif
+#ifndef VK_F20
+#define VK_F20 0x83
+#endif
+#ifndef VK_F21
+#define VK_F21 0x84
+#endif
+#ifndef VK_F22
+#define VK_F22 0x85
+#endif
+#ifndef VK_F23
+#define VK_F23 0x86
+#endif
+#ifndef VK_F24
+#define VK_F24 0x87
+#endif
 #define VK_ADD 0x6B
 #define VK_SUBTRACT 0x6D
 #define VK_DIVIDE 0x6F
@@ -1009,6 +1073,11 @@ inline int wsprintfW(wchar_t* buffer, const wchar_t* format, ...) {
     va_end(args);
     return result;
 }
+
+// Scintilla search flags
+#ifndef SCFIND_REGEXP_DOTMATCHESNL
+#define SCFIND_REGEXP_DOTMATCHESNL 0x10000000
+#endif
 
 // ListView macros
 inline BOOL ListView_SetColumn(HWND, int, const LVCOLUMN*) { return TRUE; }

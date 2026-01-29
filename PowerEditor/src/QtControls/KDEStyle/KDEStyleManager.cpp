@@ -364,9 +364,12 @@ qreal KDEStyleManager::getDevicePixelRatio() const
 
 void KDEStyleManager::applyHighDPISettings()
 {
-    // Set DPI for the application
+    // High DPI scaling is always enabled in Qt 6+, no need to set Qt::AA_EnableHighDpiScaling
+    // Qt::AA_UseHighDpiPixmaps is also deprecated as high DPI pixmaps are always used
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling, true);
     QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps, true);
+#endif
 
     // Apply font DPI
     if (_fontSettings.dpi > 0) {

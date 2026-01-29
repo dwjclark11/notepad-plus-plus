@@ -185,19 +185,19 @@ void TabBar::updateTabAppearance(int index)
             title = "* " + title;
             tabWidget->setTabText(index, title);
             if (_modifiedColour.isValid()) {
-                tabWidget->setTabTextColor(index, _modifiedColour);
+                tabWidget->tabBar()->setTabTextColor(index, _modifiedColour);
             }
             break;
         case FileChangeState::ModifiedAndUnsaved:
             title = "+ " + title;
             tabWidget->setTabText(index, title);
             if (_unsavedColour.isValid()) {
-                tabWidget->setTabTextColor(index, _unsavedColour);
+                tabWidget->tabBar()->setTabTextColor(index, _unsavedColour);
             }
             break;
         default:
             tabWidget->setTabText(index, title);
-            tabWidget->setTabTextColor(index, QColor());
+            tabWidget->tabBar()->setTabTextColor(index, QColor());
             break;
     }
 }
@@ -322,7 +322,7 @@ void TabBarPlus::setIndividualTabColour(int tabIndex, QColor colour)
     QTabWidget* tabWidget = getTabWidget();
     if (!tabWidget) return;
 
-    tabWidget->setTabTextColor(tabIndex, colour);
+    tabWidget->tabBar()->setTabTextColor(tabIndex, colour);
 }
 
 void TabBarPlus::mousePressEvent(QMouseEvent* event)

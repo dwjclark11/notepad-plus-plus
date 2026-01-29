@@ -36,9 +36,8 @@ namespace QtControls {
 // ============================================================================
 
 ClipboardHistoryPanel::ClipboardHistoryPanel(QWidget* parent)
-    : StaticDialog()
+    : StaticDialog(parent)
 {
-    _parent = parent;
     _clipboard = QApplication::clipboard();
 }
 

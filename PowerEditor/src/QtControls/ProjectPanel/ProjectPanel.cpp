@@ -92,7 +92,7 @@ void ProjectPanel::doDialog()
 
 void ProjectPanel::setupUI()
 {
-    _widget = new QWidget(_parent);
+    _widget = new QWidget(this);
     auto* layout = new QVBoxLayout(_widget);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(2);
@@ -419,7 +419,7 @@ void ProjectPanel::buildProjectXml(QXmlStreamWriter& writer, int itemId)
         NodeType type = getNodeType(childId);
 
         if (type == NodeType::File) {
-            QString filePath = _itemPaths.value(childId);
+            QString filePath = _itemPaths[childId];
             QString relativePath = getRelativePath(filePath);
             writer.writeStartElement("File");
             writer.writeAttribute("name", relativePath);
@@ -547,7 +547,8 @@ NodeType ProjectPanel::getNodeType(int itemId) const
     int childId = _treeView->getChildItem(itemId);
 
     // Check stored path - files have paths, folders don't
-    if (_itemPaths.contains(itemId) && !_itemPaths.value(itemId).isEmpty()) {
+    auto it = _itemPaths.find(itemId);
+    if (it != _itemPaths.end() && !it->second.isEmpty()) {
         // This is a file
         return NodeType::File;
     }
@@ -677,7 +678,7 @@ void ProjectPanel::onItemDoubleClicked(int itemId, int column)
 
     NodeType type = getNodeType(itemId);
     if (type == NodeType::File) {
-        QString filePath = _itemPaths.value(itemId);
+        QString filePath = _itemPaths[itemId];
         if (doesFileExist(filePath)) {
             openFile(filePath);
         } else {
@@ -1016,7 +1017,7 @@ void ProjectPanel::onModifyFilePath()
         return;
     }
 
-    QString currentPath = _itemPaths.value(selectedItem);
+    QString currentPath = _itemPaths[selectedItem];
 
     FileRelocalizerDlg dlg(_widget);
     if (dlg.doDialog(currentPath) == QDialog::Accepted) {
@@ -1050,7 +1051,7 @@ void ProjectPanel::onOpenSelectedFile()
 
     NodeType type = getNodeType(selectedItem);
     if (type == NodeType::File) {
-        QString filePath = _itemPaths.value(selectedItem);
+        QString filePath = _itemPaths[selectedItem];
         if (doesFileExist(filePath)) {
             openFile(filePath);
         }
@@ -1170,7 +1171,7 @@ FileRelocalizerDlg::~FileRelocalizerDlg() = default;
 
 void FileRelocalizerDlg::setupUI()
 {
-    _widget = new QDialog(_parent);
+    _widget = new QDialog(this);
     _widget->setWindowTitle(tr("Modify File Path"));
 
     auto* layout = new QVBoxLayout(_widget);

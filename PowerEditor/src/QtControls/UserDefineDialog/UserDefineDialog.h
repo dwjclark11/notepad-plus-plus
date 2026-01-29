@@ -23,7 +23,7 @@ class QTabWidget;
 class QLabel;
 class QGroupBox;
 class QRadioButton;
-class QTextEdit;
+class QPlainTextEdit;
 class QSpinBox;
 class QColorDialog;
 
@@ -112,9 +112,15 @@ class QColorDialog;
 #define SCE_USER_MASK_NESTING_KEYWORD6      0x8000
 #define SCE_USER_MASK_NESTING_KEYWORD7      0x10000
 #define SCE_USER_MASK_NESTING_KEYWORD8      0x20000
+#ifndef SCE_USER_MASK_NESTING_OPERATORS1
 #define SCE_USER_MASK_NESTING_OPERATORS1    0x40000
+#endif
+#ifndef SCE_USER_MASK_NESTING_OPERATORS2
 #define SCE_USER_MASK_NESTING_OPERATORS2    0x80000
+#endif
+#ifndef SCE_USER_MASK_NESTING_NUMBERS
 #define SCE_USER_MASK_NESTING_NUMBERS       0x100000
+#endif
 
 // Font styles
 #define FONTSTYLE_NONE      0
@@ -159,6 +165,11 @@ public:
                       int& fontSize, QString& fontName, int& colorStyle, int& nesting) const;
 
     int exec() override;
+    bool run_dlgProc(QEvent* event) override {
+        // Handle events or just return false
+        (void)event;
+        return false;
+    }
 
 private slots:
     void onFgColorClicked();
@@ -217,6 +228,11 @@ public:
 
     QString getText() const;
     int exec() override;
+    bool run_dlgProc(QEvent* event) override {
+        // Handle events or just return false
+        (void)event;
+        return false;
+    }
 
 private slots:
     void onTextChanged(const QString& text);
@@ -371,7 +387,7 @@ private:
     QTabWidget* _mainTabs = nullptr;
 
     // Keywords tab
-    QTextEdit* _keywordLists[8];
+    QPlainTextEdit* _keywordLists[8];
     QCheckBox* _prefixChecks[8];
     QPushButton* _keywordStyleBtns[8];
 

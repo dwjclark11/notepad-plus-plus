@@ -403,8 +403,8 @@ FindOptions FindReplaceDlg::getCurrentOptions() const {
     FindOptions opt;
 
     // Search text
-    opt.str2Search = getSearchText().toStdWString();
-    opt.str4Replace = getReplaceText().toStdWString();
+    opt.str2Search = getSearchText();
+    opt.str4Replace = getReplaceText();
 
     // Match options
     opt.isMatchCase = _matchCaseCheck && _matchCaseCheck->isChecked();
@@ -435,10 +435,10 @@ FindOptions FindReplaceDlg::getCurrentOptions() const {
 
     // Filters and directory
     if (_filtersCombo) {
-        opt.filters = _filtersCombo->currentText().toStdWString();
+        opt.filters = _filtersCombo->currentText();
     }
     if (_directoryCombo) {
-        opt.directory = _directoryCombo->currentText().toStdWString();
+        opt.directory = _directoryCombo->currentText();
     }
 
     return opt;

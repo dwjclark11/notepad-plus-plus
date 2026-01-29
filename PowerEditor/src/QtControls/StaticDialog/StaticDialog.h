@@ -20,6 +20,7 @@ class StaticDialog : public QDialog
     Q_OBJECT
 
 public:
+    explicit StaticDialog(QWidget* parent = nullptr);
     ~StaticDialog() override;
 
     virtual void create(const QString& title = QString(), bool isRTL = false);
@@ -50,9 +51,13 @@ public:
     void destroy();
 
 protected:
+    QWidget* _widget = nullptr;
     QRect _rc{};
 
     QDialog* getDialog() const { return const_cast<StaticDialog*>(this); }
+
+    virtual void setupUI() {}
+    virtual void connectSignals() {}
 
     static bool dlgProc(QWidget* hwnd, QEvent* event);
     virtual bool run_dlgProc(QEvent* event) = 0;

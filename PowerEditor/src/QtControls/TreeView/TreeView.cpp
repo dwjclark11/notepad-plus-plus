@@ -11,9 +11,9 @@
 
 namespace QtControls {
 
-bool TreeView::init(QWidget* parent)
+void TreeView::init(QWidget* parent)
 {
-    if (!parent) return false;
+    if (!parent) return;
 
     _parent = parent;
 
@@ -41,8 +41,6 @@ bool TreeView::init(QWidget* parent)
             this, &TreeView::onCurrentItemChanged);
     connect(treeWidget->selectionModel(), &QItemSelectionModel::selectionChanged,
             this, &TreeView::onItemSelectionChanged);
-
-    return true;
 }
 
 void TreeView::destroy()
