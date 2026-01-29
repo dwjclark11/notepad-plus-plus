@@ -368,7 +368,7 @@ void NppCommands::registerEditCommands() {
     _handler.registerCommand(CMD_EDIT_UPPERCASE, [this]() { editUpperCase(); });
     _handler.registerCommand(CMD_EDIT_LOWERCASE, [this]() { editLowerCase(); });
     _handler.registerCommand(CMD_EDIT_BLOCK_COMMENT, [this]() { editBlockComment(); });
-    _handler.registerCommand(CMD_EDIT_BLOCK_COMMENT_SET, [this]() { editBlockCommentSet(); });
+    _handler.registerCommand(IDM_EDIT_BLOCK_COMMENT_SET, [this]() { editBlockCommentSet(); });
     _handler.registerCommand(CMD_EDIT_BLOCK_UNCOMMENT, [this]() { editBlockUncomment(); });
     _handler.registerCommand(CMD_EDIT_STREAM_COMMENT, [this]() { editStreamComment(); });
     _handler.registerCommand(CMD_EDIT_STREAM_UNCOMMENT, [this]() { editStreamUncomment(); });
@@ -603,25 +603,25 @@ void NppCommands::editLowerCase() {
 
 void NppCommands::editToggleComment() {
     if (_pNotepad_plus) {
-        _pNotepad_plus->doBlockComment(cm_toggle);
+        _pNotepad_plus->doBlockComment(Notepad_plus::cm_toggle);
     }
 }
 
 void NppCommands::editBlockComment() {
     if (_pNotepad_plus) {
-        _pNotepad_plus->doBlockComment(cm_toggle);
+        _pNotepad_plus->doBlockComment(Notepad_plus::cm_toggle);
     }
 }
 
 void NppCommands::editBlockCommentSet() {
     if (_pNotepad_plus) {
-        _pNotepad_plus->doBlockComment(cm_comment);
+        _pNotepad_plus->doBlockComment(Notepad_plus::cm_comment);
     }
 }
 
 void NppCommands::editBlockUncomment() {
     if (_pNotepad_plus) {
-        _pNotepad_plus->doBlockComment(cm_uncomment);
+        _pNotepad_plus->doBlockComment(Notepad_plus::cm_uncomment);
     }
 }
 

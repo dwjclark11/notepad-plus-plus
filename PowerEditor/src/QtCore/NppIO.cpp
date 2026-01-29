@@ -96,13 +96,13 @@ NppIO::NppIO(QObject* parent)
     // Load recent files from settings
     loadRecentFiles();
 
-    setNppIO(this);
+    ::setNppIO(this);
 }
 
 NppIO::~NppIO() {
     stopFileChangeDetection();
     saveRecentFiles();
-    setNppIO(nullptr);
+    ::setNppIO(nullptr);
 }
 
 void NppIO::setEditView(ScintillaEditView* editView) {
@@ -469,7 +469,7 @@ bool NppIO::fileCloseAll(bool promptIfUnsaved) {
         }
 
         int ret = QMessageBox::question(nullptr, tr("Save All"), message,
-            QMessageBox::SaveAll | QMessageBox::DiscardAll | QMessageBox::Cancel);
+            QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel);
 
         if (ret == QMessageBox::Cancel) {
             return false;

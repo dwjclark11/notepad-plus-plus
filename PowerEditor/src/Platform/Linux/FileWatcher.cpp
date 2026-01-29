@@ -15,6 +15,7 @@
 #include <QDateTime>
 #include <map>
 #include <mutex>
+#include <queue>
 #include <set>
 #include <sys/inotify.h>
 #include <unistd.h>
@@ -36,7 +37,7 @@ namespace {
 // ============================================================================
 // Linux Implementation of IFileWatcher using QFileSystemWatcher
 // ============================================================================
-class FileWatcherLinux : public IFileWatcher, public QObject {
+class FileWatcherLinux : public QObject, public IFileWatcher {
     Q_OBJECT
 
 public:
@@ -266,7 +267,7 @@ public:
 
     bool updateWatchOptions(FileWatchHandle handle, const FileWatchOptions& options) override {
         // Requires unwatching and re-watching with new options
-        std::lock_guard<std::mutex> lock(_mutex);
+        std::unique_lock<std::mutex> lock(_mutex);
 
         auto it = _directoryWatches.find(handle);
         if (it == _directoryWatches.end()) {

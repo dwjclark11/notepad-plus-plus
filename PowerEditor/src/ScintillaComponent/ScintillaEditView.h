@@ -277,7 +277,9 @@ public:
 
 		if (!_refCount && _SciInit)
 		{
+#ifdef _WIN32
 			Scintilla_ReleaseResources();
+#endif
 		}
 	}
 

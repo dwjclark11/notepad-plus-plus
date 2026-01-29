@@ -22,7 +22,20 @@
 
 #include <array>
 #include <assert.h>
+
+#ifdef _WIN32
 #include <shlwapi.h>
+#else
+// Linux implementation of PathFindFileName
+inline const wchar_t* PathFindFileName(const wchar_t* path) {
+    if (!path) return nullptr;
+    const wchar_t* lastSlash = wcsrchr(path, L'/');
+    const wchar_t* lastBackslash = wcsrchr(path, L'\\');
+    const wchar_t* lastSep = lastSlash > lastBackslash ? lastSlash : lastBackslash;
+    return lastSep ? lastSep + 1 : path;
+}
+#endif
+
 #include "Common.h"
 #include "StaticDialog.h"
 #include "NppDarkMode.h"

@@ -36,9 +36,20 @@ using HBITMAP = void*;
 using HICON = void*;
 using HINSTANCE = void*;
 using ULONG = unsigned long;
+using UCHAR = unsigned char;
 #define TRUE 1
 #define FALSE 0
 #define WM_USER 0x0400
+
+// __cdecl macro (empty for Linux - uses default C calling convention)
+#ifndef __cdecl
+#define __cdecl
+#endif
+
+// __declspec(dllexport) for Linux visibility attribute
+#ifndef __declspec
+#define __declspec(x) __attribute__((visibility("default")))
+#endif
 #endif
 
 enum LangType {L_TEXT, L_PHP , L_C, L_CPP, L_CS, L_OBJC, L_JAVA, L_RC,\

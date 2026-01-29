@@ -454,7 +454,7 @@ ELSEIF(UNIX AND NOT APPLE)
 	message(STATUS "Configuring Notepad++ for Linux")
 
 	# Find Qt6
-	find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network)
+	find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network PrintSupport)
 	if(Qt6_FOUND)
 		message(STATUS "Qt6 found: ${Qt6_VERSION}")
 	endif()
@@ -662,6 +662,7 @@ ELSEIF(UNIX AND NOT APPLE)
 		Qt6::Widgets
 		Qt6::Gui
 		Qt6::Network
+		Qt6::PrintSupport
 		OpenSSL::Crypto
 		pthread
 		dl

@@ -20,13 +20,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
-#include <cstdint>
-using UINT = unsigned int;
-using WPARAM = uintptr_t;
-using LPARAM = intptr_t;
-using LRESULT = intptr_t;
-using HWND = void*;
-#define WM_USER 0x0400
+#include "Common.h"
 #endif
 
 #ifndef WM_DPICHANGED

@@ -14,6 +14,7 @@
 #include <QFile>
 #include <QTimer>
 #include <QDebug>
+#include <QDateTime>
 
 namespace PlatformLayer {
 
@@ -56,7 +57,8 @@ std::wstring ClipboardData::toWString() const {
 }
 
 // Linux implementation using Qt
-class ClipboardLinux : public IClipboard {
+class ClipboardLinux : public QObject, public IClipboard {
+    Q_OBJECT
 public:
     ClipboardLinux() : _monitoring(false), _lastSequenceNumber(0) {
         _clipboard = QApplication::clipboard();
@@ -477,7 +479,7 @@ std::wstring binaryToDisplay(const std::vector<uint8_t>& data, size_t maxLength)
     size_t count = std::min(data.size(), maxLength);
     for (size_t i = 0; i < count; ++i) {
         wchar_t buf[4];
-        swprintf(buf, L"%02X ", data[i]);
+        swprintf(buf, 4, L"%02X ", data[i]);
         result += buf;
     }
     if (data.size() > maxLength) {
@@ -514,3 +516,5 @@ std::string extractTextFromHtml(const std::string& html) {
 } // namespace ClipboardUtils
 
 } // namespace PlatformLayer
+
+#include "Clipboard.moc"

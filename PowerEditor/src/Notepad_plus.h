@@ -260,6 +260,18 @@ public:
 		return _pEditView->getCurrentBuffer();
 	}
 
+	ScintillaEditView* getCurrentEditView()	{
+		return _pEditView;
+	}
+
+	ScintillaEditView* getMainEditView()	{
+		return &_mainEditView;
+	}
+
+	ScintillaEditView* getSubEditView()	{
+		return &_subEditView;
+	}
+
 	void launchDocumentBackupTask();
 	int getQuoteIndexFrom(const wchar_t* quoter) const;
 	void showQuoteFromIndex(int index) const;
@@ -277,6 +289,69 @@ public:
 	void refreshInternalPanelIcons();
 
 	void changeReadOnlyUserModeForAllOpenedTabs(const bool ro);
+
+	// Methods made public for Qt implementation
+	void launchFileBrowser(const std::vector<std::wstring> & folders, const std::wstring& selectedItemPath, bool fromScratch = false);
+	void launchDocumentListPanel(bool changeFromBtnCmd = false);
+	void launchDocMap();
+	void launchFunctionList();
+	void launchProjectPanel(int cmdID, ProjectPanel ** pProjPanel, int panelID);
+
+	// Find/Replace dialog access for Qt implementation
+	FindReplaceDlg& getFindReplaceDlg() { return _findReplaceDlg; }
+	FindIncrementDlg& getIncrementFindDlg() { return _incrementFindDlg; }
+
+	// Find/Replace operations for Qt implementation
+	void showFindReplaceDlg(int dlgType);
+	void findNext(int direction);
+	void processFindNext(const wchar_t* txt2find, const FindOption* options);
+	void setSearchText(const wchar_t* txt2find);
+	void showIncrementalFindDlg();
+	void gotoNextFoundResult(int direction = 0);
+	void showGoToLineDlg();
+	void showFindCharsInRangeDlg();
+	void markAll(const wchar_t* txt2find, int styleID);
+	void showSummary();
+	void toggleMonitoring();
+	void toggleDocumentList();
+	void toggleDocumentMap();
+	void toggleFunctionList();
+	void toggleFileBrowser();
+	void toggleProjectPanel(int index);
+	void switchToProjectPanel(int index);
+	void switchToFileBrowser();
+	void switchToFunctionList();
+	void switchToDocumentList();
+	void moveTabForward();
+	void moveTabBackward();
+	void startMacroRecording();
+	void stopMacroRecording();
+	void macroPlayback();
+	void showRunMacroDlg();
+	void saveCurrentMacro();
+	void setEncoding(int encoding);
+	void showUserDefineDlg();
+	void showPreferenceDlg();
+	void showRunDlg();
+	void wrapAllEditors(bool isWrapped);
+	void showIndentGuide(bool show);
+	void showWhiteSpace(bool show);
+	bool isWhiteSpaceShown();
+	void showEOL(bool show);
+	bool isEOLShown();
+	void showInvisibleChars(bool show);
+	bool isAllCharactersShown();
+	void showNpc(bool show);
+	bool isNpcShown();
+	void showCcUniEol(bool show);
+	bool isCcUniEolShown();
+	void toggleSyncScrollV();
+	void toggleSyncScrollH();
+
+	// View access for Qt implementation
+	DocTabView* getMainDocTab() { return &_mainDocTab; }
+	DocTabView* getSubDocTab() { return &_subDocTab; }
+	DocTabView* getCurrentDocTab() { return _pDocTab; }
 
 private:
 	Notepad_plus_Window* _pPublicInterface = nullptr;
@@ -624,13 +699,8 @@ private:
 	void removeDuplicateLines();
 	void launchAnsiCharPanel();
 	void launchClipboardHistoryPanel();
-	void launchDocumentListPanel(bool changeFromBtnCmd = false);
 	void changeDocumentListIconSet(bool changeFromBtnCmd);
 	void checkProjectMenuItem();
-	void launchProjectPanel(int cmdID, ProjectPanel ** pProjPanel, int panelID);
-	void launchDocMap();
-	void launchFunctionList();
-	void launchFileBrowser(const std::vector<std::wstring> & folders, const std::wstring& selectedItemPath, bool fromScratch = false);
 	void showAllQuotes() const;
 	static DWORD WINAPI threadTextPlayer(void *text2display);
 	static DWORD WINAPI threadTextTroller(void *params);

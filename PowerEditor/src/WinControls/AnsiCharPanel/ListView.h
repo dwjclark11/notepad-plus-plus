@@ -20,7 +20,9 @@
 #include "Window.h"
 #include "Common.h"
 
+#ifdef _WIN32
 #include <commctrl.h>
+#endif
 
 struct columnInfo {
 	size_t _width;

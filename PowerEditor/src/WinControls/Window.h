@@ -20,34 +20,8 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
-#include <cstdint>
-using HWND = void*;
-using HINSTANCE = void*;
-using WPARAM = uintptr_t;
-using LPARAM = intptr_t;
-using LRESULT = intptr_t;
-using UINT = unsigned int;
-using BOOL = int;
-
-struct RECT {
-    long left;
-    long top;
-    long right;
-    long bottom;
-};
-
-#define SW_SHOW 1
-#define SW_HIDE 0
-inline void ShowWindow(HWND, int) {}
-inline void MoveWindow(HWND, int, int, int, int, BOOL) {}
-inline int InvalidateRect(HWND, const void*, BOOL) { return 0; }
-inline int UpdateWindow(HWND) { return 0; }
-inline int GetClientRect(HWND, RECT*) { return 0; }
-inline int GetWindowRect(HWND, RECT*) { return 0; }
-inline BOOL IsWindowVisible(HWND) { return FALSE; }
-inline void SetFocus(HWND) {}
-inline void redraw() {}
-#endif
+#include "../MISC/Common/Common.h"
+#endif // not _WIN32
 
 class Window
 {

@@ -41,6 +41,7 @@ struct ProcessResult {
 
 // Process information for running processes
 struct ProcessInfo {
+    bool success = false;            // Whether the process was started successfully
     uint32_t pid = 0;
     std::wstring command;
     void* nativeHandle = nullptr;    // Platform-specific handle

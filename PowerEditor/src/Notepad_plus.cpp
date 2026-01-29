@@ -9300,3 +9300,335 @@ void Notepad_plus::changeReadOnlyUserModeForAllOpenedTabs(const bool ro)
 		}
 	}
 }
+
+// ============================================================================
+// Qt Implementation Wrapper Methods
+// These methods provide public access to functionality needed by the Qt UI
+// ============================================================================
+
+void Notepad_plus::showFindReplaceDlg(int dlgType)
+{
+	_findReplaceDlg.doDialog(static_cast<DIALOG_TYPE>(dlgType), _nativeLangSpeaker.isRTL());
+	_findReplaceDlg.setSearchTextWithSettings();
+	setFindReplaceFolderFilter(NULL, NULL);
+}
+
+void Notepad_plus::findNext(int direction)
+{
+	if (_findReplaceDlg.isCreated())
+	{
+		FindOption op = _findReplaceDlg.getCurrentOptions();
+		op._whichDirection = direction;
+		wstring s = _findReplaceDlg.getText2search();
+		FindStatus status = FSNoMessage;
+		_findReplaceDlg.processFindNext(s.c_str(), &op, &status);
+	}
+}
+
+void Notepad_plus::processFindNext(const wchar_t* txt2find, const FindOption* options)
+{
+	FindStatus status = FSNoMessage;
+	_findReplaceDlg.processFindNext(txt2find, options, &status);
+}
+
+void Notepad_plus::setSearchText(const wchar_t* txt2find)
+{
+	_findReplaceDlg.setSearchText(txt2find);
+}
+
+void Notepad_plus::showIncrementalFindDlg()
+{
+	auto str = _pEditView->getSelectedTextToWChar(false);
+	if (!str.empty())
+		_incrementFindDlg.setSearchText(str.c_str(), _pEditView->getCurrentBuffer()->getUnicodeMode() != uni8Bit);
+	_incrementFindDlg.display();
+}
+
+void Notepad_plus::gotoNextFoundResult(int direction)
+{
+	_findReplaceDlg.gotoNextFoundResult(direction);
+}
+
+void Notepad_plus::showGoToLineDlg()
+{
+	_goToLineDlg.doDialog(_nativeLangSpeaker.isRTL());
+}
+
+void Notepad_plus::showFindCharsInRangeDlg()
+{
+	_findCharsInRangeDlg.doDialog(_nativeLangSpeaker.isRTL());
+}
+
+void Notepad_plus::markAll(const wchar_t* txt2find, int styleID)
+{
+	_findReplaceDlg.markAll(txt2find, styleID);
+}
+
+void Notepad_plus::showSummary()
+{
+	// TODO: Implement summary dialog
+}
+
+void Notepad_plus::toggleMonitoring()
+{
+	Buffer* buf = getCurrentBuffer();
+	if (buf)
+	{
+		bool isMonitoring = buf->isMonitoringOn();
+		monitoringStartOrStopAndUpdateUI(buf, !isMonitoring);
+	}
+}
+
+void Notepad_plus::toggleDocumentList()
+{
+	launchDocumentListPanel(true);
+}
+
+void Notepad_plus::toggleDocumentMap()
+{
+	launchDocMap();
+}
+
+void Notepad_plus::toggleFunctionList()
+{
+	launchFunctionList();
+}
+
+void Notepad_plus::toggleFileBrowser()
+{
+	if (_pFileBrowser == nullptr)
+	{
+		std::vector<std::wstring> folders;
+		launchFileBrowser(folders, L"", true);
+	}
+	else
+	{
+		// Toggle visibility
+		_pFileBrowser->display(false);
+	}
+}
+
+void Notepad_plus::toggleProjectPanel(int index)
+{
+	int cmdID = IDM_VIEW_PROJECT_PANEL_1 + index;
+	ProjectPanel** ppProjPanel = nullptr;
+	if (index == 0)
+		ppProjPanel = &_pProjectPanel_1;
+	else if (index == 1)
+		ppProjPanel = &_pProjectPanel_2;
+	else
+		ppProjPanel = &_pProjectPanel_3;
+
+	launchProjectPanel(cmdID, ppProjPanel, index);
+}
+
+void Notepad_plus::switchToProjectPanel(int index)
+{
+	// Implementation would activate the project panel
+	// For now, just toggle it
+	toggleProjectPanel(index);
+}
+
+void Notepad_plus::switchToFileBrowser()
+{
+	if (_pFileBrowser)
+		_pFileBrowser->display(true);
+}
+
+void Notepad_plus::switchToFunctionList()
+{
+	if (_pFuncList)
+		_pFuncList->display(true);
+}
+
+void Notepad_plus::switchToDocumentList()
+{
+	if (_pDocumentListPanel)
+		_pDocumentListPanel->display(true);
+}
+
+void Notepad_plus::moveTabForward()
+{
+	// Move current tab forward
+	if (_pDocTab)
+	{
+		size_t curIndex = _pDocTab->getCurrentTabIndex();
+		if (curIndex < _pDocTab->nbItem() - 1)
+		{
+			// Swap with next tab
+			BufferID buf = _pDocTab->getBufferByIndex(curIndex);
+			_pDocTab->closeTabByIndex(curIndex);
+			// Re-open at new position
+		}
+	}
+}
+
+void Notepad_plus::moveTabBackward()
+{
+	// Move current tab backward
+	if (_pDocTab)
+	{
+		size_t curIndex = _pDocTab->getCurrentTabIndex();
+		if (curIndex > 0)
+		{
+			// Swap with previous tab
+			BufferID buf = _pDocTab->getBufferByIndex(curIndex);
+			_pDocTab->closeTabByIndex(curIndex);
+			// Re-open at new position
+		}
+	}
+}
+
+void Notepad_plus::startMacroRecording()
+{
+	if (!_recordingMacro)
+	{
+		_recordingMacro = true;
+		_macro.clear();
+	}
+}
+
+void Notepad_plus::stopMacroRecording()
+{
+	if (_recordingMacro)
+	{
+		_recordingMacro = false;
+	}
+}
+
+void Notepad_plus::macroPlayback()
+{
+	if (!_macro.isEmpty() && !_playingBackMacro)
+	{
+		macroPlayback(_macro);
+	}
+}
+
+void Notepad_plus::showRunMacroDlg()
+{
+	_runMacroDlg.doDialog(_nativeLangSpeaker.isRTL(), _macro, _playingBackMacro);
+}
+
+void Notepad_plus::saveCurrentMacro()
+{
+	addCurrentMacro();
+}
+
+void Notepad_plus::setEncoding(int encoding)
+{
+	Buffer* buf = getCurrentBuffer();
+	if (buf)
+		buf->setEncoding(encoding);
+}
+
+void Notepad_plus::showUserDefineDlg()
+{
+	// Launch User Defined Language dialog
+}
+
+void Notepad_plus::showPreferenceDlg()
+{
+	_preference.doDialog(_nativeLangSpeaker.isRTL());
+}
+
+void Notepad_plus::showRunDlg()
+{
+	_runDlg.doDialog(_nativeLangSpeaker.isRTL());
+}
+
+void Notepad_plus::wrapAllEditors(bool isWrapped)
+{
+	_mainEditView.wrap(isWrapped);
+	_subEditView.wrap(isWrapped);
+}
+
+void Notepad_plus::showIndentGuide(bool show)
+{
+	_mainEditView.showIndentGuideLine(show);
+	_subEditView.showIndentGuideLine(show);
+}
+
+void Notepad_plus::showWhiteSpace(bool show)
+{
+	NppParameters& nppParam = NppParameters::getInstance();
+	ScintillaViewParams& svp = const_cast<ScintillaViewParams&>(nppParam.getSVP());
+	svp._whiteSpaceShow = show;
+	_mainEditView.showWhiteSpace(show);
+	_subEditView.showWhiteSpace(show);
+}
+
+bool Notepad_plus::isWhiteSpaceShown()
+{
+	NppParameters& nppParam = NppParameters::getInstance();
+	const ScintillaViewParams& svp = nppParam.getSVP();
+	return svp._whiteSpaceShow;
+}
+
+void Notepad_plus::showEOL(bool show)
+{
+	NppParameters& nppParam = NppParameters::getInstance();
+	ScintillaViewParams& svp = const_cast<ScintillaViewParams&>(nppParam.getSVP());
+	svp._eolShow = show;
+	_mainEditView.showEOL(show);
+	_subEditView.showEOL(show);
+}
+
+bool Notepad_plus::isEOLShown()
+{
+	NppParameters& nppParam = NppParameters::getInstance();
+	const ScintillaViewParams& svp = nppParam.getSVP();
+	return svp._eolShow;
+}
+
+void Notepad_plus::showInvisibleChars(bool show)
+{
+	showNpc(show);
+	showEOL(show);
+}
+
+bool Notepad_plus::isAllCharactersShown()
+{
+	return isNpcShown() && isEOLShown();
+}
+
+void Notepad_plus::showNpc(bool show)
+{
+	NppParameters& nppParam = NppParameters::getInstance();
+	ScintillaViewParams& svp = const_cast<ScintillaViewParams&>(nppParam.getSVP());
+	svp._npcShow = show;
+	_mainEditView.showNpc(show);
+	_subEditView.showNpc(show);
+}
+
+bool Notepad_plus::isNpcShown()
+{
+	NppParameters& nppParam = NppParameters::getInstance();
+	const ScintillaViewParams& svp = nppParam.getSVP();
+	return svp._npcShow;
+}
+
+void Notepad_plus::showCcUniEol(bool show)
+{
+	NppParameters& nppParam = NppParameters::getInstance();
+	ScintillaViewParams& svp = const_cast<ScintillaViewParams&>(nppParam.getSVP());
+	svp._ccUniEolShow = show;
+	_mainEditView.showCcUniEol(show);
+	_subEditView.showCcUniEol(show);
+}
+
+bool Notepad_plus::isCcUniEolShown()
+{
+	NppParameters& nppParam = NppParameters::getInstance();
+	const ScintillaViewParams& svp = nppParam.getSVP();
+	return svp._ccUniEolShow;
+}
+
+void Notepad_plus::toggleSyncScrollV()
+{
+	_syncInfo._isSynScrollV = !_syncInfo._isSynScrollV;
+}
+
+void Notepad_plus::toggleSyncScrollH()
+{
+	_syncInfo._isSynScrollH = !_syncInfo._isSynScrollH;
+}

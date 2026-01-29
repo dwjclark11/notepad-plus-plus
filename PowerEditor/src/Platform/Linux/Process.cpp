@@ -256,9 +256,25 @@ public:
             QString program;
             QStringList arguments;
 
-            // Try to determine the right application
+            // Try to determine the right application using xdg-mime
             QMimeType mimeType = QMimeDatabase().mimeTypeForFile(target);
-            QString defaultApp = mimeType.defaultApplication();
+            QString defaultApp;
+
+            // Query the default application using xdg-mime
+            QProcess mimeQuery;
+            mimeQuery.start("xdg-mime", QStringList() << "query" << "default" << mimeType.name());
+            if (mimeQuery.waitForFinished(5000)) {
+                QByteArray output = mimeQuery.readAllStandardOutput().trimmed();
+                if (!output.isEmpty()) {
+                    // Convert .desktop file to executable name (simplified)
+                    QString desktopFile = QString::fromUtf8(output);
+                    // Remove .desktop extension
+                    if (desktopFile.endsWith(".desktop")) {
+                        desktopFile.chop(8); // Remove ".desktop"
+                    }
+                    defaultApp = desktopFile;
+                }
+            }
 
             if (!defaultApp.isEmpty()) {
                 program = "pkexec";

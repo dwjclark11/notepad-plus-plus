@@ -36,7 +36,9 @@
 #define REBAR_BAR_TOOLBAR		0
 #define REBAR_BAR_SEARCH		1
 
+#ifndef TOOLBAR_STATUS_TYPE_DEFINED
 enum toolBarStatusType {TB_SMALL, TB_LARGE, TB_SMALL2, TB_LARGE2, TB_STANDARD};
+#endif
 
 
 struct iconLocator {

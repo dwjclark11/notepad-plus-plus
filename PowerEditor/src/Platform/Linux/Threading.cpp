@@ -151,13 +151,18 @@ uint32_t Thread::hardwareConcurrency() {
     return std::thread::hardware_concurrency();
 }
 
-// Mutex implementation using std::mutex (header-only in Threading.h)
-Mutex::Mutex() : _impl(nullptr) {}
+// Mutex implementation using std::mutex
+class Mutex::Impl {
+public:
+    std::mutex _mutex;
+};
+
+Mutex::Mutex() : _impl(std::make_unique<Impl>()) {}
 Mutex::~Mutex() = default;
-void Mutex::lock() {}
-bool Mutex::tryLock() { return true; }
-void Mutex::unlock() {}
-void* Mutex::nativeHandle() { return nullptr; }
+void Mutex::lock() { _impl->_mutex.lock(); }
+bool Mutex::tryLock() { return _impl->_mutex.try_lock(); }
+void Mutex::unlock() { _impl->_mutex.unlock(); }
+void* Mutex::nativeHandle() { return reinterpret_cast<void*>(&_impl->_mutex); }
 
 // RecursiveMutex implementation (header-only in Threading.h)
 RecursiveMutex::RecursiveMutex() = default;

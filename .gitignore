@@ -173,3 +173,4 @@ lexilla/build/
 
 # Claude local settings
 .claude/
+/build_test

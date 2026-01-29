@@ -85,6 +85,10 @@ public:
     static void yield();
     static uint64_t currentThreadId();
     static uint32_t hardwareConcurrency();
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> _impl;
 };
 
 // ============================================================================

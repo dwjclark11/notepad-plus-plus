@@ -14,6 +14,7 @@
 #include <QtCore/QXmlStreamReader>
 #include <QtCore/QXmlStreamWriter>
 #include <QtCore/QStringList>
+#include <QtCore/QFile>
 #include <fstream>
 #include <cstdlib>
 #include <pwd.h>
@@ -143,10 +144,10 @@ public:
     // XML Configuration
     bool saveConfig() override {
         std::wstring configPath = getSettingsDir() + L"/config.xml";
-        std::string utf8Path = wstringToUtf8(configPath);
+        QString qtPath = wstringToQString(configPath);
 
-        std::ofstream file(utf8Path);
-        if (!file.is_open()) return false;
+        QFile file(qtPath);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return false;
 
         QXmlStreamWriter writer(&file);
         writer.setAutoFormatting(true);
@@ -170,7 +171,7 @@ public:
 
         if (!IFileSystem::getInstance().fileExists(configPath)) {
             // Create default config
-            createDefaultConfig(configPath);
+            SettingsUtils::createDefaultConfig(configPath);
             return true;
         }
 
@@ -236,10 +237,10 @@ public:
     // Session Management
     bool saveSession(const SessionInfo& session) override {
         std::wstring sessionPath = getSettingsDir() + L"/session.xml";
-        std::string utf8Path = wstringToUtf8(sessionPath);
+        QString qtPath = wstringToQString(sessionPath);
 
-        std::ofstream file(utf8Path);
-        if (!file.is_open()) return false;
+        QFile file(qtPath);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return false;
 
         QXmlStreamWriter writer(&file);
         writer.setAutoFormatting(true);
