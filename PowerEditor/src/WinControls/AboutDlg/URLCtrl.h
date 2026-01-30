@@ -20,6 +20,8 @@
 #include "Window.h"
 #include <string>
 
+#ifdef _WIN32
+
 class URLCtrl : public Window {
 public:
     void create(HWND itemHandle, const wchar_t * link, COLORREF linkColor = RGB(0,0,255));
@@ -43,3 +45,12 @@ protected :
 	static LRESULT CALLBACK URLCtrlProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 	LRESULT runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 };
+
+#else
+
+namespace QtControls {
+	class URLCtrl;
+}
+using QtControls::URLCtrl;
+
+#endif

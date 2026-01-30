@@ -14,9 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #pragma once
+
+#ifndef _WIN32
+// On Linux, use the QtControls version
+#include "../../QtControls/ContextMenu/ContextMenu.h"
+#else
+
 #include "Common.h"
-
-
 
 struct MenuItemUnit final
 {
@@ -70,3 +74,5 @@ private:
 	HMENU _hMenu = NULL;
 	std::vector<HMENU> _subMenus;
 };
+
+#endif // _WIN32

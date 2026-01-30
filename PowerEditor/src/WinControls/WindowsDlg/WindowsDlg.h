@@ -49,6 +49,7 @@ struct NMWINDLG : public NMHDR {
 
 extern const UINT WDN_NOTIFY;
 
+#ifdef _WIN32
 
 class WindowsDlg : public SizeableDlg
 {
@@ -137,3 +138,14 @@ private:
 	HMENU _hMenuList = nullptr;
 	UINT _limitPrev = 0;
 };
+
+#else
+// Linux stubs - empty implementations
+namespace QtControls {
+	class WindowsDlg {};
+	class WindowsMenu {};
+}
+using QtControls::WindowsDlg;
+using QtControls::WindowsMenu;
+
+#endif

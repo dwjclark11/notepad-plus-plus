@@ -148,13 +148,13 @@ class GlobalMappers
 	        temp[L"DELIMINER1"]           = SCE_USER_STYLE_DELIMITER1;
 	        temp[L"DELIMINER2"]           = SCE_USER_STYLE_DELIMITER2;
 	        temp[L"DELIMINER3"]           = SCE_USER_STYLE_DELIMITER3;
-	
+
 	        // in case of duplicate entries, newer string should overwrite old one !
 	        for (iter = temp.begin(); iter != temp.end(); ++iter)
 		        styleNameMapper[iter->second] = iter->first;
 	        styleIdMapper.insert(temp.begin(), temp.end());
 	        temp.clear();
-			
+
 	        // post 2.0
 	        temp[L"DEFAULT"]              = SCE_USER_STYLE_DEFAULT;
 	        temp[L"COMMENTS"]             = SCE_USER_STYLE_COMMENT;
@@ -180,7 +180,7 @@ class GlobalMappers
 	        temp[L"DELIMITERS6"]          = SCE_USER_STYLE_DELIMITER6;
 	        temp[L"DELIMITERS7"]          = SCE_USER_STYLE_DELIMITER7;
 	        temp[L"DELIMITERS8"]          = SCE_USER_STYLE_DELIMITER8;
-	
+
 	        // in case of duplicate entries, newer string should overwrite old one !
 	        for (iter = temp.begin(); iter != temp.end(); ++iter)
 		        styleNameMapper[iter->second] = iter->first;
@@ -217,13 +217,13 @@ class GlobalMappers
             dialogMapper[IDC_NUMBER_SUFFIX2_EDIT]           = SCE_USER_KWLIST_NUMBER_SUFFIX2;
             dialogMapper[IDC_NUMBER_RANGE_EDIT]             = SCE_USER_KWLIST_NUMBER_RANGE;
 
-            dialogMapper[IDC_FOLDER_IN_CODE1_OPEN_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE1_OPEN;    
-            dialogMapper[IDC_FOLDER_IN_CODE1_MIDDLE_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE1_MIDDLE;  
-            dialogMapper[IDC_FOLDER_IN_CODE1_CLOSE_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE1_CLOSE;   
-            dialogMapper[IDC_FOLDER_IN_CODE2_OPEN_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE2_OPEN;    
-            dialogMapper[IDC_FOLDER_IN_CODE2_MIDDLE_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE2_MIDDLE;  
-            dialogMapper[IDC_FOLDER_IN_CODE2_CLOSE_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE2_CLOSE;   
-            dialogMapper[IDC_FOLDER_IN_COMMENT_OPEN_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_COMMENT_OPEN;  
+            dialogMapper[IDC_FOLDER_IN_CODE1_OPEN_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE1_OPEN;
+            dialogMapper[IDC_FOLDER_IN_CODE1_MIDDLE_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE1_MIDDLE;
+            dialogMapper[IDC_FOLDER_IN_CODE1_CLOSE_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE1_CLOSE;
+            dialogMapper[IDC_FOLDER_IN_CODE2_OPEN_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE2_OPEN;
+            dialogMapper[IDC_FOLDER_IN_CODE2_MIDDLE_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE2_MIDDLE;
+            dialogMapper[IDC_FOLDER_IN_CODE2_CLOSE_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_CODE2_CLOSE;
+            dialogMapper[IDC_FOLDER_IN_COMMENT_OPEN_EDIT]  	= SCE_USER_KWLIST_FOLDERS_IN_COMMENT_OPEN;
             dialogMapper[IDC_FOLDER_IN_COMMENT_MIDDLE_EDIT] = SCE_USER_KWLIST_FOLDERS_IN_COMMENT_MIDDLE;
             dialogMapper[IDC_FOLDER_IN_COMMENT_CLOSE_EDIT]  = SCE_USER_KWLIST_FOLDERS_IN_COMMENT_CLOSE;
 
@@ -253,6 +253,8 @@ class GlobalMappers
 };
 
 GlobalMappers & globalMappper();
+
+#ifdef _WIN32
 
 class SharedParametersDialog : public StaticDialog
 {
@@ -424,7 +426,7 @@ public :
     }
 
     void destroy() override {}
-	
+
 protected :
     intptr_t CALLBACK run_dlgProc(UINT Message, WPARAM wParam, LPARAM) override;
 
@@ -480,3 +482,12 @@ private:
 
     void move2CtrlRight(HWND hwndDlg, int ctrlID, HWND handle2Move, int handle2MoveWidth, int handle2MoveHeight);
 };
+
+#else
+// Linux stubs - provide empty implementations
+namespace QtControls {
+    class UserDefineDialog {};
+    class StringDlg {};
+    class StylerDlg {};
+}
+#endif

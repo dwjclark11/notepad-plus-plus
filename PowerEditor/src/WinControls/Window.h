@@ -19,9 +19,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#else
 #include "../MISC/Common/Common.h"
-#endif // not _WIN32
 
 class Window
 {
@@ -117,3 +115,8 @@ protected:
 	HWND _hParent = nullptr;
 	HWND _hSelf = nullptr;
 };
+
+#else
+// Linux - use QtControls version
+#include "../QtControls/Window.h"
+#endif

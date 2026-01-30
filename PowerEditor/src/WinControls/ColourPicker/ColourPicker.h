@@ -23,6 +23,8 @@ class ColourPopup;
 
 #define CPN_COLOURPICKED (BN_CLICKED)
 
+#ifdef _WIN32
+
 class ColourPicker : public Window
 {
 public:
@@ -52,3 +54,12 @@ private:
 
 	static LRESULT CALLBACK staticProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 };
+
+#else
+
+namespace QtControls {
+	class ColourPicker;
+}
+using QtControls::ColourPicker;
+
+#endif

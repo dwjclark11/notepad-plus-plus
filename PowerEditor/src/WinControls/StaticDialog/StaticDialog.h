@@ -18,10 +18,6 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#else
-#include "Common.h"
-#endif
-
 #include "dpiManagerV2.h"
 #include "Notepad_plus_msgs.h"
 #include "Window.h"
@@ -43,15 +39,6 @@ struct DLGTEMPLATEEX
 	short  y = 0;
 	short  cx = 0;
 	short  cy = 0;
-	// The structure has more fields but are variable length
-	//sz_Or_Ord menu;
-	//sz_Or_Ord windowClass;
-	//WCHAR  title[titleLen];
-	//WORD   pointsize;
-	//WORD   weight;
-	//BYTE   italic;
-	//BYTE   charset;
-	//WCHAR  typeface[stringLen];
 };
 #pragma pack(pop)
 
@@ -111,3 +98,8 @@ protected:
 	HWND myCreateDialogIndirectParam(int dialogID, bool isRTL, WORD fontSize, DLGPROC myDlgProc = StaticDialog::dlgProc);
 	INT_PTR myCreateDialogBoxIndirectParam(int dialogID, bool isRTL, WORD fontSize = 8);
 };
+
+#else
+// Linux - use QtControls version
+#include "../../QtControls/StaticDialog/StaticDialog.h"
+#endif

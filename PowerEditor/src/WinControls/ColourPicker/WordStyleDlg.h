@@ -42,6 +42,8 @@ const wchar_t FINDDLG_STAUSREACHED_COLOR[64] = L"Find status: Search end reached
 
 enum fontStyleType {BOLD_STATUS, ITALIC_STATUS, UNDERLINE_STATUS};
 
+#ifdef _WIN32
+
 class WordStyleDlg : public StaticDialog
 {
 public :
@@ -133,3 +135,12 @@ private :
 	void showGlobalOverrideCtrls(bool show);
 	void applyCurrentSelectedThemeAndUpdateUI();
 };
+
+#else
+
+namespace QtControls {
+	class WordStyleDlg;
+}
+using QtControls::WordStyleDlg;
+
+#endif

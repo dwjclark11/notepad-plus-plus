@@ -32,7 +32,7 @@ struct PluginUpdateInfo
 	std::wstring _displayName;  // plugin description name
 	Version _version;
 	// Optional
-	std::pair<Version, Version> _nppCompatibleVersions; // compatible to Notepad++ interval versions: <from, to> example: 
+	std::pair<Version, Version> _nppCompatibleVersions; // compatible to Notepad++ interval versions: <from, to> example:
 	                                                    // <0.0.0.0, 0.0.0.0>: plugin is compatible to all Notepad++ versions (due to invalid format set)
 	                                                    // <6.9, 6.9>: plugin is compatible to only v6.9
 	                                                    // <4.2, 6.6.6>: from v4.2 (included) to v6.6.6 (included)
@@ -44,14 +44,14 @@ struct PluginUpdateInfo
 	                                                                                              // The 1st interval versions are for old plugins' versions
 	                                                                                              // The 2nd interval versions are for Notepad++ versions
 	                                                                                              // which are compatible with the old plugins' versions given in the 1st interval
-	
+
 	std::wstring _homepage;
 	std::wstring _sourceUrl;
 	std::wstring _description;
 	std::wstring _author;
 	std::wstring _id;           // Plugin package ID: SHA-256 hash
 	std::wstring _repository;
-	bool _isVisible = true;       // if false then it should not be displayed 
+	bool _isVisible = true;       // if false then it should not be displayed
 
 	std::wstring describe();
 	PluginUpdateInfo() = default;
@@ -64,7 +64,7 @@ struct NppCurrentStatus
 
 	bool _isInProgramFiles = true;     // true: install/update/remove on "Program files" (ADMIN MODE)
 	                                   // false: install/update/remove on NPP_INST or install on %APPDATA%, update/remove on %APPDATA% & NPP_INST (NORMAL MODE)
-									
+
 	bool _isAppDataPluginsAllowed = false;  // true: install on %APPDATA%, update / remove on %APPDATA% & "Program files" or NPP_INST
 
 	std::wstring _nppInstallPath;
@@ -87,6 +87,8 @@ struct SortDisplayNameDecrease final
 		return (l->_displayName.compare(r->_displayName) <= 0);
 	}
 };
+
+#ifdef _WIN32
 
 class PluginViewList
 {
@@ -171,7 +173,7 @@ public :
 	const PluginViewList& getAvailablePluginUpdateInfoList() const {
 		return _availableList;
 	}
-	
+
 	PluginViewList& getIncompatibleList() {
 		return _incompatibleList;
 	}
@@ -189,10 +191,10 @@ private :
 	std::wstring _pluginListVersion;
 	URLCtrl _repoLink;
 
-	PluginViewList _availableList;    // A permanent list, once it's loaded (no removal - only hide or show) 
+	PluginViewList _availableList;    // A permanent list, once it's loaded (no removal - only hide or show)
 	PluginViewList _updateList;       // A dynamical list, items are removable
 	PluginViewList _installedList;    // A dynamical list, items are removable
-	PluginViewList _incompatibleList; // A permanent list, once it's loaded (no removal - only hide or show) 
+	PluginViewList _incompatibleList; // A permanent list, once it's loaded (no removal - only hide or show)
 
 	PluginsManager *_pPluginsManager = nullptr;
 	NppCurrentStatus _nppCurrentStatus;
@@ -210,7 +212,7 @@ private :
 	long searchInDescsFromCurrentSel(const PluginViewList& inWhichList, const std::wstring& str2search, bool isNextMode) const {
 		return searchFromCurrentSel(inWhichList, str2search, _inDescs, isNextMode);
 	}
-	
+
 	bool initAvailablePluginsViewFromList();
 	bool initIncompatiblePluginList();
 	bool loadFromPluginInfos();
@@ -223,3 +225,12 @@ private :
 	};
 	bool exitToInstallRemovePlugins(Operation op, const std::vector<PluginUpdateInfo*>& puis);
 };
+
+#else
+// Linux - forward declarations are in PluginsManager.h
+// Provide stub classes for Linux
+namespace QtControls {
+	class PluginViewList {};
+	class PluginsAdminDlg {};
+}
+#endif

@@ -31,6 +31,8 @@ struct columnInfo {
 	columnInfo(const std::wstring& label, size_t width) : _width(width), _label(label) {}
 };
 
+#ifdef _WIN32
+
 class ListView : public Window
 {
 public:
@@ -61,7 +63,7 @@ public:
 	size_t findAlphabeticalOrderPos(const std::wstring& string2search, SortDirection sortDir);
 
 	void addLine(const std::vector<std::wstring> & values2Add, LPARAM lParam = 0, int pos2insert = -1);
-	
+
 	size_t nbItem() const {
 		return ListView_GetItemCount(_hSelf);
 	}
@@ -94,3 +96,12 @@ protected:
 	int32_t _extraStyle = 0;
 	std::vector<columnInfo> _columnInfos;
 };
+
+#else
+
+namespace QtControls {
+	class ListView;
+}
+using QtControls::ListView;
+
+#endif

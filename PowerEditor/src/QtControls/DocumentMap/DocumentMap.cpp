@@ -8,9 +8,6 @@
 
 #include "DocumentMap.h"
 
-// Platform types for RECT definition
-#include "../../MISC/Common/LinuxTypes.h"
-
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QSlider>
@@ -418,8 +415,7 @@ void DocumentMap::initWrapMap()
     if (_mapView && _ppEditView && *_ppEditView) {
         // Resize map view to container
         QRect rect = this->rect();
-        RECT rc = QRectToRECT(rect);
-        _mapView->reSizeTo(rc);
+        _mapView->reSizeTo(rect);
 
         _mapView->wrap(false);
         _mapView->redraw(true);
@@ -467,8 +463,7 @@ void DocumentMap::wrapMap(const ScintillaEditView* editView)
         // Resize map view
         QRect rect = this->rect();
         rect.setWidth(static_cast<int>(docMapWidth));
-        RECT rc = QRectToRECT(rect);
-        _mapView->reSizeTo(rc);
+        _mapView->reSizeTo(rect);
 
         _mapView->wrap(true);
 
@@ -491,12 +486,12 @@ void DocumentMap::scrollMap()
     ScintillaEditView* pEditView = *_ppEditView;
 
     // Get the position of the 1st and last showing chars from the original edit view
-    RECT rcEditView;
+    QRect rcEditView;
     pEditView->getClientRect(rcEditView);
 
     auto higherPos = pEditView->execute(SCI_POSITIONFROMPOINT, 0, 0);
     auto lowerPos = pEditView->execute(SCI_POSITIONFROMPOINT,
-                                       rcEditView.right - rcEditView.left, rcEditView.bottom - rcEditView.top);
+                                       rcEditView.width(), rcEditView.height());
 
     // Let Scintilla scroll the map
     _mapView->execute(SCI_GOTOPOS, higherPos);
@@ -711,8 +706,7 @@ void DocumentMap::resizeEvent(QResizeEvent* event)
     if (_mapView) {
         // Resize the map view to fit the container
         QRect rect = this->rect();
-        RECT rc = QRectToRECT(rect);
-        _mapView->reSizeTo(rc);
+        _mapView->reSizeTo(rect);
     }
 
     doMove();

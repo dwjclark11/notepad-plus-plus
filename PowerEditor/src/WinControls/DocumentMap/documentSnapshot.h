@@ -26,6 +26,7 @@ class Buffer;
 #endif
 struct MapPosition;
 
+#ifdef _WIN32
 
 class DocumentPeeker : public StaticDialog {
 public:
@@ -48,3 +49,12 @@ protected:
 private:
 	ScintillaEditView *_pPeekerView = nullptr;
 };
+
+#else
+// Linux stub - empty implementation
+namespace QtControls {
+	class DocumentPeeker {};
+}
+using QtControls::DocumentPeeker;
+
+#endif

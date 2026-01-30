@@ -18,6 +18,10 @@
 
 #include "ScintillaEditView.h"
 #ifdef NPP_LINUX
+#include "QtControls/Window.h"
+using Window = QtControls::Window;
+#endif
+#ifdef NPP_LINUX
 // On Linux, use Qt versions of dialogs and components
 #include "QtControls/DocTabView/DocTabView.h"
 #include "QtControls/GoToLine/GoToLineDlg.h"
@@ -53,21 +57,28 @@ using Buffer = QtCore::Buffer;
 #include "RunMacroDlg.h"
 #include "preferenceDlg.h"
 #endif
-#include "AboutDlg.h"
 #ifndef NPP_LINUX
+#include "AboutDlg.h"
 #include "RunDlg.h"
 #endif
 #ifdef NPP_LINUX
 #include "QtControls/StatusBar/StatusBar.h"
+#include "QtControls/ToolBar/ToolBar.h"
 using StatusBar = QtControls::StatusBar;
+using ToolBar = QtControls::ToolBar;
+using ReBar = QtControls::ReBar;
 #else
 #include "StatusBar.h"
 #endif
 #include "lastRecentFileList.h"
 #include "FindCharsInRange.h"
 #include "columnEditor.h"
+#ifndef NPP_LINUX
 #include "WordStyleDlg.h"
+#endif
+#ifndef NPP_LINUX
 #include "trayIconControler.h"
+#endif
 #include "PluginsManager.h"
 #ifndef NPP_LINUX
 #include "preferenceDlg.h"
@@ -79,15 +90,35 @@ using StatusBar = QtControls::StatusBar;
 #ifdef NPP_LINUX
 #include "QtControls/DockingManager/DockingManager.h"
 using DockingManager = QtControls::DockingManager;
+// DockingCont stub for Linux
+namespace QtControls {
+    class DockingCont {};
+}
+using DockingCont = QtControls::DockingCont;
+// Stub classes for dialogs not yet implemented on Linux
+namespace QtControls {
+    class AboutDlg {};
+    class DebugInfoDlg {};
+    class CmdLineArgsDlg {};
+}
+using AboutDlg = QtControls::AboutDlg;
+using DebugInfoDlg = QtControls::DebugInfoDlg;
+using CmdLineArgsDlg = QtControls::CmdLineArgsDlg;
+// WordStyleDlg and PluginsAdminDlg are defined in their headers
+#include "QtControls/WordStyleDlg/WordStyleDlg.h"
+using WordStyleDlg = QtControls::WordStyleDlg;
 #else
 #include "DockingManager.h"
+#include "AboutDlg.h"
 #endif
 #include "Processus.h"
 #include "AutoCompletion.h"
 #include "SmartHighlighter.h"
 #include "ScintillaCtrls.h"
 #include "lesDlgs.h"
+#ifndef NPP_LINUX
 #include "pluginsAdmin.h"
+#endif
 #include "localization.h"
 #include "documentSnapshot.h"
 #include "md5Dlgs.h"
@@ -298,9 +329,11 @@ public:
 	std::vector<std::wstring> addNppPlugins(const wchar_t *extFilterName, const wchar_t *extFilter);
     int getHtmlXmlEncoding(const wchar_t *fileName) const;
 
+#ifndef NPP_LINUX
 	HACCEL getAccTable() const {
 		return _accelerator.getAccTable();
 	}
+#endif
 
 	bool emergency(const std::wstring& emergencySavedDir);
 
@@ -325,9 +358,11 @@ public:
 	void showQuoteFromIndex(int index) const;
 	void showQuote(const QuoteParams* quote) const;
 
+#ifndef NPP_LINUX
 	std::wstring getPluginListVerStr() const {
 		return _pluginsAdminDlg.getPluginListVerStr();
 	}
+#endif
 
 	void minimizeDialogs();
 	void restoreMinimizeDialogs();
@@ -480,7 +515,9 @@ private:
 	WordStyleDlg _configStyleDlg;
 	PreferenceDlg _preference;
 	FindCharsInRangeDlg _findCharsInRangeDlg;
+#ifndef NPP_LINUX
 	PluginsAdminDlg _pluginsAdminDlg;
+#endif
 	DocumentPeeker _documentPeeker;
 
 	// a handle list of all the Notepad++ dialogs
@@ -534,7 +571,9 @@ private:
 
 	bool _isUDDocked = false;
 
+#ifndef NPP_LINUX
 	trayIconControler* _pTrayIco = nullptr;
+#endif
 	intptr_t _zoomOriginalValue = 0;
 
 	Accelerator _accelerator;

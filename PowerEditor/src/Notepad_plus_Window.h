@@ -14,6 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #pragma once
+
+#ifdef NPP_LINUX
+// On Linux, use the Qt version from QtControls
+#include "QtControls/MainWindow/Notepad_plus_Window.h"
+#else
 #include "Notepad_plus.h"
 
 constexpr int splitterSize = 8;
@@ -82,3 +87,4 @@ private:
 
 	HICON _hIconAbsent = nullptr;
 };
+#endif

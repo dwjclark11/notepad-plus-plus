@@ -20,6 +20,8 @@
 #include "findCharsInRange_rc.h"
 #include "ScintillaEditView.h"
 
+#ifdef _WIN32
+
 class FindCharsInRangeDlg : public StaticDialog
 {
 public :
@@ -52,3 +54,12 @@ private :
 	bool getRangeFromUI(unsigned char & startRange, unsigned char & endRange);
 	void getDirectionFromUI(bool & whichDirection, bool & isWrap);
 };
+
+#else
+// Linux stub - empty implementation
+namespace QtControls {
+	class FindCharsInRangeDlg {};
+}
+using QtControls::FindCharsInRangeDlg;
+
+#endif

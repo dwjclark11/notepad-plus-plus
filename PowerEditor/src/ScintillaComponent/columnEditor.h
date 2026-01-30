@@ -17,11 +17,12 @@
 #pragma once
 
 #include "columnEditor_rc.h"
+
+#ifdef _WIN32
 #include "StaticDialog.h"
 #include "Parameters.h"
 
 class ScintillaEditView;
-
 
 class ColumnEditorDlg : public StaticDialog
 {
@@ -52,3 +53,11 @@ private :
 	int getNumericFieldValueFromText(int formatChoice, wchar_t str[], size_t stringSize);
 	int sendValidationErrorMessage(int whichFlashRed, int formatChoice, wchar_t str[]);
 };
+
+#else
+// Linux stub - empty implementation
+namespace QtControls {
+	class ColumnEditorDlg {};
+}
+using QtControls::ColumnEditorDlg;
+#endif

@@ -23,6 +23,7 @@ enum hashType {hash_md5 = 16, hash_sha1 = 20, hash_sha256 = 32, hash_sha512 = 64
 #define HASH_MAX_LENGTH hash_sha512
 #define HASH_STR_MAX_LENGTH (hash_sha512 * 2 + 1)
 
+#ifdef _WIN32
 class HashFromFilesDlg : public StaticDialog
 {
 public :
@@ -58,3 +59,12 @@ protected :
 private :
 	HFONT _hFont = nullptr;
 };
+#else
+// Linux stubs - empty implementations
+namespace QtControls {
+	class HashFromFilesDlg {};
+	class HashFromTextDlg {};
+}
+using QtControls::HashFromFilesDlg;
+using QtControls::HashFromTextDlg;
+#endif

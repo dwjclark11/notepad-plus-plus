@@ -21,6 +21,8 @@
 #include "WinMgr.h"
 #include "StaticDialog.h"
 
+#ifdef _WIN32
+
 class SizeableDlg : public StaticDialog {
 	typedef StaticDialog MyBaseClass;
 public:
@@ -35,4 +37,13 @@ protected:
 	virtual void onGetMinMaxInfo(MINMAXINFO* lpMMI);
 	virtual LRESULT onWinMgr(WPARAM wp, LPARAM lp);
 };
+
+#else
+
+namespace QtControls {
+	class SizeableDlg;
+}
+using QtControls::SizeableDlg;
+
+#endif
 

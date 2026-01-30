@@ -17,10 +17,6 @@
 
 #pragma once
 
-#include "StaticDialog.h"
-#include "Common.h"
-
-
 // 0 : normal window
 // 1 : fullscreen
 // 2 : postit
@@ -29,6 +25,10 @@ const int buttonStatus_nada = 0;            // 0000 0000
 const int buttonStatus_fullscreen = 1;      // 0000 0001
 const int buttonStatus_postit = 2;          // 0000 0010
 const int buttonStatus_distractionFree = 4; // 0000 0100
+
+#ifdef _WIN32
+#include "StaticDialog.h"
+#include "Common.h"
 
 class ButtonDlg : public StaticDialog
 {
@@ -57,3 +57,11 @@ protected:
     intptr_t CALLBACK run_dlgProc(UINT Message, WPARAM wParam, LPARAM lParam) override;
     int _buttonStatus = buttonStatus_nada;
 };
+
+#else
+// Linux stub - empty implementation
+namespace QtControls {
+    class ButtonDlg {};
+}
+using QtControls::ButtonDlg;
+#endif

@@ -21,6 +21,8 @@
 #include "Window.h"
 #include "Common.h"
 
+#ifdef _WIN32
+
 struct DlgInfo
 {
     Window *_dlg;
@@ -61,3 +63,13 @@ private:
 	WindowVector *_pWinVector = nullptr;
     int _current = 0;
 };
+
+#else
+// Linux stub - implemented in QtControls/
+namespace QtControls {
+	struct DlgInfo;
+	class ControlsTab;
+}
+using QtControls::DlgInfo;
+using QtControls::ControlsTab;
+#endif

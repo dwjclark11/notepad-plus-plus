@@ -76,7 +76,7 @@ struct TBHDR
 	int _tabOrigin = 0;
 };
 
-
+#ifdef _WIN32
 
 class TabBar : public Window
 {
@@ -293,3 +293,15 @@ protected:
 	void notify(int notifyCode, int tabIndex);
 	void trackMouseEvent(DWORD event2check);
 };
+
+#else
+// Linux stub - implemented in QtControls/
+namespace QtControls {
+	class TabBar;
+	class TabBarPlus;
+	struct TabButtonZone;
+}
+using QtControls::TabBar;
+using QtControls::TabBarPlus;
+using QtControls::TabButtonZone;
+#endif
