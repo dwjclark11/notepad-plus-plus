@@ -30,19 +30,10 @@
 #include "MISC/PluginsManager/Notepad_plus_msgs.h"
 #include "Parameters.h"
 
-// Forward declaration for Scintilla
-namespace Scintilla {
+// Forward declaration for ScintillaEditView (defined in global namespace)
 class ScintillaEditView;
-}
 
 namespace QtCore {
-
-// Buffer status enumeration
-enum class BufferStatus {
-    Clean,          // Saved, no changes
-    Dirty,          // Unsaved changes
-    ModifiedOutside // File modified externally
-};
 
 // Saving status enumeration (mirrors SavingStatus from Windows Buffer.h)
 enum class SavingStatus {
@@ -98,6 +89,10 @@ typedef ::Position Position;
 // Document type for Scintilla integration
 using Document = intptr_t;
 
+// Forward declare Buffer for BufferID typedef
+class Buffer;
+using BufferID = Buffer*;
+
 // Map position for document map
 struct MapPosition {
     int firstVisibleDisplayLine = -1;
@@ -135,9 +130,9 @@ public:
     ~Buffer() override;
 
     // Initialization
-    void setScintillaView(Scintilla::ScintillaEditView* view);
-    void setID(int id);
-    int getID() const;
+    void setScintillaView(::ScintillaEditView* view);
+    void setID(BufferID id);
+    BufferID getID() const;
 
     // File operations
     bool loadFromFile(const QString& filePath);
@@ -184,8 +179,8 @@ public:
     // Modification state
     bool isDirty() const;
     void setDirty(bool dirty);
-    BufferStatus getStatus() const;
-    void setStatus(BufferStatus status);
+    DocFileStatus getStatus() const;
+    void setStatus(DocFileStatus status);
 
     // Read-only
     bool isReadOnly() const;
@@ -318,7 +313,7 @@ public:
 
 signals:
     void contentChanged();
-    void statusChanged(BufferStatus status);
+    void statusChanged(DocFileStatus status);
     void filePathChanged(const QString& newPath);
     void encodingChanged(const QString& encoding);
     void langTypeChanged(DocLangType type);
@@ -333,7 +328,7 @@ private slots:
 
 private:
     // Buffer identification
-    int _id = -1;
+    BufferID _id = nullptr;
 
     // File information
     QString _filePath;
@@ -352,7 +347,7 @@ private:
     QString _userLangName;
 
     // Status
-    BufferStatus _status = BufferStatus::Clean;
+    DocFileStatus _status = DOC_REGULAR;
     bool _isDirty = false;
     bool _isUnsync = false;  // Buffer is unsynchronized with file on disk
     bool _isSavePointDirty = false;  // Document is dirty after encoding conversion
@@ -396,7 +391,7 @@ private:
     QString _backupFilePath;
 
     // Scintilla view reference
-    Scintilla::ScintillaEditView* _pView = nullptr;
+    ::ScintillaEditView* _pView = nullptr;
 
     // Mutex for thread safety
     mutable QMutex _mutex;
@@ -422,9 +417,6 @@ private:
     QString detectEncodingFromBOM(const QByteArray& content);
 };
 
-// BufferID type definition - must be outside class but inside namespace
-typedef Buffer* BufferID;
-
 /**
  * @brief The BufferManager class manages all open buffers/documents.
  *
@@ -439,7 +431,7 @@ public:
 
     Buffer* createBuffer();
     void deleteBuffer(Buffer* buffer);
-    Buffer* getBufferByID(int id);
+    Buffer* getBufferByID(BufferID id);
     Buffer* getBufferByFilePath(const QString& filePath);
     QList<Buffer*> getAllBuffers() const;
     int getBufferCount() const;
@@ -472,7 +464,6 @@ private:
 
     QList<Buffer*> _buffers;
     int _currentIndex = -1;
-    int _nextBufferID = 1;
     mutable QMutex _mutex;
 };
 
@@ -494,10 +485,12 @@ public:
     bool reloadBuffer(BufferID id);
     BufferID getBufferFromName(const wchar_t* name);
     bool deleteBufferBackup(BufferID id);
+    SavingStatus saveBuffer(BufferID id, const wchar_t* filename, bool isCopy = false);
+    BufferID bufferFromDocument(Document doc, bool isMainEditZone = true);
 
     // Buffer management
-    void closeBuffer(BufferID id, const Scintilla::ScintillaEditView* identifier);
-    void addBufferReference(BufferID id, Scintilla::ScintillaEditView* identifier);
+    void closeBuffer(BufferID id, const ::ScintillaEditView* identifier);
+    void addBufferReference(BufferID id, ::ScintillaEditView* identifier);
 
     // Accessors
     size_t getNbBuffers() const;

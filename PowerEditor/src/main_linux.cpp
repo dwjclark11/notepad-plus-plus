@@ -53,6 +53,11 @@
 #include "QtControls/Window.h"
 #include "QtControls/MainWindow/Notepad_plus_Window.h"
 
+// Notepad++ core includes
+#include "Notepad_plus.h"
+#include "NppDarkMode.h"
+#include "localization.h"
+
 // ============================================================================
 // Command Line Parameter Types (mirroring Windows version)
 // ============================================================================
@@ -83,8 +88,8 @@ const wchar_t FLAG_APPLY_UDL[] = L"-udl=";
 const wchar_t FLAG_PLUGIN_MESSAGE[] = L"-pluginMessage=";
 const wchar_t FLAG_MONITOR_FILES[] = L"-monitor";
 
-// Global start time for performance measurement
-std::chrono::steady_clock::time_point g_nppStartTimePoint{};
+// Global start time for performance measurement - defined in QtControls/Notepad_plus.cpp, declared in Notepad_plus.h
+// extern std::chrono::steady_clock::time_point g_nppStartTimePoint;
 
 // ============================================================================
 // Helper Functions
@@ -489,19 +494,42 @@ private:
 };
 
 // ============================================================================
-// MainWindow Wrapper (Qt version of Notepad_plus_Window)
+// NotepadPlusPlusApp - Qt version of Notepad_plus_Window with core integration
 // ============================================================================
 
-class MainWindowWrapper : public QtControls::MainWindow::MainWindow
+class NotepadPlusPlusApp : public QtControls::MainWindow::MainWindow
 {
+    Q_OBJECT
+
 public:
-    MainWindowWrapper() = default;
-    ~MainWindowWrapper() override = default;
+    NotepadPlusPlusApp() = default;
+    ~NotepadPlusPlusApp() override = default;
 
     bool init(CmdLineParams* cmdLineParams)
     {
-        // Initialize the Qt MainWindow without Notepad_plus core for now
-        // TODO: Create and initialize Notepad_plus instance properly
+        _cmdLineParams = cmdLineParams;
+
+        // Initialize NppParameters settings from command line
+        NppParameters& nppParams = NppParameters::getInstance();
+        NppGUI& nppGUI = nppParams.getNppGUI();
+
+        // Apply command line settings to NppParameters
+        // TODO: _pluginsManager is private - need to use public method or friend class
+        // if (cmdLineParams->_isNoPlugin)
+        //     _notepad_plus_plus_core._pluginsManager.disable();
+
+        nppGUI._isCmdlineNosessionActivated = cmdLineParams->_isNoSession;
+        nppGUI._isFullReadOnly = cmdLineParams->_isFullReadOnly;
+        nppGUI._isFullReadOnlySavingForbidden = cmdLineParams->_isFullReadOnlySavingForbidden;
+
+        // Initialize the Qt MainWindow with Notepad_plus core
+        if (!QtControls::MainWindow::MainWindow::init(&_notepad_plus_plus_core))
+        {
+            qCritical() << "Failed to initialize MainWindow";
+            return false;
+        }
+
+        // Set window properties
         setWindowTitle("Notepad++");
         resize(1024, 768);
 
@@ -509,6 +537,20 @@ public:
         if (cmdLineParams->_alwaysOnTop)
         {
             setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
+        }
+
+        // Initialize the Notepad_plus core
+        // Note: On Windows this uses HWND, on Linux we need a different approach
+        // The core initialization happens through the public interface methods
+        // TODO: These are private members - need friend class or public setter methods
+        // _notepad_plus_plus_core._pPublicInterface = nullptr; // No HWND equivalent on Linux
+        // _notepad_plus_plus_core._pMainWindow = nullptr;
+
+        // Initialize the core components
+        if (!initNotepadPlusCore())
+        {
+            qCritical() << "Failed to initialize Notepad++ core";
+            return false;
         }
 
         // Show the window
@@ -520,6 +562,8 @@ public:
     void showWindow()
     {
         show();
+        raise();
+        activateWindow();
     }
 
     void raiseAndActivateWindow()
@@ -530,12 +574,175 @@ public:
 
     void openFiles(const QStringList& files, const CmdLineParams& params)
     {
-        // TODO: Implement file opening when Notepad_plus core is integrated
+        // Convert QStringList to vector of wstrings for Notepad_plus
+        std::vector<std::wstring> fileNames;
         for (const QString& file : files)
         {
-            qDebug() << "Opening file:" << file;
+            fileNames.push_back(qStringToWString(file));
+        }
+
+        // Load files through Notepad_plus core
+        if (!fileNames.empty())
+        {
+            // Build command line string from file names
+            std::wstring cmdLineString;
+            for (const auto& fn : fileNames)
+            {
+                if (!cmdLineString.empty()) cmdLineString += L" ";
+                cmdLineString += L"\"" + fn + L"\"";
+            }
+
+            // Load command line params
+            // TODO: loadCommandlineParams is private - need to use public method or friend class
+            // CmdLineParamsDTO dto = CmdLineParamsDTO::FromCmdLineParams(params);
+            // _notepad_plus_plus_core.loadCommandlineParams(cmdLineString.c_str(), &dto);
+            (void)cmdLineString;
+            (void)params;
         }
     }
+
+    Notepad_plus* getNotepadPlusCore()
+    {
+        return &_notepad_plus_plus_core;
+    }
+
+private:
+    bool initNotepadPlusCore()
+    {
+        // TODO: This method needs access to private members of Notepad_plus
+        // which requires either:
+        // 1. Making NotepadPlusPlusApp a friend class of Notepad_plus
+        // 2. Moving this initialization to a proper Qt version of Notepad_plus_Window
+        // 3. Using only public methods of Notepad_plus
+
+        // For now, we do basic initialization through public methods
+        NppParameters& nppParams = NppParameters::getInstance();
+        NppGUI& nppGUI = nppParams.getNppGUI();
+
+        // Load last session if enabled
+        if (nppGUI._rememberLastSession && !nppGUI._isCmdlineNosessionActivated)
+        {
+            _notepad_plus_plus_core.loadLastSession();
+        }
+
+        // Scan for localization files
+        // TODO: Use public methods or move to friend class
+        std::vector<std::wstring> fileNames;
+        std::vector<std::wstring> patterns;
+        patterns.push_back(L"*.xml");
+
+        std::wstring nppDir = nppParams.getNppPath();
+
+        LocalizationSwitcher& localizationSwitcher = nppParams.getLocalizationSwitcher();
+        std::wstring localizationDir = nppDir;
+        localizationDir = PlatformLayer::IFileSystem::pathAppend(localizationDir, L"localization\\");
+
+        // TODO: getMatchedFileNames is private - need to use alternative approach
+        // _notepad_plus_plus_core.getMatchedFileNames(localizationDir.c_str(), 0, patterns, fileNames, false, false);
+        // for (size_t i = 0, len = fileNames.size(); i < len; ++i)
+        //     localizationSwitcher.addLanguageFromXml(fileNames[i]);
+
+        // Scan for themes
+        fileNames.clear();
+        ThemeSwitcher& themeSwitcher = nppParams.getThemeSwitcher();
+
+        std::wstring appDataThemeDir = nppParams.isCloud() ? nppParams.getUserPath() : nppParams.getAppDataNppDir();
+        if (!appDataThemeDir.empty())
+        {
+            appDataThemeDir = PlatformLayer::IFileSystem::pathAppend(appDataThemeDir, L"themes\\");
+            // TODO: getMatchedFileNames is private
+            // _notepad_plus_plus_core.getMatchedFileNames(appDataThemeDir.c_str(), 0, patterns, fileNames, false, false);
+            // for (size_t i = 0, len = fileNames.size(); i < len; ++i)
+            // {
+            //     themeSwitcher.addThemeFromXml(fileNames[i]);
+            // }
+        }
+
+        fileNames.clear();
+
+        std::wstring nppThemeDir = nppDir;
+        nppThemeDir = PlatformLayer::IFileSystem::pathAppend(nppThemeDir, L"themes\\");
+
+        themeSwitcher.setThemeDirPath(nppThemeDir);
+
+        // TODO: getMatchedFileNames is private
+        // _notepad_plus_plus_core.getMatchedFileNames(nppThemeDir.c_str(), 0, patterns, fileNames, false, false);
+        // for (size_t i = 0, len = fileNames.size(); i < len; ++i)
+        // {
+        //     std::wstring themeName(themeSwitcher.getThemeFromXmlFileName(fileNames[i].c_str()));
+        //     if (!themeSwitcher.themeNameExists(themeName.c_str()))
+        //     {
+        //         themeSwitcher.addThemeFromXml(fileNames[i]);
+        //
+        //         if (!appDataThemeDir.empty())
+        //         {
+        //             std::wstring appDataThemePath = appDataThemeDir;
+        //
+        //             if (!doesDirectoryExist(appDataThemePath.c_str()))
+        //             {
+        //                 PlatformLayer::IFileSystem::getInstance().createDirectory(appDataThemePath.c_str());
+        //             }
+        //
+        //             std::wstring fn = fileNames[i].substr(fileNames[i].find_last_of(L"\\/") + 1);
+        //             appDataThemePath = PlatformLayer::IFileSystem::pathAppend(appDataThemePath, fn);
+        //             themeSwitcher.addThemeStylerSavePath(fileNames[i], appDataThemePath);
+        //         }
+        //     }
+        // }
+
+        // Apply dark mode theme if enabled
+        if (NppDarkMode::isWindowsModeEnabled())
+        {
+            std::wstring themePath;
+            std::wstring xmlFileName = NppDarkMode::getThemeName();
+            if (!xmlFileName.empty())
+            {
+                if (!nppParams.isLocal() || nppParams.isCloud())
+                {
+                    themePath = nppParams.getUserPath();
+                    themePath = PlatformLayer::IFileSystem::pathAppend(themePath, L"themes\\");
+                    themePath = PlatformLayer::IFileSystem::pathAppend(themePath, xmlFileName);
+                }
+
+                if (themePath.empty() || !doesFileExist(themePath.c_str()))
+                {
+                    themePath = themeSwitcher.getThemeDirPath();
+                    themePath = PlatformLayer::IFileSystem::pathAppend(themePath, xmlFileName);
+                }
+            }
+            else
+            {
+                const auto& themeInfo = themeSwitcher.getElementFromIndex(0);
+                themePath = themeInfo.second;
+            }
+
+            if (doesFileExist(themePath.c_str()))
+            {
+                nppGUI._themeName.assign(themePath);
+                nppParams.reloadStylers(themePath.c_str());
+            }
+        }
+
+        // Create new document on startup if configured
+        if (nppGUI._newDocDefaultSettings._addNewDocumentOnStartup && nppGUI._rememberLastSession)
+        {
+            _notepad_plus_plus_core.fileNew();
+        }
+
+        // Check for snapshot mode (backup)
+        // TODO: checkModifiedDocument is private - need public method
+        // bool isSnapshotMode = nppGUI.isSnapshotMode();
+        // if (isSnapshotMode)
+        // {
+        //     _notepad_plus_plus_core.checkModifiedDocument(false);
+        //     _notepad_plus_plus_core.launchDocumentBackupTask();
+        // }
+
+        return true;
+    }
+
+    Notepad_plus _notepad_plus_plus_core;
+    CmdLineParams* _cmdLineParams = nullptr;
 };
 
 } // anonymous namespace
@@ -885,10 +1092,10 @@ int main(int argc, char* argv[])
     }
 
     // ============================================================================
-    // Create and Initialize Main Window
+    // Create and Initialize Main Window with Notepad++ Core
     // ============================================================================
 
-    auto mainWindow = std::make_unique<MainWindowWrapper>();
+    auto mainWindow = std::make_unique<NotepadPlusPlusApp>();
 
     if (!mainWindow->init(&cmdLineParams))
     {

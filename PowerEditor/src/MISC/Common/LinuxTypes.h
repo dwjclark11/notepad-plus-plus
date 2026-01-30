@@ -29,6 +29,7 @@ using BYTE = uint8_t;
 using UCHAR = unsigned char;
 using WORD = uint16_t;
 using DWORD = uint32_t;
+using ULONG = unsigned long;
 using BOOL = int;
 using INT = int;
 using LONG = long;

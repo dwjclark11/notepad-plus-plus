@@ -1,183 +1,104 @@
 # Notepad++ Linux Port - Remaining Work
 
-## Current Status (as of 2026-01-29)
+## Current Status (as of 2026-01-30)
 
-The Linux Qt6 port has made significant progress with a successful build system and many core components implemented. However, there are still several critical components that need to be completed before the application is fully functional.
+The Linux Qt6 port has made significant progress. All core Buffer and FileManager methods are now implemented, ScintillaEditView integration is complete, and Notepad_plus core initialization is done. The remaining work is primarily UI class implementations that are causing linker errors.
 
 ## Build Status
 
 - **CMake Configuration**: ✓ Complete
 - **Lexilla Library**: ✓ Building
 - **Scintilla Qt6**: ✓ Building
-- **Main Executable**: ⚠️ Compiling with ongoing implementation work
-- **Buffer/FileManager Core**: ✓ Core methods implemented
+- **Buffer/FileManager Core**: ✓ Complete
+- **ScintillaEditView Integration**: ✓ Complete
+- **Notepad_plus Core**: ✓ Compiling (constructor, destructor, loadSession, loadLastSession)
+- **NppDarkMode**: ✓ Stubs implemented
+- **Main Executable**: ⚠️ Linker errors for UI classes
 
-## Critical Missing Methods
+## Recently Completed (2026-01-30)
 
-### 1. QtCore::Buffer Class
+### 1. Buffer.cpp Scintilla API Fixes
+Fixed all ScintillaEditView API calls to use proper `execute(SCI_*, ...)` messages instead of mock methods.
 
-Location: `PowerEditor/src/QtCore/Buffer.h` and `Buffer.cpp`
-
+### 2. FileManager Additional Methods
 | Method | Status | Description |
 |--------|--------|-------------|
-| `setUnsync(bool)` | ✓ **IMPLEMENTED** | Marks buffer as synced/unsynced with file |
-| `getFullPathName()` | ✓ **IMPLEMENTED** | Returns full file path as wchar_t* |
-| `isUnsync()` | ✓ **IMPLEMENTED** | Returns buffer sync status |
+| `bufferFromDocument(Document, bool)` | ✓ **IMPLEMENTED** | Creates Buffer from existing Scintilla document |
+| `addBufferReference(BufferID, ScintillaEditView*)` | ✓ **IMPLEMENTED** | Tracks buffer usage by views |
+| `saveBuffer(BufferID, wchar_t*, bool)` | ✓ **IMPLEMENTED** | Saves buffer to file with encoding |
 
-**Implementation Notes:**
-- `getFullPathName()` returns `_filePath.toStdWString().c_str()` with caching
-- `setUnsync()` updates internal `_isUnsync` flag with thread safety (QMutexLocker)
-
-### 2. QtCore::FileManager Class
-
-Location: `PowerEditor/src/QtCore/Buffer.cpp` (FileManager implementation)
-
+### 3. Notepad_plus Core
 | Method | Status | Description |
 |--------|--------|-------------|
-| `loadFile(const wchar_t*, Document, int)` | ✓ **IMPLEMENTED** | Loads file from disk into buffer |
-| `reloadBuffer(BufferID)` | ✓ **IMPLEMENTED** | Reloads buffer from disk |
-| `getBufferFromName(const wchar_t*)` | ✓ **IMPLEMENTED** | Finds buffer by file path |
-| `deleteBufferBackup(BufferID)` | ✓ **IMPLEMENTED** | Deletes backup file for buffer |
-| `closeBuffer(BufferID)` | ✓ **IMPLEMENTED** | Closes and removes buffer |
-| `getNbBuffers()` | ✓ **IMPLEMENTED** | Returns total buffer count |
-| `getNbDirtyBuffers()` | ✓ **IMPLEMENTED** | Returns modified buffer count |
-| `getBufferByIndex(size_t)` | ✓ **IMPLEMENTED** | Returns buffer by index |
-| `getBufferIndexByID(BufferID)` | ✓ **IMPLEMENTED** | Returns index for buffer ID |
+| `Notepad_plus()` constructor | ✓ **IMPLEMENTED** | Initializes core, plugins, auto-complete |
+| `~Notepad_plus()` destructor | ✓ **IMPLEMENTED** | Cleanup resources, panels, settings |
+| `loadLastSession()` | ✓ **IMPLEMENTED** | Loads files from previous session |
+| `loadSession(Session&, bool, wchar_t*)` | ✓ **IMPLEMENTED** | Full session restoration |
 
-**Implementation Notes:**
-- All methods integrated with Qt's QFile for file operations
-- FileManager acts as a singleton managing all buffers
-- Uses QMutexLocker for thread-safe buffer access
-- Path comparison uses canonicalFilePath() for reliability
+### 4. NppDarkMode Linux Stubs
+Implemented stub functions for Windows-specific dark mode functionality:
+- `isWindowsModeEnabled()`, `getThemeName()`
+- Color functions returning default dark mode colors
+- Windows-specific UI subclassing as no-ops
 
-### 3. Type/Enum Compatibility Issues
+### 5. Global Variables
+- `g_nppStartTimePoint` - Startup time tracking
+- `g_pluginsLoadingTime` - Plugin load time tracking
 
-| Issue | Location | Description |
-|-------|----------|-------------|
-| ~~`DocLangType` vs `LangType`~~ | ~~`Buffer.h:1684`~~ | ~~Comparison between different enum types~~ **FIXED** |
-| ~~`SavingStatus` enum~~ | ~~`Notepad_plus.cpp:1180`~~ | ~~Not defined in Qt version~~ **FIXED** |
-| `BufferID` type | Various | Type alias defined but may need refinement |
+## Remaining Linker Errors
 
-**Fixes Applied:**
-- `DocLangType` changed from enum to type alias: `using DocLangType = LangType;`
-- `SavingStatus` enum added with all Windows-compatible values (SaveOK, SaveOpenFailed, SaveWritingFailed, etc.)
-- `BufferID` and `Document` type aliases added for cross-platform compatibility
+The following UI classes need implementation (vtable errors indicate missing virtual function implementations):
 
-### 4. Return Variable Issue
+### High Priority (Blocking)
+| Class | Error Type | Location |
+|-------|-----------|----------|
+| `StaticDialog` | vtable + destructor | Base class for dialogs |
+| `StatusBar` | vtable + destructor | Main window status bar |
+| `ToolBar` | vtable + destructor | Main toolbar |
+| `ReBar` | vtable + destructor | Toolbar container |
+| `DockingManager` | destructor | Panel docking |
+| `Splitter` / `SplitterContainer` | vtable + destructor | Editor view splitting |
+| `ContextMenu` | `destroy()` method | Right-click menus |
 
-**Location:** `QtControls/Notepad_plus.cpp:1180`
+### Medium Priority (Dialog Classes)
+| Class | Error Type | Description |
+|-------|-----------|-------------|
+| `AboutDlg` | vtable + destructor | About dialog |
+| `DebugInfoDlg` | vtable + destructor | Debug info dialog |
+| `CmdLineArgsDlg` | vtable + destructor | Command line args dialog |
+| `HashFromFilesDlg` | vtable + destructor | Hash from files dialog |
+| `HashFromTextDlg` | vtable + destructor | Hash from text dialog |
+| `ColumnEditorDlg` | vtable + destructor | Column editor dialog |
+| `WordStyleDlg` | vtable + destructor | Style configuration dialog |
+| `FindCharsInRangeDlg` | vtable + destructor | Find special chars dialog |
+| `PluginsAdminDlg` | vtable + destructor | Plugin manager dialog |
+| `DocumentPeeker` | vtable + destructor | Document peeker |
+| `ButtonDlg` | vtable + destructor | Generic button dialog |
+| `URLCtrl` | vtable + destructor | URL hyperlink control |
+| `ListView` | vtable + `destroy()` | List view control |
+| `PluginViewList` | `destroy()` | Plugin list view |
+| `TabBar` | vtable + destructor | Tab bar component |
 
-**Status:** ✓ **FIXED**
-
-The `doSave()` function already properly declares `res` variable and uses it correctly. The `SavingStatus` enum is now defined and available.
-
-```cpp
-// Working implementation:
-SavingStatus res = doSave(...);
-return res == SavingStatus::SaveOK;
-```
-
-## UI/Integration Issues
-
-### 1. Main Window Integration
-
-**Location:** `main_linux.cpp`
-
-The MainWindow class in `main_linux.cpp` has been updated to use `QtControls::MainWindow::MainWindow`, but:
-- Notepad_plus core is not being initialized
-- Editor components (ScintillaEditView) not connected
-- Menu actions not wired to actual implementations
-
-**Required:**
-- Create and initialize `Notepad_plus` instance
-- Connect MainWindow signals to Notepad_plus slots
-- Initialize editor views with Scintilla
-
-### 2. ScintillaEditView Integration
-
-**Status:** Partially implemented
-
-Missing features:
-- Proper Scintilla document creation
-- Editor view initialization
-- Buffer activation in editor
-
-## File I/O Implementation Status
-
-### Completed ✓
-- Basic Buffer class structure
-- BufferManager for creating buffers
-- File metadata tracking (path, name, modified time)
-- Unicode mode support (UTF-8, UTF-16, etc.)
-- Line ending support (Windows/Unix/Mac)
-- **File loading from disk** (`FileManager::loadFile()`)
-- **File reload from disk** (`FileManager::reloadBuffer()`)
-- **Buffer lookup by name** (`FileManager::getBufferFromName()`)
-- **Backup file deletion** (`FileManager::deleteBufferBackup()`)
-- Buffer sync status tracking (`setUnsync()`, `isUnsync()`)
-- Full path name retrieval (`getFullPathName()`)
-
-### Pending ❌
-- File saving with encoding conversion
-- Backup file creation/management (partial - delete implemented)
-- File change monitoring (QFileSystemWatcher integration)
-- Auto-save functionality
+### Methods
+| Method | Class | Description |
+|--------|-------|-------------|
+| `showView(int)` | `Notepad_plus` | Show/hide main/sub editor views |
+| `destroy()` | `ContextMenu` | Cleanup context menu |
+| `destroy()` | `ListView` | Cleanup list view |
+| `setDpiWithSystem()` | `DPIManagerV2` | DPI awareness |
+| `getDpiForSystem()` | `DPIManagerV2` | Get system DPI |
 
 ## Build Instructions
 
 ```bash
 cd PowerEditor/src/build
-cmake .. -DNPP_LINUX=ON
-make -j4 2>&1 | head -50
+cmake .. -DBUILD_TESTS=OFF
+make -j4 2>&1 | tail -50
 ```
-
-## Priority Order for Completion
-
-### Completed ✓
-
-1. ~~**Implement FileManager::loadFile()**~~ ✓ **DONE**
-2. ~~**Implement Buffer::getFullPathName()**~~ ✓ **DONE**
-3. ~~**Fix doSave() return value**~~ ✓ **DONE**
-4. ~~**Implement FileManager::reloadBuffer()**~~ ✓ **DONE**
-5. ~~**Implement FileManager::getBufferFromName()**~~ ✓ **DONE**
-6. ~~**Implement Buffer::setUnsync()**~~ ✓ **DONE**
-7. ~~**Implement FileManager::deleteBufferBackup()**~~ ✓ **DONE**
-8. ~~**Fix DocLangType vs LangType comparison**~~ ✓ **FIXED**
-9. ~~**Define SavingStatus enum**~~ ✓ **DONE**
-
-### High Priority (Remaining blockers)
-
-1. **DOC_UNNAMED scope issues**
-   - `DOC_UNNAMED`, `DOC_REGULAR`, etc. not in scope in some files
-   - Need to add proper namespace prefixes or using declarations
-
-2. **BufferID type mismatch**
-   - `buffer->getID()` returns `int` but `BufferID` is `Buffer*`
-   - Need to reconcile type differences
-
-### Medium Priority
-
-3. **Complete MainWindow integration**
-   - Notepad_plus core initialization
-   - Connect MainWindow signals to Notepad_plus slots
-   - Initialize editor views with Scintilla
-
-4. **ScintillaEditView Integration**
-   - Proper Scintilla document creation
-   - Editor view initialization
-   - Buffer activation in editor
-
-### Lower Priority
-
-5. **File change monitoring**
-   - QFileSystemWatcher integration for external file changes
-
-6. **Auto-save functionality**
-   - Backup file creation and management
 
 ## Testing Plan
 
-Once methods are implemented:
+Once linker errors are resolved:
 
 1. **Basic Launch Test**
    ```bash
@@ -201,43 +122,45 @@ Once methods are implemented:
    - Switch between tabs
    - Close individual tabs
 
-## Contributing
+## Implementation Strategy
 
-When implementing missing methods:
+For each missing UI class:
 
-1. Look at Windows implementation in `ScintillaComponent/Buffer.cpp` for reference
-2. Use Qt equivalents for Windows API calls
-3. Maintain compatibility with existing Notepad_plus method signatures
-4. Add proper error handling with Qt error reporting
-5. Test thoroughly before committing
+1. Look at Windows implementation in corresponding file
+2. Create Qt version in `QtControls/` with same interface
+3. Implement virtual functions with Qt equivalents
+4. Ensure proper QObject parent-child relationships
+5. Test individually before moving to next class
 
 ## Files Requiring Attention
 
-### Core Implementation Files
-- `QtCore/Buffer.h` / `Buffer.cpp` - Buffer and FileManager
-- `QtCore/NppIO.cpp` - File I/O operations
-- `QtControls/Notepad_plus.cpp` - Main application logic
+### Core Implementation Files (✓ Complete)
+- ~~`QtCore/Buffer.h` / `Buffer.cpp`~~ - ✓ Buffer and FileManager
+- ~~`QtCore/NppIO.cpp`~~ - ✓ File I/O operations
+- ~~`QtControls/Notepad_plus.cpp`~~ - ✓ Main application logic
 
-### Integration Files
-- `main_linux.cpp` - Entry point and MainWindow
-- `QtControls/MainWindow/Notepad_plus_Window.cpp` - Qt MainWindow
-
-### Supporting Files
-- `QtCore/ScintillaEditViewQt.cpp` - Editor view
-- `QtControls/DocTabView/DocTabView.cpp` - Tab management
+### UI Classes Needing Implementation
+- `QtControls/StaticDialog/` - Base dialog class
+- `QtControls/StatusBar/` - Status bar
+- `QtControls/ToolBar/` - Toolbar
+- `QtControls/ReBar/` - Toolbar container
+- `QtControls/DockingManager/` - Docking system
+- `QtControls/Splitter/` - View splitter
+- `QtControls/ContextMenu/` - Context menus
+- Various dialog classes in `QtControls/`
 
 ## Notes
 
-- The Windows version uses `wchar_t*` extensively for file paths
-- Qt uses `QString` natively - conversion needed at API boundaries
-- Scintilla document model needs to be properly initialized
-- QFileSystemWatcher can replace Windows file change notification
-- Qt's encoding support (QStringEncoder/Decoder) can replace Windows codepage functions
+- The core backend (Buffer, FileManager, ScintillaEditView) is now complete
+- Remaining work is primarily UI widget implementations
+- Qt's widget system can provide equivalents for all Windows controls
+- Consider implementing base classes first (StaticDialog, StatusBar, ToolBar)
+- Dialogs can be stubbed initially with minimal functionality
 
 ## Last Updated
 
-2026-01-29 (Updated after Buffer/FileManager implementation)
+2026-01-30 (Updated after major Buffer/Notepad_plus implementation push)
 
 ---
 
-**Next Milestone:** Fix remaining compilation issues (DOC_UNNAMED scope, BufferID type) and successfully open a text file in the editor.
+**Next Milestone:** Implement UI base classes to resolve linker errors and achieve a working executable.

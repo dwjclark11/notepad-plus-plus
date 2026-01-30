@@ -28,7 +28,7 @@
 #include "NppIO.h"
 #include "Buffer.h"
 #include "ScintillaEditView.h"
-#include "DocTabView.h"
+// Note: DocTabView.h is already included via Notepad_plus.h
 #include "Parameters.h"
 #include "lastRecentFileList.h"
 #include "MISC/Common/LinuxTypes.h"
@@ -45,6 +45,66 @@
 #include <QApplication>
 #include <memory>
 #include <mutex>
+#include <chrono>
+
+// ============================================================================
+// Global Variables
+// ============================================================================
+
+std::chrono::steady_clock::time_point g_nppStartTimePoint{};
+std::chrono::steady_clock::duration g_pluginsLoadingTime{};
+
+// ============================================================================
+// Constructor and Destructor
+// ============================================================================
+
+Notepad_plus::Notepad_plus()
+	: _autoCompleteMain(&_mainEditView)
+	, _autoCompleteSub(&_subEditView)
+	, _smartHighlighter(&_findReplaceDlg)
+{
+	// Initialize member variables that need explicit initialization
+	memset(&_prevSelectedRange, 0, sizeof(_prevSelectedRange));
+
+	NppParameters& nppParam = NppParameters::getInstance();
+	NppXml::Document nativeLangDocRoot = nppParam.getNativeLang();
+	_nativeLangSpeaker.init(nativeLangDocRoot);
+
+	LocalizationSwitcher & localizationSwitcher = nppParam.getLocalizationSwitcher();
+	const char *fn = _nativeLangSpeaker.getFileName();
+	if (fn)
+	{
+		localizationSwitcher.setFileName(fn);
+	}
+
+	nppParam.setNativeLangSpeaker(&_nativeLangSpeaker);
+
+	// Note: On Linux, admin mode detection is handled differently
+	// For now, assume non-admin mode (can be enhanced later)
+	nppParam.setAdminMode(false);
+	_isAdministrator = false;
+}
+
+Notepad_plus::~Notepad_plus()
+{
+	// ATTENTION : the order of the destruction is very important
+	// because if the parent's window handle is destroyed before
+	// the destruction of its children windows' handles,
+	// its children windows' handles will be destroyed automatically!
+
+	(NppParameters::getInstance()).destroyInstance();
+
+	delete _pTrayIco;
+	delete _pAnsiCharPanel;
+	delete _pClipboardHistoryPanel;
+	delete _pDocumentListPanel;
+	delete _pProjectPanel_1;
+	delete _pProjectPanel_2;
+	delete _pProjectPanel_3;
+	delete _pDocMap;
+	delete _pFuncList;
+	delete _pFileBrowser;
+}
 
 // ============================================================================
 // File Operations
@@ -907,12 +967,12 @@ void Notepad_plus::notifyBufferChanged(Buffer* buffer, int mask)
     {
         switch (buffer->getStatus())
         {
-            case DOC_UNNAMED:
-            case DOC_REGULAR:
-            case DOC_INACCESSIBLE:
+            case QtCore::DOC_UNNAMED:
+            case QtCore::DOC_REGULAR:
+            case QtCore::DOC_INACCESSIBLE:
                 break;
 
-            case DOC_MODIFIED:
+            case QtCore::DOC_MODIFIED:
             {
                 // File modified externally
                 if (!buffer->isMonitoringOn())
@@ -944,7 +1004,7 @@ void Notepad_plus::notifyBufferChanged(Buffer* buffer, int mask)
                 break;
             }
 
-            case DOC_NEEDRELOAD:
+            case QtCore::DOC_NEEDRELOAD:
             {
                 doReload(buffer->getID(), false);
                 if (buffer == _mainEditView.getCurrentBuffer())
@@ -960,7 +1020,7 @@ void Notepad_plus::notifyBufferChanged(Buffer* buffer, int mask)
                 break;
             }
 
-            case DOC_DELETED:
+            case QtCore::DOC_DELETED:
             {
                 // File deleted externally
                 QString fileName = QString::fromStdWString(buffer->getFullPathName());
@@ -2607,6 +2667,242 @@ bool Notepad_plus::addCurrentMacro()
     _recordingSaved = true;
 
     return true;
+}
+
+// ============================================================================
+// Session Operations
+// ============================================================================
+
+void Notepad_plus::loadLastSession()
+{
+    NppParameters& nppParams = NppParameters::getInstance();
+    const NppGUI& nppGui = nppParams.getNppGUI();
+    Session lastSession = nppParams.getSession();
+    bool isSnapshotMode = nppGui.isSnapshotMode();
+    _isFolding = true;
+    loadSession(lastSession, isSnapshotMode);
+    _isFolding = false;
+}
+
+bool Notepad_plus::loadSession(Session& session, bool isSnapshotMode, const wchar_t* userCreatedSessionName)
+{
+    Q_UNUSED(userCreatedSessionName);
+
+    NppParameters& nppParam = NppParameters::getInstance();
+    const NppGUI& nppGUI = nppParam.getNppGUI();
+
+    nppParam.setTheWarningHasBeenGiven(false);
+
+    bool allSessionFilesLoaded = true;
+    BufferID lastOpened = BUFFER_INVALID;
+
+    showView(MAIN_VIEW);
+    switchEditViewTo(MAIN_VIEW);
+
+    // If no session files, just set up RTL if needed
+    if (!session.nbMainFiles() && !session.nbSubFiles())
+    {
+        Buffer* buf = getCurrentBuffer();
+        if (nppParam.getNativeLangSpeaker()->isRTL() && nppParam.getNativeLangSpeaker()->isEditZoneRTL())
+            buf->setRTL(true);
+        _mainEditView.changeTextDirection(buf->isRTL());
+        return true;
+    }
+
+    // Load main view files
+    for (size_t i = 0; i < session.nbMainFiles(); )
+    {
+        const wchar_t* pFn = session._mainViewFiles[i]._fileName.c_str();
+
+        if (isFileSession(pFn) || isFileWorkspace(pFn))
+        {
+            session._mainViewFiles.erase(session._mainViewFiles.begin() + i);
+            continue;
+        }
+
+        // Check if file exists
+        if (QFile::exists(QString::fromStdWString(pFn)))
+        {
+            if (isSnapshotMode && !session._mainViewFiles[i]._backupFilePath.empty())
+                lastOpened = doOpen(pFn, false, false, session._mainViewFiles[i]._encoding,
+                                   session._mainViewFiles[i]._backupFilePath.c_str(),
+                                   session._mainViewFiles[i]._originalFileLastModifTimestamp);
+            else
+                lastOpened = doOpen(pFn, false, false, session._mainViewFiles[i]._encoding);
+        }
+        else if (isSnapshotMode && !session._mainViewFiles[i]._backupFilePath.empty() &&
+                 QFile::exists(QString::fromStdWString(session._mainViewFiles[i]._backupFilePath)))
+        {
+            lastOpened = doOpen(pFn, false, false, session._mainViewFiles[i]._encoding,
+                               session._mainViewFiles[i]._backupFilePath.c_str(),
+                               session._mainViewFiles[i]._originalFileLastModifTimestamp);
+        }
+        else
+        {
+            // File doesn't exist - try to find if already open or create placeholder
+            BufferID foundBufID = MainFileManager.getBufferFromName(pFn);
+            if (foundBufID == BUFFER_INVALID)
+            {
+                // For now, skip absent files (placeholder documents not implemented)
+                lastOpened = BUFFER_INVALID;
+            }
+        }
+
+        if (lastOpened != BUFFER_INVALID)
+        {
+            showView(MAIN_VIEW);
+            Buffer* buf = MainFileManager.getBufferByID(lastOpened);
+
+            // Set language type
+            const wchar_t* pLn = session._mainViewFiles[i]._langName.c_str();
+            LangType langTypeToSet = L_TEXT;
+
+            // Try to determine language from menu name
+            // Simplified: just use text for now
+            if (pLn && *pLn)
+            {
+                // TODO: Map language name to LangType
+                langTypeToSet = L_TEXT;
+            }
+
+            // Set position and other properties
+            buf->setPosition(session._mainViewFiles[i], &_mainEditView);
+            buf->setLangType(langTypeToSet);
+            // TODO: Handle user language name (pLn) if needed
+            if (session._mainViewFiles[i]._encoding != -1)
+                buf->setEncodingNumber(session._mainViewFiles[i]._encoding);
+
+            buf->setUserReadOnly(session._mainViewFiles[i]._isUserReadOnly ||
+                                nppGUI._isFullReadOnly ||
+                                nppGUI._isFullReadOnlySavingForbidden);
+            buf->setPinned(session._mainViewFiles[i]._isPinned);
+            // Note: setUntitledTabRenamedStatus not implemented in Qt version
+
+            if (isSnapshotMode && !session._mainViewFiles[i]._backupFilePath.empty())
+                buf->setDirty(true);
+
+            buf->setRTL(session._mainViewFiles[i]._isRTL);
+            if (i == 0 && session._activeMainIndex == 0)
+                _mainEditView.changeTextDirection(buf->isRTL());
+
+            ++i;
+        }
+        else
+        {
+            session._mainViewFiles.erase(session._mainViewFiles.begin() + i);
+            allSessionFilesLoaded = false;
+        }
+    }
+
+    // Load sub view files
+    showView(SUB_VIEW);
+    switchEditViewTo(SUB_VIEW);
+
+    for (size_t k = 0; k < session.nbSubFiles(); )
+    {
+        const wchar_t* pFn = session._subViewFiles[k]._fileName.c_str();
+
+        if (isFileSession(pFn) || isFileWorkspace(pFn))
+        {
+            session._subViewFiles.erase(session._subViewFiles.begin() + k);
+            continue;
+        }
+
+        if (QFile::exists(QString::fromStdWString(pFn)) ||
+            (isSnapshotMode && !session._subViewFiles[k]._backupFilePath.empty() &&
+             QFile::exists(QString::fromStdWString(session._subViewFiles[k]._backupFilePath))))
+        {
+            // Check if already open in main view - if so, clone it
+            BufferID clonedBuf = _mainDocTab.findBufferByName(pFn);
+            if (clonedBuf != BUFFER_INVALID)
+            {
+                loadBufferIntoView(clonedBuf, SUB_VIEW);
+                lastOpened = clonedBuf;
+            }
+            else
+            {
+                if (isSnapshotMode && !session._subViewFiles[k]._backupFilePath.empty())
+                    lastOpened = doOpen(pFn, false, false, session._subViewFiles[k]._encoding,
+                                       session._subViewFiles[k]._backupFilePath.c_str(),
+                                       session._subViewFiles[k]._originalFileLastModifTimestamp);
+                else
+                    lastOpened = doOpen(pFn, false, false, session._subViewFiles[k]._encoding);
+            }
+        }
+        else
+        {
+            BufferID foundBufID = MainFileManager.getBufferFromName(pFn);
+            if (foundBufID == BUFFER_INVALID)
+            {
+                lastOpened = BUFFER_INVALID;
+            }
+        }
+
+        if (lastOpened != BUFFER_INVALID)
+        {
+            showView(SUB_VIEW);
+            Buffer* buf = MainFileManager.getBufferByID(lastOpened);
+
+            const wchar_t* pLn = session._subViewFiles[k]._langName.c_str();
+            LangType typeToSet = L_TEXT;
+
+            buf->setPosition(session._subViewFiles[k], &_subEditView);
+            buf->setLangType(typeToSet);
+            // TODO: Handle user language name (pLn) if needed
+            buf->setEncodingNumber(session._subViewFiles[k]._encoding);
+            buf->setUserReadOnly(session._subViewFiles[k]._isUserReadOnly ||
+                                nppGUI._isFullReadOnly ||
+                                nppGUI._isFullReadOnlySavingForbidden);
+            buf->setPinned(session._subViewFiles[k]._isPinned);
+            // Note: setUntitledTabRenamedStatus not implemented in Qt version
+
+            if (isSnapshotMode && !session._subViewFiles[k]._backupFilePath.empty())
+                buf->setDirty(true);
+
+            buf->setRTL(session._subViewFiles[k]._isRTL);
+
+            ++k;
+        }
+        else
+        {
+            session._subViewFiles.erase(session._subViewFiles.begin() + k);
+            allSessionFilesLoaded = false;
+        }
+    }
+
+    // Activate the appropriate files
+    if (session._activeMainIndex < session._mainViewFiles.size())
+    {
+        const wchar_t* fileName = session._mainViewFiles[session._activeMainIndex]._fileName.c_str();
+        BufferID buf = _mainDocTab.findBufferByName(fileName);
+        if (buf != BUFFER_INVALID)
+            activateBuffer(buf, MAIN_VIEW);
+    }
+
+    if (session._activeSubIndex < session._subViewFiles.size())
+    {
+        const wchar_t* fileName = session._subViewFiles[session._activeSubIndex]._fileName.c_str();
+        BufferID buf = _subDocTab.findBufferByName(fileName);
+        if (buf != BUFFER_INVALID)
+            activateBuffer(buf, SUB_VIEW);
+    }
+
+    // Switch to the active view
+    if ((session.nbSubFiles() > 0) &&
+        (session._activeView == MAIN_VIEW || session._activeView == SUB_VIEW))
+        switchEditViewTo(static_cast<int32_t>(session._activeView));
+    else
+        switchEditViewTo(MAIN_VIEW);
+
+    // Hide empty views
+    if (canHideView(otherView()))
+        hideView(otherView());
+    else if (canHideView(currentView()))
+        hideView(currentView());
+
+    checkSyncState();
+
+    return allSessionFilesLoaded;
 }
 
 #endif // NPP_LINUX

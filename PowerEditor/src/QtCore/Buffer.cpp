@@ -23,78 +23,9 @@
 #include <QDebug>
 #include <QCryptographicHash>
 
-// For Scintilla integration - these would normally come from Scintilla headers
-// Using forward declarations and mock implementations for the Qt port
-namespace Scintilla {
-
-// Mock ScintillaEditView for Qt implementation
-// In the full implementation, this would be the actual Scintilla Qt wrapper
-class ScintillaEditView {
-public:
-    virtual ~ScintillaEditView() = default;
-
-    // Document operations
-    virtual int getLength() const { return 0; }
-    virtual QByteArray getTextRange(int start, int end) const { return QByteArray(); }
-    virtual void setText(const QByteArray& text) {}
-    virtual void insertText(int pos, const QByteArray& text) {}
-    virtual void clearAll() {}
-
-    // Position and selection
-    virtual int getCurrentPos() const { return 0; }
-    virtual int getAnchor() const { return 0; }
-    virtual void setSelection(int anchor, int caret) {}
-    virtual int getCurrentLine() const { return 0; }
-    virtual int getColumn(int pos) const { return 0; }
-    virtual int positionFromLine(int line) const { return 0; }
-
-    // Line operations
-    virtual int getLineCount() const { return 1; }
-    virtual int getLineEndPosition(int line) const { return 0; }
-    virtual QByteArray getLine(int line) const { return QByteArray(); }
-
-    // Document state
-    virtual bool isModified() const { return false; }
-    virtual void setSavePoint() {}
-    virtual void emptyUndoBuffer() {}
-
-    // Read-only
-    virtual bool getReadOnly() const { return false; }
-    virtual void setReadOnly(bool readOnly) {}
-
-    // Encoding
-    virtual void setCodePage(int codePage) {}
-    virtual int getCodePage() const { return 65001; } // UTF-8
-
-    // Line endings
-    virtual void setEOLMode(int mode) {}
-    virtual int getEOLMode() const { return 0; }
-    virtual void convertEOLs(int mode) {}
-
-    // Lexer
-    virtual void setLexer(int lexer) {}
-    virtual void setLexerLanguage(const char* language) {}
-
-    // Tab settings
-    virtual void setUseTabs(bool useTabs) {}
-    virtual void setTabWidth(int width) {}
-    virtual void setIndentWidth(int width) {}
-
-    // Word count helper
-    virtual int getWordCount() const { return 0; }
-
-    // First visible line for position save/restore
-    virtual int getFirstVisibleLine() const { return 0; }
-    virtual void setFirstVisibleLine(int line) {}
-    virtual int getXOffset() const { return 0; }
-    virtual void setXOffset(int xOffset) {}
-
-    // Document pointer (for buffer management)
-    virtual void* getDocPointer() const { return nullptr; }
-    virtual void setDocPointer(void* doc) {}
-};
-
-} // namespace Scintilla
+// Include ScintillaEditView for the real class definition
+#include "ScintillaEditView.h"
+#include "Scintilla.h"  // For SCI_* message constants
 
 namespace QtCore {
 
@@ -402,18 +333,18 @@ Buffer::~Buffer()
     }
 }
 
-void Buffer::setScintillaView(Scintilla::ScintillaEditView* view)
+void Buffer::setScintillaView(::ScintillaEditView* view)
 {
     QMutexLocker locker(&_mutex);
     _pView = view;
 }
 
-void Buffer::setID(int id)
+void Buffer::setID(BufferID id)
 {
     _id = id;
 }
 
-int Buffer::getID() const
+BufferID Buffer::getID() const
 {
     return _id;
 }
@@ -462,15 +393,15 @@ bool Buffer::loadFromFile(const QString& filePath)
 
     // Set content in Scintilla view
     if (_pView) {
-        _pView->clearAll();
-        _pView->setText(content);
-        _pView->setSavePoint();
-        _pView->emptyUndoBuffer();
+        _pView->execute(SCI_CLEARALL);
+        _pView->execute(SCI_APPENDTEXT, static_cast<WPARAM>(content.size()), reinterpret_cast<LPARAM>(content.constData()));
+        _pView->execute(SCI_SETSAVEPOINT);
+        _pView->execute(SCI_EMPTYUNDOBUFFER);
     }
 
     // Update status
     _isDirty = false;
-    _status = BufferStatus::Clean;
+    _status = DOC_REGULAR;
     _lastSavedTime = QDateTime::currentDateTime();
 
     // Setup file watcher
@@ -490,7 +421,11 @@ bool Buffer::saveToFile(const QString& filePath)
     QByteArray content;
 
     if (_pView) {
-        content = _pView->getTextRange(0, _pView->getLength());
+        int length = static_cast<int>(_pView->execute(SCI_GETLENGTH));
+        content.resize(length);
+        if (length > 0) {
+            _pView->getText(content.data(), 0, length);
+        }
     }
 
     // Convert line endings if needed
@@ -513,10 +448,10 @@ bool Buffer::saveToFile(const QString& filePath)
 
     // Update status
     _isDirty = false;
-    _status = BufferStatus::Clean;
+    _status = DOC_REGULAR;
 
     if (_pView) {
-        _pView->setSavePoint();
+        _pView->execute(SCI_SETSAVEPOINT);
     }
 
     // Remove backup file after successful save
@@ -619,7 +554,12 @@ QByteArray Buffer::getContent() const
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        return _pView->getTextRange(0, _pView->getLength());
+        int length = static_cast<int>(_pView->execute(SCI_GETLENGTH));
+        QByteArray content(length, Qt::Uninitialized);
+        if (length > 0) {
+            _pView->getText(content.data(), 0, length);
+        }
+        return content;
     }
 
     return QByteArray();
@@ -630,12 +570,12 @@ void Buffer::setContent(const QByteArray& content)
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        _pView->clearAll();
-        _pView->setText(content);
+        _pView->execute(SCI_CLEARALL);
+        _pView->execute(SCI_APPENDTEXT, static_cast<WPARAM>(content.size()), reinterpret_cast<LPARAM>(content.constData()));
     }
 
     _isDirty = true;
-    _status = BufferStatus::Dirty;
+    _status = DOC_MODIFIED;
 
     emit contentChanged();
     emit statusChanged(_status);
@@ -665,7 +605,7 @@ int Buffer::getLineCount() const
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        return _pView->getLineCount();
+        return static_cast<int>(_pView->execute(SCI_GETLINECOUNT));
     }
 
     return 1;
@@ -676,7 +616,7 @@ int Buffer::getCharCount() const
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        return _pView->getLength();
+        return static_cast<int>(_pView->execute(SCI_GETLENGTH));
     }
 
     return 0;
@@ -687,7 +627,7 @@ size_t Buffer::docLength() const
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        return static_cast<size_t>(_pView->getLength());
+        return static_cast<size_t>(_pView->execute(SCI_GETLENGTH));
     }
 
     return 0;
@@ -698,7 +638,16 @@ int Buffer::getWordCount() const
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        return _pView->getWordCount();
+        // Get text and count words
+        int length = static_cast<int>(_pView->execute(SCI_GETLENGTH));
+        if (length > 0) {
+            QByteArray text(length, Qt::Uninitialized);
+            _pView->getText(text.data(), 0, length);
+            QString str = QString::fromUtf8(text);
+            QStringList words = str.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+            return words.count();
+        }
+        return 0;
     }
 
     // Fallback: count words in content
@@ -712,7 +661,7 @@ int Buffer::getCurrentPos() const
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        return _pView->getCurrentPos();
+        return static_cast<int>(_pView->execute(SCI_GETCURRENTPOS));
     }
 
     return 0;
@@ -723,7 +672,8 @@ int Buffer::getCurrentLine() const
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        return _pView->getCurrentLine();
+        int pos = static_cast<int>(_pView->execute(SCI_GETCURRENTPOS));
+        return static_cast<int>(_pView->execute(SCI_LINEFROMPOSITION, pos));
     }
 
     return 0;
@@ -734,8 +684,8 @@ int Buffer::getCurrentColumn() const
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        int pos = _pView->getCurrentPos();
-        return _pView->getColumn(pos);
+        int pos = static_cast<int>(_pView->execute(SCI_GETCURRENTPOS));
+        return static_cast<int>(_pView->execute(SCI_GETCOLUMN, pos));
     }
 
     return 0;
@@ -753,20 +703,20 @@ void Buffer::setDirty(bool dirty)
 
     if (_isDirty != dirty) {
         _isDirty = dirty;
-        _status = dirty ? BufferStatus::Dirty : BufferStatus::Clean;
+        _status = dirty ? DOC_MODIFIED : DOC_REGULAR;
 
         emit dirtyChanged(dirty);
         emit statusChanged(_status);
     }
 }
 
-BufferStatus Buffer::getStatus() const
+DocFileStatus Buffer::getStatus() const
 {
     QMutexLocker locker(&_mutex);
     return _status;
 }
 
-void Buffer::setStatus(BufferStatus status)
+void Buffer::setStatus(DocFileStatus status)
 {
     QMutexLocker locker(&_mutex);
 
@@ -801,7 +751,7 @@ void Buffer::setUserReadOnly(bool readOnly)
         _isUserReadOnly = readOnly;
 
         if (_pView) {
-            _pView->setReadOnly(isReadOnly());
+            _pView->execute(SCI_SETREADONLY, isReadOnly());
         }
 
         emit readOnlyChanged(isReadOnly());
@@ -822,7 +772,7 @@ void Buffer::setFileReadOnly(bool readOnly)
         _isFileReadOnly = readOnly;
 
         if (_pView) {
-            _pView->setReadOnly(isReadOnly());
+            _pView->execute(SCI_SETREADONLY, isReadOnly());
         }
 
         emit readOnlyChanged(isReadOnly());
@@ -912,8 +862,8 @@ void Buffer::setLineEnding(LineEnding ending)
                     sciEolMode = 2; // Default to LF
                     break;
             }
-            _pView->convertEOLs(sciEolMode);
-            _pView->setEOLMode(sciEolMode);
+            _pView->execute(SCI_CONVERTEOLS, sciEolMode);
+            _pView->execute(SCI_SETEOLMODE, sciEolMode);
         }
     }
 }
@@ -949,9 +899,10 @@ void Buffer::setLangType(DocLangType type)
 
         // Update Scintilla lexer
         if (_pView) {
-            // Map DocLangType to Scintilla lexer
-            // This is a simplified mapping - full implementation would map all types
-            _pView->setLexer(static_cast<int>(type));
+            // Note: Lexer setup is handled by ScintillaEditView::defineDocType
+            // which calls SCI_SETILEXER with the appropriate lexer
+            // This is a simplified placeholder - the actual lexer setup
+            // should be done through the ScintillaEditView interface
         }
 
         emit langTypeChanged(type);
@@ -997,7 +948,7 @@ void Buffer::setIndentTab(bool useTab)
     _useTabs = useTab;
 
     if (_pView) {
-        _pView->setUseTabs(useTab);
+        _pView->execute(SCI_SETUSETABS, useTab);
     }
 }
 
@@ -1014,7 +965,7 @@ void Buffer::setTabWidth(int width)
     _tabWidth = width;
 
     if (_pView) {
-        _pView->setTabWidth(width);
+        _pView->execute(SCI_SETTABWIDTH, width);
     }
 }
 
@@ -1031,7 +982,7 @@ void Buffer::setIndentWidth(int width)
     _indentWidth = width;
 
     if (_pView) {
-        _pView->setIndentWidth(width);
+        _pView->execute(SCI_SETINDENT, width);
     }
 }
 
@@ -1096,12 +1047,12 @@ bool Buffer::recoverFromAutoSave()
     file.close();
 
     if (_pView) {
-        _pView->clearAll();
-        _pView->setText(content);
+        _pView->execute(SCI_CLEARALL);
+        _pView->execute(SCI_APPENDTEXT, static_cast<WPARAM>(content.size()), reinterpret_cast<LPARAM>(content.constData()));
     }
 
     _isDirty = true;
-    _status = BufferStatus::Dirty;
+    _status = DOC_MODIFIED;
 
     emit contentChanged();
     emit statusChanged(_status);
@@ -1132,7 +1083,11 @@ bool Buffer::createBackup()
 
     QByteArray content;
     if (_pView) {
-        content = _pView->getTextRange(0, _pView->getLength());
+        int length = static_cast<int>(_pView->execute(SCI_GETLENGTH));
+        content.resize(length);
+        if (length > 0) {
+            _pView->getText(content.data(), 0, length);
+        }
     }
 
     if (_backupFilePath.isEmpty()) {
@@ -1191,7 +1146,7 @@ void Buffer::onFileChanged()
     // Check if file has been modified externally
     QFileInfo fileInfo(_filePath);
     if (fileInfo.exists() && fileInfo.lastModified() > _lastSavedTime) {
-        _status = BufferStatus::ModifiedOutside;
+        _status = DOC_MODIFIED;
         emit fileModifiedExternally();
         emit statusChanged(_status);
     }
@@ -1226,10 +1181,11 @@ void Buffer::savePosition()
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        _savedPosition._startPos = _pView->getCurrentPos();
-        _savedPosition._endPos = _pView->getAnchor();
-        _savedPosition._firstVisibleLine = _pView->getCurrentLine();
-        _savedPosition._xOffset = _pView->getXOffset();
+        _savedPosition._startPos = static_cast<int>(_pView->execute(SCI_GETCURRENTPOS));
+        _savedPosition._endPos = static_cast<int>(_pView->execute(SCI_GETANCHOR));
+        int pos = static_cast<int>(_pView->execute(SCI_GETCURRENTPOS));
+        _savedPosition._firstVisibleLine = static_cast<int>(_pView->execute(SCI_LINEFROMPOSITION, pos));
+        _savedPosition._xOffset = static_cast<int>(_pView->execute(SCI_GETXOFFSET));
     }
 }
 
@@ -1238,9 +1194,9 @@ void Buffer::restorePosition()
     QMutexLocker locker(&_mutex);
 
     if (_pView) {
-        _pView->setSelection(_savedPosition._endPos, _savedPosition._startPos);
-        _pView->setFirstVisibleLine(_savedPosition._firstVisibleLine);
-        _pView->setXOffset(_savedPosition._xOffset);
+        _pView->execute(SCI_SETSEL, _savedPosition._startPos, _savedPosition._endPos);
+        _pView->execute(SCI_SETFIRSTVISIBLELINE, _savedPosition._firstVisibleLine);
+        _pView->execute(SCI_SETXOFFSET, _savedPosition._xOffset);
     }
 }
 
@@ -1326,14 +1282,14 @@ bool Buffer::checkFileState()
 
     if (!fileInfo.exists()) {
         // File was deleted externally
-        _status = BufferStatus::Dirty;
+        _status = DOC_MODIFIED;
         emit fileModifiedExternally();
         return true;
     }
 
     if (fileInfo.lastModified() > _lastSavedTime) {
         // File was modified externally
-        _status = BufferStatus::ModifiedOutside;
+        _status = DOC_MODIFIED;
         _lastModifiedTime = fileInfo.lastModified();
         emit fileModifiedExternally();
         return true;
@@ -1597,7 +1553,7 @@ Buffer* BufferManager::createBuffer()
     QMutexLocker locker(&_mutex);
 
     Buffer* buffer = new Buffer(this);
-    buffer->setID(_nextBufferID++);
+    buffer->setID(buffer);  // BufferID is Buffer*, use pointer as ID
 
     _buffers.append(buffer);
 
@@ -1654,7 +1610,7 @@ void BufferManager::deleteBuffer(Buffer* buffer)
     delete buffer;
 }
 
-Buffer* BufferManager::getBufferByID(int id)
+Buffer* BufferManager::getBufferByID(BufferID id)
 {
     QMutexLocker locker(&_mutex);
 
@@ -2186,34 +2142,6 @@ bool FileManager::deleteBufferBackup(BufferID id)
     return true;
 }
 
-void FileManager::closeBuffer(BufferID id, const Scintilla::ScintillaEditView* identifier)
-{
-    Q_UNUSED(identifier)
-
-    if (!id) {
-        return;
-    }
-
-    int index = _buffers.indexOf(id);
-    if (index == -1) {
-        return;
-    }
-
-    Buffer* buf = _buffers.takeAt(index);
-    --_nbBufs;
-
-    delete buf;
-}
-
-void FileManager::addBufferReference(BufferID id, Scintilla::ScintillaEditView* identifier)
-{
-    Q_UNUSED(id)
-    Q_UNUSED(identifier)
-
-    // In the Qt implementation, buffer references are managed differently
-    // This is a compatibility stub
-}
-
 size_t FileManager::getNbBuffers() const
 {
     return _nbBufs;
@@ -2267,6 +2195,72 @@ size_t FileManager::nextUntitledNewNumber() const
     }
 
     return maxNumber + 1;
+}
+
+BufferID FileManager::bufferFromDocument(Document doc, bool isMainEditZone)
+{
+    Q_UNUSED(doc)
+    Q_UNUSED(isMainEditZone)
+
+    // Create a new buffer for the existing document
+    BufferManager* mgr = BufferManager::getInstance();
+    Buffer* newBuf = mgr->createBuffer();
+
+    if (!newBuf) {
+        return nullptr;
+    }
+
+    // Generate untitled name
+    QString untitledName = mgr->getNextUntitledName();
+    newBuf->setFilePath(untitledName);
+
+    // The document already exists in Scintilla, so we just wrap it
+    // The buffer is now associated with the document
+    _buffers.append(newBuf);
+    ++_nbBufs;
+
+    return newBuf;
+}
+
+void FileManager::addBufferReference(BufferID id, ScintillaEditView* identifier)
+{
+    if (!id || !identifier) {
+        return;
+    }
+
+    Buffer* buf = id;
+    buf->setScintillaView(identifier);
+
+    // Add to our tracking if not already present
+    if (!_buffers.contains(buf)) {
+        _buffers.append(buf);
+        ++_nbBufs;
+    }
+}
+
+SavingStatus FileManager::saveBuffer(BufferID id, const wchar_t* filename, bool isCopy)
+{
+    if (!id || !filename) {
+        return SavingStatus::SaveOpenFailed;
+    }
+
+    Buffer* buffer = id;
+    QString filePath = QString::fromWCharArray(filename);
+
+    // Perform the save operation
+    if (!buffer->saveToFile(filePath)) {
+        return SavingStatus::SaveWritingFailed;
+    }
+
+    // If not a copy, update buffer state
+    if (!isCopy) {
+        buffer->setDirty(false);
+        buffer->setUnsync(false);
+        buffer->setSavePointDirty(false);
+        buffer->setStatus(DOC_REGULAR);
+    }
+
+    return SavingStatus::SaveOK;
 }
 
 } // namespace QtCore
@@ -2693,7 +2687,7 @@ SavingStatus FileManager::saveBuffer(BufferID id, const wchar_t* filename, bool 
 {
     Buffer* buffer = getBufferByID(id);
     if (!buffer) {
-        return SaveOpenFailed;
+        return SavingStatus::SaveOpenFailed;
     }
 
     QString filePath = QString::fromWCharArray(filename);
@@ -2702,7 +2696,7 @@ SavingStatus FileManager::saveBuffer(BufferID id, const wchar_t* filename, bool 
     // For now, we just create/truncate the file
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        return SaveOpenFailed;
+        return SavingStatus::SaveOpenFailed;
     }
 
     // Write content would go here in full implementation
@@ -2717,7 +2711,7 @@ SavingStatus FileManager::saveBuffer(BufferID id, const wchar_t* filename, bool 
         buffer->setStatus(DOC_REGULAR);
     }
 
-    return SaveOK;
+    return SavingStatus::SaveOK;
 }
 
 bool FileManager::backupCurrentBuffer()

@@ -2787,9 +2787,54 @@ void ScintillaEditView::init(HINSTANCE hInst, HWND hPere)
 {
     (void)hInst;
     (void)hPere;
-    // TODO: Implement Qt-specific initialization
-    // This is a stub - proper implementation needs Scintilla Qt initialization
-    throw std::runtime_error("ScintillaEditView::init: Qt implementation not yet complete");
+
+    // Qt-specific initialization
+    // On Linux/Qt, we don't use HINSTANCE/HWND, instead we rely on Qt's widget system
+    // The actual ScintillaEditBase widget is created by the QtControls layer
+
+    if (!_SciInit)
+    {
+        // Scintilla Qt doesn't require explicit registration like Windows
+        _SciInit = true;
+    }
+
+    // Initialize the Window base class
+    // On Qt, _hSelf will be set by the QtControls layer when the widget is created
+    // For now, we just ensure the Scintilla function pointers are ready
+
+    // Note: The actual ScintillaEditBase widget creation happens in QtControls::MainWindow
+    // which creates the ScintillaEditViewQt widget and sets up the _pScintillaFunc/_pScintillaPtr
+
+    // Get the startup document and make a buffer for it so it can be accessed like a file
+    attachDefaultDoc();
+}
+
+// ============================================================================
+// Document Management
+// ============================================================================
+BufferID ScintillaEditView::attachDefaultDoc()
+{
+    // Get the doc pointer attached (by default) on the view Scintilla
+    // On Qt, we use SCI_GETDOCPOINTER to get the current document
+    Document doc = execute(SCI_GETDOCPOINTER, 0, 0);
+
+    // Add a reference to the document
+    execute(SCI_ADDREFDOCUMENT, 0, doc);
+
+    // Create a buffer from this document
+    BufferID id = MainFileManager.bufferFromDocument(doc, _isMainEditZone);
+    Buffer* buf = MainFileManager.getBufferByID(id);
+
+    // Add a reference - Notepad only shows the buffer in tabbar
+    MainFileManager.addBufferReference(id, this);
+
+    _currentBufferID = id;
+    _currentBuffer = buf;
+
+    // Make sure everything is in sync with the buffer, since no reference exists
+    bufferUpdated(buf, BufferChangeMask);
+
+    return id;
 }
 
 // ============================================================================

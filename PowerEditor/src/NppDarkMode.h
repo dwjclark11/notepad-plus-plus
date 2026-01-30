@@ -21,10 +21,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
-#include <cstdint>
-using COLORREF = uint32_t;
-using HWND = void*;
-using ULONG = unsigned long;
+#include "MISC/Common/LinuxTypes.h"
 #endif
 
 enum class FluentColor;

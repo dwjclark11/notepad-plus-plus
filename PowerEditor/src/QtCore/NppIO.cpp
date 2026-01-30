@@ -295,24 +295,24 @@ SaveFileResult NppIO::fileSave(Buffer* buffer) {
     );
 
     switch (saveStatus) {
-        case SaveOK:
+        case QtCore::SavingStatus::SaveOK:
             result.status = FileStatus::Success;
             result.newFilePath = filePath;
             emit fileSaved(filePath);
             break;
-        case SaveOpenFailed:
+        case QtCore::SavingStatus::SaveOpenFailed:
             result.status = FileStatus::AccessDenied;
             result.errorMessage = tr("Failed to open file for writing");
             break;
-        case SaveWritingFailed:
+        case QtCore::SavingStatus::SaveWritingFailed:
             result.status = FileStatus::WriteError;
             result.errorMessage = tr("Failed to write file");
             break;
-        case NotEnoughRoom:
+        case QtCore::SavingStatus::NotEnoughRoom:
             result.status = FileStatus::DiskFull;
             result.errorMessage = tr("Not enough disk space");
             break;
-        case FullReadOnlySavingForbidden:
+        case QtCore::SavingStatus::FullReadOnlySavingForbidden:
             result.status = FileStatus::AccessDenied;
             result.errorMessage = tr("Saving is forbidden in read-only mode");
             break;
@@ -370,7 +370,7 @@ SaveFileResult NppIO::fileSaveAs(Buffer* buffer, const QString& newPath) {
         false
     );
 
-    if (saveStatus == SaveOK) {
+    if (saveStatus == QtCore::SavingStatus::SaveOK) {
         result.status = FileStatus::Success;
         result.newFilePath = targetPath;
 
@@ -411,7 +411,7 @@ SaveFileResult NppIO::fileSaveCopyAs(Buffer* buffer, const QString& newPath) {
         true // isCopy
     );
 
-    if (saveStatus == SaveOK) {
+    if (saveStatus == QtCore::SavingStatus::SaveOK) {
         result.status = FileStatus::Success;
         result.newFilePath = targetPath;
     } else {
