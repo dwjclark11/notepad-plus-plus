@@ -803,8 +803,11 @@ ELSEIF(UNIX AND NOT APPLE)
 	# IMPORTANT: QtControls must come BEFORE WinControls so Qt versions of headers
 	# are found first (ToolBar, StatusBar, StaticDialog, etc.)
 	# Remove WinControls paths that have Qt replacements
+	# Remove WinControls subdirectories that have Qt replacements
+	# This ensures Qt versions of headers are found first
 	list(REMOVE_ITEM projIncludDir ./WinControls/ToolBar/)
 	list(REMOVE_ITEM projIncludDir ./WinControls/StaticDialog/)
+	list(REMOVE_ITEM projIncludDir ./WinControls/StaticDialog/RunDlg/)
 	list(REMOVE_ITEM projIncludDir ./WinControls/AboutDlg/)
 	list(REMOVE_ITEM projIncludDir ./WinControls/ContextMenu/)
 	list(REMOVE_ITEM projIncludDir ./WinControls/shortcut/)
@@ -818,6 +821,13 @@ ELSEIF(UNIX AND NOT APPLE)
 	list(REMOVE_ITEM projIncludDir ./WinControls/StatusBar/)
 	list(REMOVE_ITEM projIncludDir ./WinControls/TabBar/)
 	list(REMOVE_ITEM projIncludDir ./WinControls/TreeView/)
+	list(REMOVE_ITEM projIncludDir ./WinControls/ColourPicker/)
+	list(REMOVE_ITEM projIncludDir ./WinControls/AnsiCharPanel/)
+	list(REMOVE_ITEM projIncludDir ./WinControls/FindCharsInRange/)
+	list(REMOVE_ITEM projIncludDir ./WinControls/PluginsAdmin/)
+	list(REMOVE_ITEM projIncludDir ./WinControls/WindowsDlg/)
+	list(REMOVE_ITEM projIncludDir ./WinControls/DockingWnd/)
+	list(REMOVE_ITEM projIncludDir ./WinControls/Grid/)
 	list(INSERT projIncludDir 0
 		.
 		./Platform
@@ -957,6 +967,7 @@ IF(UNIX AND NOT APPLE)
 		./QtControls/TreeView
 		./QtControls/FindReplace
 		./QtControls/ShortcutMapper
+		./QtControls/Shortcut
 		./QtControls/KDEStyle
 		./QtControls/DockingManager
 		./QtControls/ListView

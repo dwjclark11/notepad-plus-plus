@@ -48,7 +48,7 @@
 #include "WordStyleDlg.h"
 #include "menuCmdID.h"
 #include "resource.h"
-#include "shortcut.h"
+#include "Shortcut.h"
 
 // VK constants are now included via Common.h -> LinuxTypes.h
 
