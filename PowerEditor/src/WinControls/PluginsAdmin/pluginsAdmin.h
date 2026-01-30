@@ -227,10 +227,9 @@ private :
 };
 
 #else
-// Linux - forward declarations are in PluginsManager.h
-// Provide stub classes for Linux
+// Linux - forward declarations
 namespace QtControls {
-	class PluginViewList {};
-	class PluginsAdminDlg {};
+	class PluginViewList;
+	class PluginsAdminDlg;
 }
 #endif

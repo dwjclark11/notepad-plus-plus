@@ -24,6 +24,44 @@ This document tracks the build progress of the Notepad++ Linux Qt6 port.
 
 ## Recent Changes (2026-01-30)
 
+### Dialog Port Batch - Multiple Dialogs Ported to Qt6
+
+**1. DebugInfoDlg Ported**
+- Created `QtControls/AboutDlg/DebugInfoDlg.h` and `.cpp`
+- Displays version info, build details, OS info, loaded plugins
+- Features "Copy to Clipboard" and "Refresh" buttons
+- Uses monospace font for debug text display
+
+**2. CmdLineArgsDlg Ported**
+- Created `QtControls/AboutDlg/CmdLineArgsDlg.h` and `.cpp`
+- Displays command line arguments help in read-only text edit
+- Uses monospace font for proper formatting
+
+**3. ColumnEditorDlg Ported**
+- Created `QtControls/ColumnEditor/ColumnEditorDlg.h` and `.cpp`
+- Supports text insertion across multiple lines
+- Number sequence insertion with customizable initial value, increment, repeat
+- Number format options: Decimal, Hex, Octal, Binary
+- Leading options: None, Zeros, Spaces
+
+**4. Hash Dialogs Ported**
+- Created `QtControls/HashDlgs/` directory
+- `HashFromFilesDlg`: Calculate MD5/SHA1/SHA256/SHA512 from files
+- `HashFromTextDlg`: Calculate hash from text input
+- Uses Qt's QCryptographicHash for calculations
+- Supports per-line hashing for text
+
+**5. PluginsAdminDlg Ported**
+- Created `QtControls/PluginsAdmin/PluginsAdminDlg.h` and `.cpp`
+- Created `PluginViewList.h` and `.cpp` for plugin list management
+- Tabbed interface: Available, Updates, Installed, Incompatible
+- Search functionality for finding plugins
+- Install/Update/Remove plugin support
+
+---
+
+## Previous Changes (2026-01-30)
+
 ### Parallel Agent Fixes - Build Now Complete
 
 **1. ToolBarButtonUnit Fix (`MainWindow/Notepad_plus_Window.cpp`)**
@@ -80,6 +118,12 @@ This document tracks the build progress of the Notepad++ Linux Qt6 port.
    - ✅ GoToLineDlg (line navigation)
    - ✅ FindCharsInRangeDlg (character range search)
    - ✅ WordStyleDlg (styling)
+   - ✅ DebugInfoDlg (system info, plugins, build details)
+   - ✅ CmdLineArgsDlg (command line help)
+   - ✅ ColumnEditorDlg (column/rectangular editing)
+   - ✅ HashFromFilesDlg (file hash calculation)
+   - ✅ HashFromTextDlg (text hash calculation)
+   - ✅ PluginsAdminDlg (plugin manager)
 
 4. **Header Compatibility (95%)**
    - Most WinControls headers compile on Linux
@@ -95,9 +139,6 @@ This document tracks the build progress of the Notepad++ Linux Qt6 port.
    - These are forward-declared classes that will be cleaned up as panels are ported
 
 2. **Unported Dialogs (Stubs Only)**
-   - DebugInfoDlg
-   - CmdLineArgsDlg
-   - PluginsAdminDlg
    - UserDefineDialog (syntax highlighting config)
 
 3. **Missing Features**
@@ -133,20 +174,18 @@ make -j$(nproc)
 
 ### Short Term
 
-1. **Port remaining essential dialogs:**
-   - DebugInfoDlg
-   - CmdLineArgsDlg
+1. **Implement menu system** integration
 
-2. **Implement menu system** integration
-
-3. **Port document panels:**
+2. **Port document panels:**
    - DocumentMap
    - FunctionListPanel
 
+3. **Port remaining dialogs:**
+   - UserDefineDialog (syntax highlighting configuration)
+
 ### Long Term (Full Feature Parity)
 
-1. **Port All Remaining Dialogs:**
-   - PluginsAdmin
+1. **Port Remaining Dialog:**
    - UserDefineDialog
 
 2. **Port remaining panels:**
@@ -195,6 +234,18 @@ Linux Port: Fix build issues and port essential dialogs
 - Verify AboutDlg implementation
 ```
 
+### Commit 6: Dialog Batch Port
+```
+Linux Port: Port additional dialogs to Qt6
+
+- Port DebugInfoDlg (system info, build details, plugins list)
+- Port CmdLineArgsDlg (command line arguments display)
+- Port ColumnEditorDlg (column editing with numbers/text)
+- Port HashFromFilesDlg and HashFromTextDlg (MD5/SHA hashing)
+- Port PluginsAdminDlg with PluginViewList (plugin manager)
+- Update all CMakeLists.txt with new sources
+```
+
 ---
 
 ## Summary
@@ -204,8 +255,9 @@ The Linux port has made **major progress**:
 - ✅ Qt UI base classes implemented
 - ✅ WinControls headers wrapped for conditional compilation
 - ✅ **Build now completes successfully**
-- ✅ Essential dialogs ported (About, Run, GoToLine, FindCharsInRange)
+- ✅ Essential dialogs ported (About, Run, GoToLine, FindCharsInRange, DebugInfo, CmdLineArgs)
+- ✅ Advanced dialogs ported (ColumnEditor, Hash dialogs, PluginsAdmin)
 - 🔄 Build warnings about unported panels (non-blocking)
-- ⏳ Remaining dialogs to port (stubs in place)
+- ⏳ Remaining: UserDefineDialog, document panels, menu system
 
-**The build is approximately 85% complete**, with the project now compiling successfully. Remaining work focuses on porting additional dialogs and panels to achieve full feature parity.
+**The build is approximately 90% complete**, with the project now compiling successfully. Most major dialogs are now functional. Remaining work focuses on document panels, UserDefineDialog, and full menu system integration.

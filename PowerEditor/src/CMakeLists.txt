@@ -696,6 +696,8 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtControls/RunDlg/RunDlg.cpp
 		./QtControls/RunMacroDlg/RunMacroDlg.cpp
 		./QtControls/AboutDlg/AboutDlg.cpp
+		./QtControls/AboutDlg/DebugInfoDlg.cpp
+		./QtControls/AboutDlg/CmdLineArgsDlg.cpp
 		./QtControls/TreeView/TreeView.cpp
 		./QtControls/FindReplace/FindReplaceDlg.cpp
 		./QtControls/ShortcutMapper/ShortcutMapper.cpp
@@ -711,7 +713,10 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtControls/MainWindow/Notepad_plus_Window.cpp
 		./QtControls/Preference/preferenceDlg.cpp
 		./QtControls/FindCharsInRange/FindCharsInRangeDlg.cpp
+		./QtControls/ColumnEditor/ColumnEditorDlg.cpp
 		./QtControls/SmartHighlighter/SmartHighlighter.cpp
+		./QtControls/HashDlgs/HashFromFilesDlg.cpp
+		./QtControls/HashDlgs/HashFromTextDlg.cpp
 		./QtControls/Notepad_plus.cpp
 	)
 
@@ -835,6 +840,7 @@ ELSEIF(UNIX AND NOT APPLE)
 		./Platform
 		./QtCore
 		./QtControls
+		./QtControls/HashDlgs
 		./QtControls/ToolBar
 		./QtControls/StatusBar
 		./MISC
@@ -982,6 +988,8 @@ IF(UNIX AND NOT APPLE)
 		./QtControls/FunctionList
 		./QtControls/MainWindow
 		./QtControls/Preference
+		./QtControls/FindCharsInRange
+		./QtControls/ColumnEditor
 		./WinControls
 		./WinControls/AboutDlg
 		./WinControls/AnsiCharPanel

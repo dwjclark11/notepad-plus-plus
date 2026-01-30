@@ -64,7 +64,7 @@ public:
     void setChecked(const QString& checkControlName, bool checkOrNot = true) const;
     void setChecked(int checkControlID, bool checkOrNot = true) const;
 
-    void destroy();
+    virtual void destroy();
 
 protected:
     QWidget* _parent = nullptr;

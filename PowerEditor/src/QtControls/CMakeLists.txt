@@ -27,6 +27,8 @@ set(QTCONTROLS_SOURCES
     RunDlg/RunDlg.cpp
     RunMacroDlg/RunMacroDlg.cpp
     AboutDlg/AboutDlg.cpp
+    AboutDlg/DebugInfoDlg.cpp
+    AboutDlg/CmdLineArgsDlg.cpp
     TreeView/TreeView.cpp
     ShortcutMapper/ShortcutMapper.cpp
     WordStyleDlg/WordStyleDlg.cpp
@@ -40,6 +42,9 @@ set(QTCONTROLS_SOURCES
     ProjectPanel/ProjectPanel.cpp
     MainWindow/Notepad_plus_Window.cpp
     FindCharsInRange/FindCharsInRangeDlg.cpp
+    ColumnEditor/ColumnEditorDlg.cpp
+    PluginsAdmin/PluginsAdminDlg.cpp
+    PluginsAdmin/PluginViewList.cpp
 )
 
 # Optional KDE Frameworks integration
@@ -73,6 +78,8 @@ set(QTCONTROLS_HEADERS
     RunDlg/RunDlg.h
     RunMacroDlg/RunMacroDlg.h
     AboutDlg/AboutDlg.h
+    AboutDlg/DebugInfoDlg.h
+    AboutDlg/CmdLineArgsDlg.h
     TreeView/TreeView.h
     ShortcutMapper/ShortcutMapper.h
     WordStyleDlg/WordStyleDlg.h
@@ -86,6 +93,9 @@ set(QTCONTROLS_HEADERS
     ProjectPanel/ProjectPanel.h
     MainWindow/Notepad_plus_Window.h
     FindCharsInRange/FindCharsInRangeDlg.h
+    ColumnEditor/ColumnEditorDlg.h
+    PluginsAdmin/PluginsAdminDlg.h
+    PluginsAdmin/PluginViewList.h
 )
 
 # Add KDE headers only if KDE integration is enabled
@@ -124,6 +134,8 @@ target_include_directories(QtControls PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/ProjectPanel
     ${CMAKE_CURRENT_SOURCE_DIR}/MainWindow
     ${CMAKE_CURRENT_SOURCE_DIR}/FindCharsInRange
+    ${CMAKE_CURRENT_SOURCE_DIR}/ColumnEditor
+    ${CMAKE_CURRENT_SOURCE_DIR}/PluginsAdmin
 )
 
 # Add KDE include path only if KDE integration is enabled

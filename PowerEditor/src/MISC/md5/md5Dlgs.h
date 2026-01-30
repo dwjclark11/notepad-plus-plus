@@ -60,11 +60,12 @@ private :
 	HFONT _hFont = nullptr;
 };
 #else
-// Linux stubs - empty implementations
-namespace QtControls {
-	class HashFromFilesDlg {};
-	class HashFromTextDlg {};
-}
+// Linux Qt implementations
+#include "HashDlgs/HashFromFilesDlg.h"
+#include "HashDlgs/HashFromTextDlg.h"
+
+// Bring QtControls classes into global namespace for compatibility
 using QtControls::HashFromFilesDlg;
 using QtControls::HashFromTextDlg;
+
 #endif

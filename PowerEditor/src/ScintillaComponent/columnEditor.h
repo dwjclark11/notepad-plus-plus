@@ -55,9 +55,7 @@ private :
 };
 
 #else
-// Linux stub - empty implementation
-namespace QtControls {
-	class ColumnEditorDlg {};
-}
+// Linux Qt implementation
+#include "ColumnEditor/ColumnEditorDlg.h"
 using QtControls::ColumnEditorDlg;
 #endif

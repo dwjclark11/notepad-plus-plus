@@ -2869,4 +2869,213 @@ ScintillaEditView::~ScintillaEditView()
     }
 }
 
+// ============================================================================
+// Helper functions for Column Editor
+// ============================================================================
+
+size_t getNbDigits(size_t aNum, size_t base)
+{
+    size_t nbDigits = 0;
+
+    do
+    {
+        ++nbDigits;
+        aNum /= base;
+    } while (aNum != 0);
+
+    return nbDigits;
+}
+
+// ============================================================================
+// Column Mode Operations (needed for Column Editor)
+// ============================================================================
+
+void ScintillaEditView::setMultiSelections(const ColumnModeInfos & cmi)
+{
+    for (size_t i = 0, len = cmi.size(); i < len ; ++i)
+    {
+        if (cmi[i].isValid())
+        {
+            const intptr_t selStart = cmi[i]._isDirectionL2R ? cmi[i]._selLpos : cmi[i]._selRpos;
+            const intptr_t selEnd = cmi[i]._isDirectionL2R ? cmi[i]._selRpos : cmi[i]._selLpos;
+            execute(SCI_SETSELECTIONNSTART, i, selStart);
+            execute(SCI_SETSELECTIONNEND, i, selEnd);
+        }
+
+        if (cmi[i]._nbVirtualAnchorSpc)
+            execute(SCI_SETSELECTIONNANCHORVIRTUALSPACE, i, cmi[i]._nbVirtualAnchorSpc);
+        if (cmi[i]._nbVirtualCaretSpc)
+            execute(SCI_SETSELECTIONNCARETVIRTUALSPACE, i, cmi[i]._nbVirtualCaretSpc);
+    }
+}
+
+ColumnModeInfos ScintillaEditView::getColumnModeSelectInfo()
+{
+    ColumnModeInfos columnModeInfos;
+    if (execute(SCI_GETSELECTIONS) > 1) // Multi-Selection || Column mode
+    {
+        intptr_t nbSel = execute(SCI_GETSELECTIONS);
+
+        for (int i = 0 ; i < nbSel ; ++i)
+        {
+            intptr_t absPosSelStartPerLine = execute(SCI_GETSELECTIONNANCHOR, i);
+            intptr_t absPosSelEndPerLine = execute(SCI_GETSELECTIONNCARET, i);
+            intptr_t nbVirtualAnchorSpc = execute(SCI_GETSELECTIONNANCHORVIRTUALSPACE, i);
+            intptr_t nbVirtualCaretSpc = execute(SCI_GETSELECTIONNCARETVIRTUALSPACE, i);
+
+            if (absPosSelStartPerLine == absPosSelEndPerLine && execute(SCI_SELECTIONISRECTANGLE))
+            {
+                const bool isDirL2R = nbVirtualAnchorSpc < nbVirtualCaretSpc;
+                columnModeInfos.push_back(ColumnModeInfo(absPosSelStartPerLine, absPosSelEndPerLine, i, isDirL2R, nbVirtualAnchorSpc, nbVirtualCaretSpc));
+            }
+            else if (absPosSelStartPerLine > absPosSelEndPerLine) // is R2L
+                columnModeInfos.push_back(ColumnModeInfo(absPosSelEndPerLine, absPosSelStartPerLine, i, false, nbVirtualAnchorSpc, nbVirtualCaretSpc));
+            else
+                columnModeInfos.push_back(ColumnModeInfo(absPosSelStartPerLine, absPosSelEndPerLine, i, true, nbVirtualAnchorSpc, nbVirtualCaretSpc));
+        }
+    }
+    return columnModeInfos;
+}
+
+void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, const wchar_t *str)
+{
+    intptr_t totalDiff = 0;
+    for (size_t i = 0, len = cmi.size(); i < len ; ++i)
+    {
+        if (cmi[i].isValid())
+        {
+            intptr_t len2beReplace = cmi[i]._selRpos - cmi[i]._selLpos;
+            intptr_t diff = std::wcslen(str) - len2beReplace;
+
+            cmi[i]._selLpos += totalDiff;
+            cmi[i]._selRpos += totalDiff;
+            bool hasVirtualSpc = cmi[i]._nbVirtualAnchorSpc > 0;
+
+            if (hasVirtualSpc) // if virtual space is present, then insert space
+            {
+                for (intptr_t j = 0, k = cmi[i]._selLpos; j < cmi[i]._nbVirtualCaretSpc ; ++j, ++k)
+                {
+                    execute(SCI_INSERTTEXT, k, reinterpret_cast<LPARAM>(" "));
+                }
+                cmi[i]._selLpos += cmi[i]._nbVirtualAnchorSpc;
+                cmi[i]._selRpos += cmi[i]._nbVirtualCaretSpc;
+            }
+
+            execute(SCI_SETTARGETRANGE, cmi[i]._selLpos, cmi[i]._selRpos);
+
+            WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+            size_t cp = execute(SCI_GETCODEPAGE);
+            const char *strA = wmc.wchar2char(str, cp);
+            execute(SCI_REPLACETARGET, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(strA));
+
+            if (hasVirtualSpc)
+            {
+                totalDiff += cmi[i]._nbVirtualAnchorSpc + std::wcslen(str);
+
+                // Now there's no more virtual space
+                cmi[i]._nbVirtualAnchorSpc = 0;
+                cmi[i]._nbVirtualCaretSpc = 0;
+            }
+            else
+            {
+                totalDiff += diff;
+            }
+            cmi[i]._selRpos += diff;
+        }
+    }
+}
+
+void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, size_t initial, size_t incr, size_t repeat, UCHAR format, ColumnEditorParam::leadingChoice lead)
+{
+    assert(repeat > 0);
+
+    // If there is no column mode info available, no need to do anything
+    if (cmi.size() == 0)
+        return;
+
+    bool useUppercase = false;
+    int base = 10;
+    if (format == BASE_16)
+        base = 16;
+    else if (format == BASE_08)
+        base = 8;
+    else if (format == BASE_02)
+        base = 2;
+    else if (format == BASE_16_UPPERCASE)
+    {
+        base = 16;
+        useUppercase = true;
+    }
+
+    const int stringSize = 512;
+    char str[stringSize];
+
+    // Compute the numbers to be placed at each column.
+    std::vector<size_t> numbers;
+
+    size_t curNumber = initial;
+    const size_t kiMaxSize = cmi.size();
+    while (numbers.size() < kiMaxSize)
+    {
+        for (size_t i = 0; i < repeat; i++)
+        {
+            numbers.push_back(curNumber);
+            if (numbers.size() >= kiMaxSize)
+            {
+                break;
+            }
+        }
+        curNumber += incr;
+    }
+
+    const size_t kibEnd = getNbDigits(*numbers.rbegin(), base);
+    const size_t kibInit = getNbDigits(initial, base);
+    const size_t kib = std::max<size_t>(kibInit, kibEnd);
+
+    intptr_t totalDiff = 0;
+    const size_t len = cmi.size();
+    for (size_t i = 0 ; i < len ; i++)
+    {
+        if (cmi[i].isValid())
+        {
+            const intptr_t len2beReplaced = cmi[i]._selRpos - cmi[i]._selLpos;
+            const intptr_t diff = kib - len2beReplaced;
+
+            cmi[i]._selLpos += totalDiff;
+            cmi[i]._selRpos += totalDiff;
+
+            variedFormatNumber2String<char>(str, stringSize, numbers.at(i), base, useUppercase, kib, lead);
+
+            const bool hasVirtualSpc = cmi[i]._nbVirtualAnchorSpc > 0;
+
+            if (hasVirtualSpc) // if virtual space is present, then insert space
+            {
+                for (intptr_t j = 0, k = cmi[i]._selLpos; j < cmi[i]._nbVirtualCaretSpc ; ++j, ++k)
+                {
+                    execute(SCI_INSERTTEXT, k, reinterpret_cast<LPARAM>(" "));
+                }
+                cmi[i]._selLpos += cmi[i]._nbVirtualAnchorSpc;
+                cmi[i]._selRpos += cmi[i]._nbVirtualCaretSpc;
+            }
+
+            execute(SCI_SETTARGETRANGE, cmi[i]._selLpos, cmi[i]._selRpos);
+            execute(SCI_REPLACETARGET, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(str));
+
+            if (hasVirtualSpc)
+            {
+                totalDiff += cmi[i]._nbVirtualAnchorSpc + static_cast<intptr_t>(strlen(str));
+
+                // Now there's no more virtual space
+                cmi[i]._nbVirtualAnchorSpc = 0;
+                cmi[i]._nbVirtualCaretSpc = 0;
+            }
+            else
+            {
+                totalDiff += diff;
+            }
+            cmi[i]._selRpos += diff;
+        }
+    }
+}
+
 #endif // NPP_LINUX

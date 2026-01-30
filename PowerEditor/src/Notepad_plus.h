@@ -95,12 +95,10 @@ namespace QtControls {
     class DockingCont {};
 }
 using DockingCont = QtControls::DockingCont;
-// Stub classes for dialogs not yet implemented on Linux
-namespace QtControls {
-    class AboutDlg {};
-    class DebugInfoDlg {};
-    class CmdLineArgsDlg {};
-}
+// Include Qt AboutDlg and related dialogs
+#include "QtControls/AboutDlg/AboutDlg.h"
+#include "QtControls/AboutDlg/DebugInfoDlg.h"
+#include "QtControls/AboutDlg/CmdLineArgsDlg.h"
 using AboutDlg = QtControls::AboutDlg;
 using DebugInfoDlg = QtControls::DebugInfoDlg;
 using CmdLineArgsDlg = QtControls::CmdLineArgsDlg;
