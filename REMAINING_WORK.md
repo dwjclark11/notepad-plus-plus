@@ -2,15 +2,84 @@
 
 ## Current Status (as of 2026-01-30)
 
-The Linux Qt6 port is now **feature complete** with all core components implemented:
+The Linux Qt6 port has **critical runtime issues** that prevent basic functionality:
 
-- ✅ Session loading - Files restore on startup
+- ❌ **Text area missing** - No editor widget appears when application loads
+- ❌ **"New" command fails** - File > New and Ctrl+N don't create documents
+- ⚠️ Session loading - Implemented but depends on working editor
 - ✅ UserDefineDialog - Full syntax highlighting configuration
 - ✅ Menu system - All menus integrated with command handlers
 - ✅ Shortcut handling - Global keyboard shortcuts working
 - ✅ Plugin support - Plugin loading and management implemented
 
-The build completes successfully and the application runs without crashing.
+**Note:** The application builds and launches, but the core editor functionality is non-functional due to missing widget initialization.
+
+## Critical Issues (NEW - 2026-01-30)
+
+### Issue 1: Text Area Missing
+**Status**: 🔴 CRITICAL - Blocks all editing functionality
+
+The editor widget never appears in the main window. The `ScintillaEditView::init(QWidget* parent)` function in `PowerEditor/src/QtCore/ScintillaEditViewQt.cpp` never creates the actual Scintilla widget:
+
+```cpp
+void ScintillaEditView::init(QWidget* parent)
+{
+    QtControls::Window::init(parent);  // Only sets _parent, _widget stays nullptr!
+    // Missing: Creation of ScintillaEditBase widget
+    attachDefaultDoc();  // Crashes - tries to use null widget
+}
+```
+
+**Root Cause**: The `_widget` member (inherited from `QtControls::Window`) is never assigned. It should be a `ScintillaEditBase*` from the Scintilla Qt port.
+
+**Required Fix**:
+1. Include `ScintillaEditBase.h` from scintilla/qt/ScintillaEditBase/
+2. Create `ScintillaEditBase` widget in `init()`
+3. Set `_widget` to the created widget
+4. Initialize direct function pointers (`_pScintillaFunc`, `_pScintillaPtr`)
+
+### Issue 2: "New" Command Fails
+**Status**: 🔴 CRITICAL - Blocks document creation
+
+Clicking File > New or pressing Ctrl+N doesn't create a new document. The application crashes or does nothing.
+
+**Root Cause**: Critical member pointers are never initialized in the Qt version:
+- `_pEditView` - should point to `&_mainEditView`
+- `_pDocTab` - should point to `&_mainDocTab`
+- `_mainWindowStatus` - should be `WindowMainActive`
+- `_activeView` - should be `MAIN_VIEW`
+
+**Location**: `PowerEditor/src/QtControls/Notepad_plus.cpp` constructor
+
+**Required Fix**: Add initialization in constructor:
+```cpp
+_pEditView = &_mainEditView;
+_pDocTab = &_mainDocTab;
+_pNonEditView = &_subEditView;
+_pNonDocTab = &_subDocTab;
+_mainWindowStatus = WindowMainActive;
+_activeView = MAIN_VIEW;
+```
+
+### Issue 3: Missing MainWindow Editor Layout
+**Status**: 🔴 CRITICAL - Editor views not added to UI
+
+In `PowerEditor/src/QtControls/MainWindow/Notepad_plus_Window.cpp`, the `setupUI()` function creates the `_editorSplitter` but never initializes the edit views or adds them to the splitter.
+
+**Required Fix**: After creating `_editorSplitter`, add code to:
+1. Initialize `_mainEditView` and `_subEditView`
+2. Create `DocTabView` containers
+3. Add views to the splitter with proper layout
+
+### Issue 4: Missing Method Implementations
+**Status**: 🟡 MEDIUM - Causes build/runtime errors
+
+Several methods called by MainWindow are not implemented in Qt version:
+- `ScintillaEditView::isViewWhiteSpace()`
+- `ScintillaEditView::isViewEOL()`
+- `NppParameters::getLangFromLangType()`
+- Missing constants: `uniUTF8BOM`, `uniCookie`
+- Type mismatch: `QtCore::Buffer::EolType` vs `EolType`
 
 ## Build Status
 
@@ -18,13 +87,14 @@ The build completes successfully and the application runs without crashing.
 - **Lexilla Library**: ✓ Building
 - **Scintilla Qt6**: ✓ Building
 - **Buffer/FileManager Core**: ✓ Complete
-- **ScintillaEditView Integration**: ✓ Complete
-- **Notepad_plus Core**: ✓ Complete
+- **ScintillaEditView Integration**: ❌ CRITICAL - Widget not created
+- **Notepad_plus Core**: ⚠️ Partial - Pointers not initialized
+- **MainWindow UI**: ❌ CRITICAL - Editor views not added
 - **NppDarkMode**: ✓ Stubs implemented
 - **UI Base Classes**: ✓ Complete (StaticDialog, ToolBar, StatusBar, DockingManager, etc.)
 - **Ported Dialogs**: ✓ Complete (About, Run, GoToLine, FindReplace, etc.)
 - **Ported Panels**: ✓ Complete (DocumentMap, FunctionList, ProjectPanel, etc.)
-- **Main Executable**: ✓ Building and linking successfully
+- **Main Executable**: ⚠️ Builds but has runtime failures
 
 ## Completed Work (2026-01-30)
 

@@ -29,6 +29,7 @@
 #include "../ShortcutManager/ShortcutManager.h"
 
 #include <QApplication>
+#include <QMainWindow>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFileDialog>
