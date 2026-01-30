@@ -75,7 +75,13 @@
       "Bash(if:*)",
       "Bash(then)",
       "Bash(fi)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(sed:*)",
+      "Bash(grep:*)",
+      "Bash(c++:*)",
+      "Bash(g++:*)",
+      "Bash(cmake:*)",
+      "Bash(make:*)"
     ]
   }
 }
