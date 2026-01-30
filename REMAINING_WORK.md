@@ -62,6 +62,19 @@ The text area now initializes correctly and accepts keyboard input.
 - Created internal methods `setFilePathInternal()` and `getAutoSaveFilePathInternal()` that assume mutex is already locked
 - Updated `saveToFile()` to use internal methods and avoid deadlocks
 
+### Issue 6: File Content Not Loading ✅ FIXED
+**Status**: ✅ RESOLVED - File content now loads correctly when opening files
+
+**Problem**: When opening a file, the file would load but the content was empty/not displayed.
+
+**Root Cause**: `Buffer::loadFromFile()` was writing content directly to `_pView`, but `_pView` was null at that point. When `activateBuffer()` later switched to the buffer's document, the content wasn't there.
+
+**Fix Applied**: Implemented lazy loading mechanism:
+- Added `_pendingContent` and `_hasPendingContent` members to Buffer class
+- `loadFromFile()` now stores content in `_pendingContent` instead of trying to write to `_pView`
+- `activateBuffer()` checks for pending content and loads it into the Scintilla view when the buffer is activated
+- This ensures content is loaded into the correct document at the right time
+
 ## Build Status
 
 - **CMake Configuration**: ✓ Complete
@@ -221,6 +234,7 @@ make -j$(nproc)
 
 2026-01-30 - Text editor is now functional! Core editing features working.
 2026-01-30 - File save Unicode corruption and deadlock issues fixed.
+2026-01-30 - File content loading fixed - opening files now displays content correctly.
 
 ---
 
