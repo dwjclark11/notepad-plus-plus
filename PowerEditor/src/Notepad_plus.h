@@ -104,6 +104,7 @@ namespace QtControls {
 using AboutDlg = QtControls::AboutDlg;
 using DebugInfoDlg = QtControls::DebugInfoDlg;
 using CmdLineArgsDlg = QtControls::CmdLineArgsDlg;
+using FindCharsInRangeDlg = QtControls::FindCharsInRangeDlg;
 // WordStyleDlg and PluginsAdminDlg are defined in their headers
 #include "QtControls/WordStyleDlg/WordStyleDlg.h"
 using WordStyleDlg = QtControls::WordStyleDlg;

@@ -20,8 +20,13 @@
 
 class ScintillaEditView;
 
-// On Linux, FindReplaceDlg is a typedef, so don't forward declare it
-#ifndef NPP_LINUX
+// On Linux, FindReplaceDlg is in the NppFindReplace namespace
+#ifdef NPP_LINUX
+namespace NppFindReplace {
+    class FindReplaceDlg;
+}
+using FindReplaceDlg = NppFindReplace::FindReplaceDlg;
+#else
 class FindReplaceDlg;
 #endif
 

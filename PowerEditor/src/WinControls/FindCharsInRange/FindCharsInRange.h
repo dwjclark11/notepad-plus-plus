@@ -56,10 +56,7 @@ private :
 };
 
 #else
-// Linux stub - empty implementation
-namespace QtControls {
-	class FindCharsInRangeDlg {};
-}
-using QtControls::FindCharsInRangeDlg;
+// Linux Qt implementation
+#include "../../QtControls/FindCharsInRange/FindCharsInRangeDlg.h"
 
 #endif

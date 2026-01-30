@@ -507,7 +507,7 @@ void DocumentMap::scrollMap()
     if (!pEditView->isWrap()) {
         // Not wrapped: mimic height of edit view
         auto lineHeightEditView = pEditView->execute(SCI_TEXTHEIGHT, 0);
-        lowerY = higherY + lineHeightMapView * (rcEditView.bottom - rcEditView.top) / lineHeightEditView;
+        lowerY = higherY + lineHeightMapView * rcEditView.height() / lineHeightEditView;
     } else {
         // Wrapped: ask Scintilla, since in the map view the current range
         // of edit view might be wrapped differently

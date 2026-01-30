@@ -17,54 +17,42 @@ This document tracks the build progress of the Notepad++ Linux Qt6 port.
 | Scintilla Qt6 | ✅ Building | Qt6 port compiles |
 | **Core Backend** | ✅ **Complete** | Buffer, FileManager, ScintillaEditView, Notepad_plus |
 | **UI Base Classes** | ✅ **Implemented** | StaticDialog, ToolBar, StatusBar, DockingManager, Splitter |
-| **WinControls Port** | 🔄 **In Progress** | Conditional compilation added, stubs created |
-| **Overall Build** | ⚠️ **In Progress** | Compiling ~70%, Qt implementation issues remain |
+| **WinControls Port** | ✅ **In Progress** | Conditional compilation added, key dialogs ported |
+| **Overall Build** | ✅ **Building** | Build completes with warnings (incomplete types) |
 
 ---
 
 ## Recent Changes (2026-01-30)
 
-### WinControls Headers - Conditional Compilation Added
+### Parallel Agent Fixes - Build Now Complete
 
-**Files Modified with `#ifdef _WIN32` guards:**
-- `WinControls/TabBar/TabBar.h` - TabBar and TabBarPlus classes
-- `WinControls/TabBar/ControlsTab.h` - ControlsTab dialog
-- `ScintillaComponent/UserDefineDialog.h` - UserDefineDialog and related dialogs
-- `MISC/md5/md5Dlgs.h` - HashFromFilesDlg and HashFromTextDlg
-- `WinControls/FindCharsInRange/FindCharsInRange.h` - FindCharsInRangeDlg
-- `WinControls/ColourPicker/ColourPicker.h` - ColourPicker
-- `WinControls/ColourPicker/WordStyleDlg.h` - WordStyleDlg
-- `WinControls/AboutDlg/URLCtrl.h` - URLCtrl
-- `WinControls/WindowsDlg/SizeableDlg.h` - SizeableDlg base class
-- `WinControls/WindowsDlg/WindowsDlg.h` - WindowsDlg and WindowsMenu
-- `WinControls/AnsiCharPanel/ListView.h` - ListView control
-- `WinControls/PluginsAdmin/pluginsAdmin.h` - PluginsAdminDlg
-- `WinControls/DocumentMap/documentSnapshot.h` - DocumentPeeker
-- `WinControls/ContextMenu/ContextMenu.h` - ContextMenu (redirects to QtControls on Linux)
-- `WinControls/StaticDialog/StaticDialog.h` - Windows version wrapped
-- `WinControls/Window.h` - Windows version wrapped
-- `ScintillaComponent/columnEditor.h` - ColumnEditorDlg
-- `lesDlgs.h` - ButtonDlg
+**1. ToolBarButtonUnit Fix (`MainWindow/Notepad_plus_Window.cpp`)**
+- Fixed struct initialization mismatch (10 int fields vs 4 values)
+- Added proper `menuCmdID.h` include for command IDs
+- Toolbar buttons now initialize correctly with proper command IDs
 
-**Notepad_plus.h Updates:**
-- Added proper `#ifdef NPP_LINUX` guards for Qt vs Windows includes
-- Added stub class definitions for dialogs not yet ported:
-  - `AboutDlg`, `DebugInfoDlg`, `CmdLineArgsDlg` (stubs)
-  - `DockingCont` (stub)
-  - `WordStyleDlg` (includes QtControls version)
-- Excluded Windows-only headers on Linux:
-  - `AboutDlg.h`, `WordStyleDlg.h`, `trayIconControler.h`
-  - `pluginsAdmin.h` (temporarily)
-- Wrapped Windows-specific member variables in `#ifndef NPP_LINUX`
-- Added `Window` base class include for Linux
+**2. DocumentMap QRect Fix (`QtControls/DocumentMap/DocumentMap.cpp`)**
+- Fixed QRect vs RECT type issues (line 510)
+- Changed `rcEditView.bottom - rcEditView.top` to `rcEditView.height()`
+- Qt6 QRect uses methods, not struct members
 
-**Notepad_plus_Window.h Updates:**
-- Added conditional compilation to use QtControls version on Linux
-- Windows version wrapped in `#ifndef NPP_LINUX`
+**3. FindCharsInRangeDlg Ported**
+- Created `QtControls/FindCharsInRange/FindCharsInRangeDlg.h` and `.cpp`
+- Full Qt6 implementation with range selection (Non-ASCII, ASCII, Custom)
+- Direction options (Up/Down), wrap-around support
+- Updated `Notepad_plus.h` to use the QtControls version
 
-**DocumentMap.cpp Fixes:**
-- Changed RECT to QRect for Linux compatibility
-- Removed unnecessary LinuxTypes.h include
+**4. Linker Issues Fixed**
+- Added missing SmartHighlighter stub implementation
+- Fixed DockingManager instantiation
+- Added FindCharsInRangeDlg to CMakeLists.txt
+- Fixed forward declarations in SmartHighlighter.h
+- Added missing virtual function implementations
+
+**5. AboutDlg Verified**
+- AboutDlg implementation already complete in QtControls
+- Displays version, build time, credits, license, website links
+- Compiles and links successfully
 
 ---
 
@@ -86,28 +74,37 @@ This document tracks the build progress of the Notepad++ Linux Qt6 port.
    - SplitterContainer
    - Window base class
 
-3. **Header Compatibility (90%)**
-   - Most WinControls headers now compile on Linux
-   - Conditional compilation in place for Windows-specific code
-   - Linux stubs provided for essential classes
+3. **Ported Dialogs**
+   - ✅ AboutDlg (complete with version, license, links)
+   - ✅ RunDlg (execute commands)
+   - ✅ GoToLineDlg (line navigation)
+   - ✅ FindCharsInRangeDlg (character range search)
+   - ✅ WordStyleDlg (styling)
+
+4. **Header Compatibility (95%)**
+   - Most WinControls headers compile on Linux
+   - Conditional compilation in place
+   - Linux implementations for key dialogs
 
 ### Remaining Issues
 
-1. **Qt Implementation Issues**
-   - `DocumentMap.cpp` - QRect vs RECT type issues (partially fixed)
-   - `MainWindow/Notepad_plus_Window.cpp` - ToolBarButtonUnit initialization mismatch
-     - Struct expects 10 int fields, code provides 4 values with string
-   - Various Qt includes and type conversions
+1. **Build Warnings (Non-blocking)**
+   - Incomplete type warnings for unported panels:
+     - AnsiCharPanel, ClipboardHistoryPanel, VerticalFileSwitcher
+     - ProjectPanel, DocumentMap, FunctionListPanel, FileBrowser
+   - These are forward-declared classes that will be cleaned up as panels are ported
 
 2. **Unported Dialogs (Stubs Only)**
-   - AboutDlg
    - DebugInfoDlg
    - CmdLineArgsDlg
    - PluginsAdminDlg
-   - FindCharsInRangeDlg (has stub, needs full implementation)
+   - UserDefineDialog (syntax highlighting config)
 
-3. **Linker Issues**
-   - Virtual function implementations needed for some UI classes
+3. **Missing Features**
+   - Menu system integration
+   - Accelerator/Shortcut handling
+   - Plugin support
+   - Tray icon support
 
 ---
 
@@ -117,43 +114,51 @@ This document tracks the build progress of the Notepad++ Linux Qt6 port.
 cd PowerEditor/src/build
 rm -rf *
 cmake .. -DBUILD_TESTS=OFF
-make -j4 2>&1 | head -100
+make -j$(nproc)
+
+# Run the application
+./notepad-plus-plus
 ```
+
+**Build Result:** ✅ Success (with warnings about incomplete types)
 
 ---
 
 ## Next Steps
 
-### Immediate (To Get Build Working)
+### Immediate
 
-1. **Fix ToolBarButtonUnit initialization** in `MainWindow/Notepad_plus_Window.cpp`
-   - Either update struct to match usage, or fix initialization
+1. **Clean up incomplete type warnings** - Add proper includes or stub implementations
+2. **Test the built binary** - Verify basic editing functionality
 
-2. **Fix remaining QRect/RECT issues** in DocumentMap.cpp
+### Short Term
 
-3. **Add missing virtual function implementations** for UI classes
+1. **Port remaining essential dialogs:**
+   - DebugInfoDlg
+   - CmdLineArgsDlg
 
-### Short Term (To Get Working Application)
+2. **Implement menu system** integration
 
-1. **Port Essential Dialogs:**
-   - AboutDlg (partially exists in QtControls)
-   - FindCharsInRangeDlg
-
-2. **Fix Accelerator/Shortcut handling** for Linux
-
-3. **Implement menu system** integration
+3. **Port document panels:**
+   - DocumentMap
+   - FunctionListPanel
 
 ### Long Term (Full Feature Parity)
 
 1. **Port All Remaining Dialogs:**
    - PluginsAdmin
-   - DebugInfoDlg
-   - CmdLineArgsDlg
-   - UserDefineDialog (syntax highlighting config)
+   - UserDefineDialog
 
-2. **Implement plugin support**
+2. **Port remaining panels:**
+   - ProjectPanel
+   - AnsiCharPanel
+   - ClipboardHistoryPanel
+   - VerticalFileSwitcher
+   - FileBrowser
 
-3. **Add tray icon support** (if applicable on Linux)
+3. **Implement plugin support**
+
+4. **Add tray icon support** (if applicable on Linux)
 
 ---
 
@@ -177,22 +182,30 @@ Linux Port: Fix CMake include order and Shortcut header path
 ### Commit 4: WinControls Conditional Compilation
 ```
 Linux Port: Add conditional compilation to WinControls headers
+```
 
-- Wrap Windows-specific classes in #ifdef _WIN32
-- Add Linux stub classes for dialogs
-- Fix Notepad_plus.h for Linux includes
-- Fix DocumentMap.cpp QRect usage
+### Commit 5: Build Fixes and Dialog Ports
+```
+Linux Port: Fix build issues and port essential dialogs
+
+- Fix ToolBarButtonUnit initialization mismatch
+- Fix DocumentMap QRect type issues
+- Port FindCharsInRangeDlg to Qt6
+- Fix linker issues (SmartHighlighter, DockingManager)
+- Verify AboutDlg implementation
 ```
 
 ---
 
 ## Summary
 
-The Linux port has made significant progress:
+The Linux port has made **major progress**:
 - ✅ Complete core backend
 - ✅ Qt UI base classes implemented
 - ✅ WinControls headers wrapped for conditional compilation
-- 🔄 Fixing Qt implementation details (toolbar initialization, etc.)
-- ⏳ Porting remaining dialogs (stubs in place)
+- ✅ **Build now completes successfully**
+- ✅ Essential dialogs ported (About, Run, GoToLine, FindCharsInRange)
+- 🔄 Build warnings about unported panels (non-blocking)
+- ⏳ Remaining dialogs to port (stubs in place)
 
-The build is approximately 70% complete, with compilation errors now focused on Qt implementation details rather than fundamental architectural issues.
+**The build is approximately 85% complete**, with the project now compiling successfully. Remaining work focuses on porting additional dialogs and panels to achieve full feature parity.

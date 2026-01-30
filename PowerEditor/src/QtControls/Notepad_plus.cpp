@@ -33,6 +33,7 @@
 #include "lastRecentFileList.h"
 #include "MISC/Common/LinuxTypes.h"
 #include "Platform/Clipboard.h"
+#include "menuCmdID.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -94,7 +95,9 @@ Notepad_plus::~Notepad_plus()
 
 	(NppParameters::getInstance()).destroyInstance();
 
+#ifndef NPP_LINUX
 	delete _pTrayIco;
+#endif
 	delete _pAnsiCharPanel;
 	delete _pClipboardHistoryPanel;
 	delete _pDocumentListPanel;
@@ -1575,15 +1578,37 @@ bool Notepad_plus::removeBufferFromView(BufferID id, int view)
 
 bool Notepad_plus::canHideView(int view)
 {
-    Q_UNUSED(view);
-    // Check if we can hide the view (e.g., when closing last tab in split view)
-    return true;  // Simplified implementation
+    if (!viewVisible(view))
+        return false;   //cannot hide hidden view
+    if (!bothActive())
+        return false;   //cannot hide only window
+
+    DocTabView* tabToCheck = (view == MAIN_VIEW) ? &_mainDocTab : &_subDocTab;
+    Buffer* buf = MainFileManager.getBufferByID(tabToCheck->getBufferByIndex(0));
+    bool canHide = ((tabToCheck->nbItem() == 1) && !buf->isDirty() && buf->isUntitled());
+    return canHide;
 }
 
 void Notepad_plus::hideView(int whichOne)
 {
-    Q_UNUSED(whichOne);
-    // TODO: Implement view hiding
+    if (!bothActive())  //cannot close if not both views visible
+        return;
+
+    if (whichOne == MAIN_VIEW)
+    {
+        _mainWindowStatus &= ~WindowMainActive;
+        _mainEditView.display(false);
+        _mainDocTab.display(false);
+    }
+    else if (whichOne == SUB_VIEW)
+    {
+        _mainWindowStatus &= ~WindowSubActive;
+        _subEditView.display(false);
+        _subDocTab.display(false);
+    }
+
+    // Update the splitter layout - Qt handles this automatically
+    // when visibility changes via the layout system
 }
 
 void Notepad_plus::performPostReload(int whichOne)
@@ -2683,6 +2708,44 @@ void Notepad_plus::loadLastSession()
     loadSession(lastSession, isSnapshotMode);
     _isFolding = false;
 }
+
+// ============================================================================
+// View Visibility Operations
+// ============================================================================
+
+void Notepad_plus::showView(int whichOne)
+{
+    if (viewVisible(whichOne))  //no use making visible view visible
+        return;
+
+    // For Qt, we need to show the appropriate view
+    // The main window status tracks which views are active
+    if (whichOne == MAIN_VIEW)
+    {
+        _mainWindowStatus |= WindowMainActive;
+        _mainEditView.display(true);
+        _mainDocTab.display(true);
+    }
+    else if (whichOne == SUB_VIEW)
+    {
+        _mainWindowStatus |= WindowSubActive;
+        _subEditView.display(true);
+        _subDocTab.display(true);
+    }
+
+    // Update the splitter layout - Qt handles this automatically
+    // when visibility changes via the layout system
+}
+
+bool Notepad_plus::viewVisible(int whichOne)
+{
+    int viewToCheck = (whichOne == SUB_VIEW ? WindowSubActive : WindowMainActive);
+    return (_mainWindowStatus & viewToCheck) != 0;
+}
+
+// ============================================================================
+// Session Loading
+// ============================================================================
 
 bool Notepad_plus::loadSession(Session& session, bool isSnapshotMode, const wchar_t* userCreatedSessionName)
 {

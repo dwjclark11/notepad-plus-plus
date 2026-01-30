@@ -81,7 +81,8 @@
       "Bash(c++:*)",
       "Bash(g++:*)",
       "Bash(cmake:*)",
-      "Bash(make:*)"
+      "Bash(make:*)",
+      "Bash(/usr/bin/make:*)"
     ]
   }
 }

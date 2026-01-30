@@ -8,6 +8,8 @@
 
 #include "Notepad_plus_Window.h"
 
+#include "../../menuCmdID.h"
+
 #include <QApplication>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -94,7 +96,7 @@ void MainWindow::setupUI()
     initStatusBar();
 
     // Create docking manager
-    _dockingManager = new DockingManager::Manager();
+    _dockingManager = new DockingManager();
     _dockingManager->init(this);
 
     // Create update timer
@@ -693,29 +695,36 @@ void MainWindow::initToolBar()
 {
     _mainToolBar = new ToolBar();
 
-    // Define toolbar buttons
+    // Define toolbar buttons - ToolBarButtonUnit has 10 int fields:
+    // _cmdID, _defaultIcon, _grayIcon, _defaultIcon2, _grayIcon2,
+    // _defaultDarkModeIcon, _grayDarkModeIcon, _defaultDarkModeIcon2, _grayDarkModeIcon2, _stdIcon
     static const ToolBarButtonUnit toolBarButtons[] = {
-        { 1, 1, 0, tr("New").toUtf8().constData() },
-        { 2, 2, 0, tr("Open").toUtf8().constData() },
-        { 3, 3, 0, tr("Save").toUtf8().constData() },
-        { 4, 4, 0, tr("Save All").toUtf8().constData() },
-        { 0, 0, 0, "" }, // Separator
-        { 5, 5, 0, tr("Cut").toUtf8().constData() },
-        { 6, 6, 0, tr("Copy").toUtf8().constData() },
-        { 7, 7, 0, tr("Paste").toUtf8().constData() },
-        { 0, 0, 0, "" }, // Separator
-        { 8, 8, 0, tr("Undo").toUtf8().constData() },
-        { 9, 9, 0, tr("Redo").toUtf8().constData() },
-        { 0, 0, 0, "" }, // Separator
-        { 10, 10, 0, tr("Find").toUtf8().constData() },
-        { 11, 11, 0, tr("Replace").toUtf8().constData() },
-        { 0, 0, 0, "" }, // Separator
-        { 12, 12, 0, tr("Zoom In").toUtf8().constData() },
-        { 13, 13, 0, tr("Zoom Out").toUtf8().constData() },
-        { 0, 0, 0, "" }, // Separator
-        { 14, 14, 0, tr("Start Recording").toUtf8().constData() },
-        { 15, 15, 0, tr("Stop Recording").toUtf8().constData() },
-        { 16, 16, 0, tr("Playback").toUtf8().constData() },
+        // File operations
+        { IDM_FILE_NEW, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_FILE_OPEN, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_FILE_SAVE, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_FILE_SAVEALL, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Separator
+        // Edit operations
+        { IDM_EDIT_CUT, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_EDIT_COPY, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_EDIT_PASTE, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Separator
+        { IDM_EDIT_UNDO, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_EDIT_REDO, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Separator
+        // Search operations
+        { IDM_SEARCH_FIND, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_SEARCH_REPLACE, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Separator
+        // View operations
+        { IDM_VIEW_ZOOMIN, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_VIEW_ZOOMOUT, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Separator
+        // Macro operations
+        { IDM_MACRO_STARTRECORDINGMACRO, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_MACRO_STOPRECORDINGMACRO, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { IDM_MACRO_PLAYBACKRECORDEDMACRO, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     };
 
     _mainToolBar->init(this, TB_STANDARD, toolBarButtons,

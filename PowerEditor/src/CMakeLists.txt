@@ -710,6 +710,8 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtControls/FunctionList/FunctionListPanel.cpp
 		./QtControls/MainWindow/Notepad_plus_Window.cpp
 		./QtControls/Preference/preferenceDlg.cpp
+		./QtControls/FindCharsInRange/FindCharsInRangeDlg.cpp
+		./QtControls/SmartHighlighter/SmartHighlighter.cpp
 		./QtControls/Notepad_plus.cpp
 	)
 

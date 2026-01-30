@@ -39,6 +39,7 @@ set(QTCONTROLS_SOURCES
     FunctionList/FunctionListPanel.cpp
     ProjectPanel/ProjectPanel.cpp
     MainWindow/Notepad_plus_Window.cpp
+    FindCharsInRange/FindCharsInRangeDlg.cpp
 )
 
 # Optional KDE Frameworks integration
@@ -84,6 +85,7 @@ set(QTCONTROLS_HEADERS
     FunctionList/FunctionListPanel.h
     ProjectPanel/ProjectPanel.h
     MainWindow/Notepad_plus_Window.h
+    FindCharsInRange/FindCharsInRangeDlg.h
 )
 
 # Add KDE headers only if KDE integration is enabled
@@ -121,6 +123,7 @@ target_include_directories(QtControls PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/FunctionList
     ${CMAKE_CURRENT_SOURCE_DIR}/ProjectPanel
     ${CMAKE_CURRENT_SOURCE_DIR}/MainWindow
+    ${CMAKE_CURRENT_SOURCE_DIR}/FindCharsInRange
 )
 
 # Add KDE include path only if KDE integration is enabled
