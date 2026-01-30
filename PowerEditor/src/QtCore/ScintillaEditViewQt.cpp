@@ -1626,6 +1626,20 @@ void ScintillaEditView::activateBuffer(BufferID buffer, bool force)
 
     execute(SCI_SETMODEVENTMASK, MODEVENTMASK_OFF);
     execute(SCI_SETDOCPOINTER, 0, reinterpret_cast<LPARAM>(_currentBuffer->getDocument()));
+
+    // Load pending content if this buffer has content that was loaded from file
+    // but not yet inserted into the Scintilla view. This handles the case where
+    // loadFromFile() was called before the buffer was activated in a view.
+    if (_currentBuffer->hasPendingContent()) {
+        QByteArray content = _currentBuffer->takePendingContent();
+        execute(SCI_CLEARALL);
+        if (!content.isEmpty()) {
+            execute(SCI_APPENDTEXT, static_cast<WPARAM>(content.size()), reinterpret_cast<LPARAM>(content.constData()));
+        }
+        execute(SCI_SETSAVEPOINT);
+        execute(SCI_EMPTYUNDOBUFFER);
+    }
+
     execute(SCI_SETMODEVENTMASK, MODEVENTMASK_ON);
 
     defineDocType(static_cast<LangType>(_currentBuffer->getLangType()));

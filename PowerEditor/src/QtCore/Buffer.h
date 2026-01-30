@@ -303,6 +303,10 @@ public:
     bool getNeedsLexing() const;
     void setNeedsLexing(bool needs);
 
+    // Pending content for lazy loading (used by ScintillaEditView::activateBuffer)
+    bool hasPendingContent() const;
+    QByteArray takePendingContent();
+
     // Encoding as int (for compatibility with Windows API)
     int getEncodingNumber() const;
     void setEncodingNumber(int encoding);
@@ -404,6 +408,11 @@ private:
     void* _document = nullptr;
     std::vector<std::vector<size_t>> _foldStates;  // Per-view fold states
     std::vector<void*> _viewIdentifiers;  // View identifiers for fold states
+
+    // Pending content for lazy loading - content is stored here during loadFromFile
+    // and loaded into the Scintilla view when activateBuffer is called
+    QByteArray _pendingContent;
+    bool _hasPendingContent = false;
 
     // Helper methods
     void updateStatus();

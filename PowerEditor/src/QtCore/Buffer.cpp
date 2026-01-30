@@ -410,13 +410,11 @@ bool Buffer::loadFromFile(const QString& filePath)
     // Use internal version since we already hold the mutex
     setFilePathInternal(filePath);
 
-    // Set content in Scintilla view
-    if (_pView) {
-        _pView->execute(SCI_CLEARALL);
-        _pView->execute(SCI_APPENDTEXT, static_cast<WPARAM>(content.size()), reinterpret_cast<LPARAM>(content.constData()));
-        _pView->execute(SCI_SETSAVEPOINT);
-        _pView->execute(SCI_EMPTYUNDOBUFFER);
-    }
+    // Store content for lazy loading - it will be loaded into the Scintilla view
+    // when activateBuffer is called. This ensures the content is loaded into the
+    // correct document associated with this buffer.
+    _pendingContent = content;
+    _hasPendingContent = true;
 
     // Update status
     _isDirty = false;
@@ -1900,6 +1898,19 @@ void Buffer::setNeedsLexing(bool needs)
 {
     QMutexLocker locker(&_mutex);
     _needsLexing = needs;
+}
+
+bool Buffer::hasPendingContent() const
+{
+    QMutexLocker locker(&_mutex);
+    return _hasPendingContent;
+}
+
+QByteArray Buffer::takePendingContent()
+{
+    QMutexLocker locker(&_mutex);
+    _hasPendingContent = false;
+    return std::move(_pendingContent);
 }
 
 // ============================================================================
