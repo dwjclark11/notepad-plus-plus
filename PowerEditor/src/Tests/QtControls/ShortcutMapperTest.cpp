@@ -10,9 +10,9 @@
 #include "ShortcutMapper.h"
 #include "../Common/TestUtils.h"
 
-using namespace QtControls;
-
 namespace Tests {
+
+using ShortcutMapperClass = QtControls::ShortcutMapper::ShortcutMapper;
 
 ShortcutMapperTest::ShortcutMapperTest() {}
 
@@ -29,7 +29,7 @@ void ShortcutMapperTest::cleanupTestCase() {
 void ShortcutMapperTest::init() {
     _parentWidget = std::make_unique<QWidget>();
     _parentWidget->resize(800, 600);
-    _dialog = std::make_unique<ShortcutMapper>(_parentWidget.get());
+    _dialog = std::make_unique<ShortcutMapperClass>(_parentWidget.get());
 }
 
 void ShortcutMapperTest::cleanup() {
@@ -45,10 +45,8 @@ void ShortcutMapperTest::testInit() {
 }
 
 void ShortcutMapperTest::testShowDialog() {
-    _dialog->showDialog();
+    _dialog->doDialog();
     QVERIFY(_dialog->getWidget()->isVisible());
 }
 
 } // namespace Tests
-
-#include "ShortcutMapperTest.moc"

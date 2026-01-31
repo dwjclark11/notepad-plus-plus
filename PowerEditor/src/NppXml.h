@@ -22,6 +22,51 @@
 #include <cstdint>
 #include <cstring>
 
+// Check if format_control_chars_in_hexadecimal is available (Notepad++ pugixml extension)
+// This flag is a Notepad++-specific addition to pugixml for backward compatibility with tinyxml1.
+// It outputs control characters (range [0; 32)) in hexadecimal format instead of decimal.
+//
+// Detection strategy:
+// The flag is defined as a constant in the bundled pugixml (value 0x10000) in the pugi namespace.
+// We use __has_include to detect if we're using the bundled pugixml by checking for a header
+// that exists only in the bundled version (pugixml.cpp is in the same directory).
+//
+// Alternatively, the build system can define NPP_USE_BUNDLED_PUGIXML=1 or NPP_USE_SYSTEM_PUGIXML=1
+// to explicitly control this.
+
+// Check if format_control_chars_in_hexadecimal is available (Notepad++ pugixml extension)
+// This flag is a Notepad++-specific addition to pugixml for backward compatibility with tinyxml1.
+// It outputs control characters (range [0; 32)) in hexadecimal format instead of decimal.
+//
+// The flag is only available in the bundled pugixml (value 0x10000 in the pugi namespace).
+// System pugixml does not have this extension.
+//
+// Build systems should define NPP_USE_BUNDLED_PUGIXML=1 or NPP_USE_SYSTEM_PUGIXML=1
+// to explicitly control this. If neither is defined, we attempt to detect based on version.
+
+#if defined(NPP_USE_BUNDLED_PUGIXML)
+    #define NPP_HAS_FORMAT_CONTROL_CHARS 1
+#elif defined(NPP_USE_SYSTEM_PUGIXML)
+    #define NPP_HAS_FORMAT_CONTROL_CHARS 0
+#else
+    // Auto-detection: Check if format_control_chars_in_hexadecimal exists in pugi namespace
+    // This uses a SFINAE-like approach with the preprocessor by checking the pugixml version
+    // Bundled pugixml has version macros like PUGIXML_VERSION, but the extension is custom.
+    // We detect by trying to use the flag in a constexpr context that fails gracefully.
+    //
+    // For now, use a conservative approach: check if we're on Linux (typically system pugixml)
+    // vs Windows (typically bundled pugixml)
+    #if defined(__linux__) || defined(__unix__) || defined(NPP_LINUX)
+        #define NPP_HAS_FORMAT_CONTROL_CHARS 0
+    #else
+        #define NPP_HAS_FORMAT_CONTROL_CHARS 1
+    #endif
+#endif
+
+namespace NppXml {
+    inline constexpr bool has_format_control_chars = NPP_HAS_FORMAT_CONTROL_CHARS;
+}
+
 // Simple wrapper for PugiXML
 namespace NppXml
 {
@@ -93,7 +138,11 @@ namespace NppXml
 
 		eol_norm_walker walker;
 		doc->traverse(walker);
-		return doc->save_file(filename, "    ", pugi::format_indent | pugi::format_save_file_text | pugi::format_control_chars_in_hexadecimal);
+		if constexpr (has_format_control_chars) {
+			return doc->save_file(filename, "    ", pugi::format_indent | pugi::format_save_file_text | pugi::format_control_chars_in_hexadecimal);
+		} else {
+			return doc->save_file(filename, "    ", pugi::format_indent | pugi::format_save_file_text);
+		}
 	}
 
 	[[nodiscard]] inline bool loadFileFunctionParser(Document doc, const wchar_t* filename) {

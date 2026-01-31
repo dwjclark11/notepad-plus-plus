@@ -1,6 +1,16 @@
 // Run Menu Implementation - To be merged into Notepad_plus_Window.cpp
 // This file contains the Run menu slot implementations
 
+#include "Notepad_plus_Window.h"
+#include "../../Notepad_plus.h"
+#include "../../QtCore/Buffer.h"
+
+#include <QDesktopServices>
+#include <QUrl>
+
+namespace QtControls {
+namespace MainWindow {
+
 void MainWindow::onRunRun()
 {
     if (_pNotepad_plus) {
@@ -26,3 +36,6 @@ void MainWindow::onRunLaunchInBrowser()
     }
     QDesktopServices::openUrl(QUrl(url));
 }
+
+} // namespace MainWindow
+} // namespace QtControls

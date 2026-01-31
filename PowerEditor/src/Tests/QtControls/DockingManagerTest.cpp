@@ -12,7 +12,7 @@
 #include <QWidget>
 #include <QLabel>
 
-using namespace QtControls::DockingManager;
+using namespace QtControls;
 
 namespace Tests {
 
@@ -31,7 +31,7 @@ void DockingManagerTest::cleanupTestCase() {
 void DockingManagerTest::init() {
     _mainWindow = std::make_unique<QMainWindow>();
     _mainWindow->resize(1024, 768);
-    _dockingManager = std::make_unique<Manager>();
+    _dockingManager = std::make_unique<DockingManager>();
 }
 
 void DockingManagerTest::cleanup() {
@@ -60,7 +60,7 @@ void DockingManagerTest::testAddPanel() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right, "Test Panel");
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockingManager::DockArea::Right, "Test Panel");
 
     QVERIFY(_dockingManager->hasPanel("testPanel"));
     QCOMPARE(_dockingManager->getPanelCount(), 1);
@@ -70,7 +70,7 @@ void DockingManagerTest::testRemovePanel() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
     QVERIFY(_dockingManager->hasPanel("testPanel"));
 
     _dockingManager->removePanel("testPanel");
@@ -84,7 +84,7 @@ void DockingManagerTest::testHasPanel() {
     QVERIFY(!_dockingManager->hasPanel("nonExistent"));
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
     QVERIFY(_dockingManager->hasPanel("testPanel"));
 }
 
@@ -95,7 +95,7 @@ void DockingManagerTest::testShowPanel() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
     _dockingManager->hidePanel("testPanel");
     QVERIFY(!_dockingManager->isPanelVisible("testPanel"));
 
@@ -107,7 +107,7 @@ void DockingManagerTest::testHidePanel() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
     QVERIFY(_dockingManager->isPanelVisible("testPanel"));
 
     _dockingManager->hidePanel("testPanel");
@@ -118,7 +118,7 @@ void DockingManagerTest::testTogglePanel() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
     QVERIFY(_dockingManager->isPanelVisible("testPanel"));
 
     _dockingManager->togglePanel("testPanel");
@@ -132,7 +132,7 @@ void DockingManagerTest::testIsPanelVisible() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
 
     QVERIFY(_dockingManager->isPanelVisible("testPanel"));
 
@@ -147,26 +147,26 @@ void DockingManagerTest::testSetPanelArea() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
-    QCOMPARE(_dockingManager->getPanelArea("testPanel"), DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
+    QCOMPARE(_dockingManager->getPanelArea("testPanel"), DockingManager::DockArea::Right);
 
-    _dockingManager->setPanelArea("testPanel", DockArea::Left);
-    QCOMPARE(_dockingManager->getPanelArea("testPanel"), DockArea::Left);
+    _dockingManager->setPanelArea("testPanel", DockingManager::DockArea::Left);
+    QCOMPARE(_dockingManager->getPanelArea("testPanel"), DockingManager::DockArea::Left);
 }
 
 void DockingManagerTest::testGetPanelArea() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Bottom);
-    QCOMPARE(_dockingManager->getPanelArea("testPanel"), DockArea::Bottom);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Bottom);
+    QCOMPARE(_dockingManager->getPanelArea("testPanel"), DockingManager::DockArea::Bottom);
 }
 
 void DockingManagerTest::testSetPanelTitle() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right, "Original Title");
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right, "Original Title");
     QCOMPARE(_dockingManager->getPanelTitle("testPanel"), QString("Original Title"));
 
     _dockingManager->setPanelTitle("testPanel", "New Title");
@@ -177,7 +177,7 @@ void DockingManagerTest::testGetPanelTitle() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right, "My Panel");
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right, "My Panel");
     QCOMPARE(_dockingManager->getPanelTitle("testPanel"), QString("My Panel"));
 }
 
@@ -185,7 +185,7 @@ void DockingManagerTest::testGetPanelWidget() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
 
     QWidget* retrieved = _dockingManager->getPanelWidget("testPanel");
     QCOMPARE(retrieved, panel);
@@ -199,8 +199,8 @@ void DockingManagerTest::testSaveLayout() {
 
     QWidget* panel1 = new QLabel("Panel 1");
     QWidget* panel2 = new QLabel("Panel 2");
-    _dockingManager->addPanel("panel1", panel1, DockArea::Right);
-    _dockingManager->addPanel("panel2", panel2, DockArea::Left);
+    _dockingManager->addPanel("panel1", panel1, DockingManager::DockArea::Right);
+    _dockingManager->addPanel("panel2", panel2, DockingManager::DockArea::Left);
 
     QByteArray layout = _dockingManager->saveLayout();
     QVERIFY(!layout.isEmpty());
@@ -210,7 +210,7 @@ void DockingManagerTest::testRestoreLayout() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel1 = new QLabel("Panel 1");
-    _dockingManager->addPanel("panel1", panel1, DockArea::Right);
+    _dockingManager->addPanel("panel1", panel1, DockingManager::DockArea::Right);
 
     QByteArray layout = _dockingManager->saveLayout();
     QVERIFY(!layout.isEmpty());
@@ -228,8 +228,8 @@ void DockingManagerTest::testSetTabbedDocking() {
 
     QWidget* panel1 = new QLabel("Panel 1");
     QWidget* panel2 = new QLabel("Panel 2");
-    _dockingManager->addPanel("panel1", panel1, DockArea::Right);
-    _dockingManager->addPanel("panel2", panel2, DockArea::Right);
+    _dockingManager->addPanel("panel1", panel1, DockingManager::DockArea::Right);
+    _dockingManager->addPanel("panel2", panel2, DockingManager::DockArea::Right);
 
     // Should not crash
     _dockingManager->setTabbedDocking("panel1", "panel2");
@@ -242,8 +242,8 @@ void DockingManagerTest::testSetTabbedDocking() {
 void DockingManagerTest::testShowAllPanels() {
     _dockingManager->init(_mainWindow.get());
 
-    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockArea::Right);
-    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockArea::Left);
+    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockingManager::DockArea::Right);
+    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockingManager::DockArea::Left);
     _dockingManager->hideAllPanels();
 
     QVERIFY(!_dockingManager->isPanelVisible("panel1"));
@@ -258,8 +258,8 @@ void DockingManagerTest::testShowAllPanels() {
 void DockingManagerTest::testHideAllPanels() {
     _dockingManager->init(_mainWindow.get());
 
-    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockArea::Right);
-    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockArea::Left);
+    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockingManager::DockArea::Right);
+    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockingManager::DockArea::Left);
 
     QVERIFY(_dockingManager->isPanelVisible("panel1"));
     QVERIFY(_dockingManager->isPanelVisible("panel2"));
@@ -273,8 +273,8 @@ void DockingManagerTest::testHideAllPanels() {
 void DockingManagerTest::testGetPanelNames() {
     _dockingManager->init(_mainWindow.get());
 
-    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockArea::Right);
-    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockArea::Left);
+    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockingManager::DockArea::Right);
+    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockingManager::DockArea::Left);
 
     QStringList names = _dockingManager->getPanelNames();
     QCOMPARE(names.size(), 2);
@@ -285,8 +285,8 @@ void DockingManagerTest::testGetPanelNames() {
 void DockingManagerTest::testGetVisiblePanels() {
     _dockingManager->init(_mainWindow.get());
 
-    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockArea::Right);
-    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockArea::Left);
+    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockingManager::DockArea::Right);
+    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockingManager::DockArea::Left);
     _dockingManager->hidePanel("panel2");
 
     QStringList visible = _dockingManager->getVisiblePanels();
@@ -302,7 +302,7 @@ void DockingManagerTest::testSetPanelFeatures() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
 
     // Should not crash
     _dockingManager->setPanelFeatures("testPanel", false, true, true);
@@ -313,7 +313,7 @@ void DockingManagerTest::testRaisePanel() {
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
-    _dockingManager->addPanel("testPanel", panel, DockArea::Right);
+    _dockingManager->addPanel("testPanel", panel, DockingManager::DockArea::Right);
 
     // Should not crash
     _dockingManager->raisePanel("testPanel");
@@ -325,10 +325,10 @@ void DockingManagerTest::testGetPanelCount() {
 
     QCOMPARE(_dockingManager->getPanelCount(), 0);
 
-    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockArea::Right);
+    _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockingManager::DockArea::Right);
     QCOMPARE(_dockingManager->getPanelCount(), 1);
 
-    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockArea::Left);
+    _dockingManager->addPanel("panel2", new QLabel("Panel 2"), DockingManager::DockArea::Left);
     QCOMPARE(_dockingManager->getPanelCount(), 2);
 
     _dockingManager->removePanel("panel1");
@@ -336,5 +336,3 @@ void DockingManagerTest::testGetPanelCount() {
 }
 
 } // namespace Tests
-
-#include "DockingManagerTest.moc"

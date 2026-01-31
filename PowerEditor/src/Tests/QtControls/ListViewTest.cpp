@@ -406,5 +406,3 @@ void ListViewTest::testFindItems() {
 }
 
 } // namespace Tests
-
-#include "ListViewTest.moc"

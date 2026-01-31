@@ -160,5 +160,3 @@ void StaticDialogTest::testGetTopPoint() {
 }
 
 } // namespace Tests
-
-#include "StaticDialogTest.moc"

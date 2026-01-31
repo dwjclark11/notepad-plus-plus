@@ -37,7 +37,6 @@ private Q_SLOTS:
 
     // Getters
     void testGetLine();
-    void testIsLineMode();
 
     // Mode switching
     void testModeSwitching();

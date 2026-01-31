@@ -213,5 +213,3 @@ void WindowTest::testGetParent() {
 }
 
 } // namespace Tests
-
-#include "WindowTest.moc"

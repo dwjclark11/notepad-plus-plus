@@ -9,9 +9,11 @@
 #pragma once
 
 #include <QtTest/QtTest>
+#include <QString>
 #include <memory>
 
-class Buffer;
+// Include the proper Buffer header for Linux
+#include "QtCore/Buffer.h"
 
 namespace Tests {
 
@@ -67,7 +69,7 @@ private Q_SLOTS:
     void testSetStatus();
 
 private:
-    std::unique_ptr<Buffer> _buffer;
+    std::unique_ptr<QtCore::Buffer> _buffer;
 };
 
 } // namespace Tests

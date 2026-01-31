@@ -33,7 +33,8 @@ void MainWindowTest::init() {
 
 void MainWindowTest::cleanup() {
     _mainWindow.reset();
-    _nppCore.reset();
+    // _nppCore.reset();  // Not owned by unique_ptr anymore
+    _nppCore = nullptr;
 }
 
 // ============================================================================
@@ -66,8 +67,8 @@ void MainWindowTest::testReSizeTo() {
     QRect newRect(100, 100, 800, 600);
     _mainWindow->reSizeTo(newRect);
 
-    QRect currentRect;
-    _mainWindow->getClientRect(currentRect);
+    // Use Qt's geometry() method to get the window geometry
+    QRect currentRect = _mainWindow->geometry();
 
     // Size should be approximately as requested
     QVERIFY(currentRect.width() > 0);

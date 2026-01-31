@@ -72,5 +72,3 @@ void PreferenceDlgTest::testGetCurrentPageIndex() {
 }
 
 } // namespace Tests
-
-#include "PreferenceDlgTest.moc"

@@ -42,7 +42,7 @@ void TreeViewTest::cleanup() {
 // Initialization Tests
 // ============================================================================
 void TreeViewTest::testInit() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
     QVERIFY(_treeView->getTreeWidget() != nullptr);
 }
 
@@ -56,7 +56,7 @@ void TreeViewTest::testDestroy() {
 // Item Management Tests
 // ============================================================================
 void TreeViewTest::testAddItem() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Root Item");
     QVERIFY(itemId >= 0);
@@ -67,7 +67,7 @@ void TreeViewTest::testAddItem() {
 }
 
 void TreeViewTest::testRemoveItem() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Item to Remove");
     QVERIFY(itemId >= 0);
@@ -78,7 +78,7 @@ void TreeViewTest::testRemoveItem() {
 }
 
 void TreeViewTest::testClear() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     _treeView->addItem("Item 1");
     _treeView->addItem("Item 2");
@@ -90,7 +90,7 @@ void TreeViewTest::testClear() {
 }
 
 void TreeViewTest::testSetItemText() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Original Text");
     QVERIFY(_treeView->setItemText(itemId, "Updated Text"));
@@ -100,7 +100,7 @@ void TreeViewTest::testSetItemText() {
 }
 
 void TreeViewTest::testGetItemText() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Test Text");
     QString text = _treeView->getItemText(itemId);
@@ -108,7 +108,7 @@ void TreeViewTest::testGetItemText() {
 }
 
 void TreeViewTest::testSetItemData() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Item with Data");
     QVariant data(42);
@@ -116,7 +116,7 @@ void TreeViewTest::testSetItemData() {
 }
 
 void TreeViewTest::testGetItemData() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Item with Data");
     QVariant data(42);
@@ -130,7 +130,7 @@ void TreeViewTest::testGetItemData() {
 // Selection Tests
 // ============================================================================
 void TreeViewTest::testGetSelectedItem() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Selectable Item");
     _treeView->setSelectedItem(itemId);
@@ -140,7 +140,7 @@ void TreeViewTest::testGetSelectedItem() {
 }
 
 void TreeViewTest::testSetSelectedItem() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId1 = _treeView->addItem("Item 1");
     int itemId2 = _treeView->addItem("Item 2");
@@ -153,7 +153,7 @@ void TreeViewTest::testSetSelectedItem() {
 }
 
 void TreeViewTest::testClearSelection() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Selected Item");
     _treeView->setSelectedItem(itemId);
@@ -168,7 +168,7 @@ void TreeViewTest::testClearSelection() {
 // Expansion Tests
 // ============================================================================
 void TreeViewTest::testExpand() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int parentId = _treeView->addItem("Parent");
     int childId = _treeView->addItem("Child", parentId);
@@ -179,7 +179,7 @@ void TreeViewTest::testExpand() {
 }
 
 void TreeViewTest::testCollapse() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int parentId = _treeView->addItem("Parent");
     _treeView->addItem("Child", parentId);
@@ -192,7 +192,7 @@ void TreeViewTest::testCollapse() {
 }
 
 void TreeViewTest::testExpandAll() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int root1 = _treeView->addItem("Root 1");
     int child1 = _treeView->addItem("Child 1", root1);
@@ -208,7 +208,7 @@ void TreeViewTest::testExpandAll() {
 }
 
 void TreeViewTest::testCollapseAll() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int root = _treeView->addItem("Root");
     _treeView->addItem("Child", root);
@@ -221,7 +221,7 @@ void TreeViewTest::testCollapseAll() {
 }
 
 void TreeViewTest::testIsExpanded() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int parentId = _treeView->addItem("Parent");
     _treeView->addItem("Child", parentId);
@@ -236,7 +236,7 @@ void TreeViewTest::testIsExpanded() {
 // Checkbox Tests
 // ============================================================================
 void TreeViewTest::testSetCheckable() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Checkable Item");
     _treeView->setCheckable(itemId, true);
@@ -247,7 +247,7 @@ void TreeViewTest::testSetCheckable() {
 }
 
 void TreeViewTest::testIsCheckable() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Item");
     QVERIFY(!_treeView->isCheckable(itemId));
@@ -257,7 +257,7 @@ void TreeViewTest::testIsCheckable() {
 }
 
 void TreeViewTest::testIsItemChecked() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Item");
     _treeView->setCheckable(itemId, true);
@@ -269,7 +269,7 @@ void TreeViewTest::testIsItemChecked() {
 }
 
 void TreeViewTest::testSetItemChecked() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Item");
     _treeView->setCheckable(itemId, true);
@@ -282,7 +282,7 @@ void TreeViewTest::testSetItemChecked() {
 }
 
 void TreeViewTest::testSetCheckState() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Item");
     _treeView->setCheckable(itemId, true);
@@ -295,7 +295,7 @@ void TreeViewTest::testSetCheckState() {
 }
 
 void TreeViewTest::testGetCheckState() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Item");
     _treeView->setCheckable(itemId, true);
@@ -310,14 +310,14 @@ void TreeViewTest::testGetCheckState() {
 // Column Tests
 // ============================================================================
 void TreeViewTest::testSetColumnCount() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     _treeView->setColumnCount(3);
     QCOMPARE(_treeView->getColumnCount(), 3);
 }
 
 void TreeViewTest::testGetColumnCount() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     QCOMPARE(_treeView->getColumnCount(), 1); // Default
 
@@ -326,7 +326,7 @@ void TreeViewTest::testGetColumnCount() {
 }
 
 void TreeViewTest::testSetColumnText() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     _treeView->setColumnCount(2);
     _treeView->setColumnText(0, "Column 1");
@@ -337,7 +337,7 @@ void TreeViewTest::testSetColumnText() {
 }
 
 void TreeViewTest::testGetColumnText() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     _treeView->setColumnCount(1);
     _treeView->setColumnText(0, "Name");
@@ -349,7 +349,7 @@ void TreeViewTest::testGetColumnText() {
 // Navigation Tests
 // ============================================================================
 void TreeViewTest::testGetRootItem() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int rootId = _treeView->addItem("Root");
     int root = _treeView->getRootItem();
@@ -359,7 +359,7 @@ void TreeViewTest::testGetRootItem() {
 }
 
 void TreeViewTest::testGetParentItem() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int parentId = _treeView->addItem("Parent");
     int childId = _treeView->addItem("Child", parentId);
@@ -369,7 +369,7 @@ void TreeViewTest::testGetParentItem() {
 }
 
 void TreeViewTest::testGetChildItem() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int parentId = _treeView->addItem("Parent");
     int childId = _treeView->addItem("Child", parentId);
@@ -379,7 +379,7 @@ void TreeViewTest::testGetChildItem() {
 }
 
 void TreeViewTest::testGetNextSibling() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int item1 = _treeView->addItem("Item 1");
     int item2 = _treeView->addItem("Item 2");
@@ -389,7 +389,7 @@ void TreeViewTest::testGetNextSibling() {
 }
 
 void TreeViewTest::testGetPrevSibling() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int item1 = _treeView->addItem("Item 1");
     int item2 = _treeView->addItem("Item 2");
@@ -402,7 +402,7 @@ void TreeViewTest::testGetPrevSibling() {
 // Sorting Tests
 // ============================================================================
 void TreeViewTest::testSortItems() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     _treeView->addItem("Charlie");
     _treeView->addItem("Alpha");
@@ -413,7 +413,7 @@ void TreeViewTest::testSortItems() {
 }
 
 void TreeViewTest::testSetSortingEnabled() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     _treeView->setSortingEnabled(true);
     _treeView->setSortingEnabled(false);
@@ -424,7 +424,7 @@ void TreeViewTest::testSetSortingEnabled() {
 // Search Tests
 // ============================================================================
 void TreeViewTest::testFindItem() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     _treeView->addItem("Alpha");
     _treeView->addItem("Beta");
@@ -435,12 +435,12 @@ void TreeViewTest::testFindItem() {
 }
 
 void TreeViewTest::testFindItemByData() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int itemId = _treeView->addItem("Item");
-    _treeView->setItemData(itemId, QVariant(42), Qt::UserRole);
+    _treeView->setItemData(itemId, QVariant(42));
 
-    int found = _treeView->findItemByData(QVariant(42), Qt::UserRole);
+    int found = _treeView->findItemByData(QVariant(42));
     QCOMPARE(found, itemId);
 }
 
@@ -448,7 +448,7 @@ void TreeViewTest::testFindItemByData() {
 // State Persistence Tests
 // ============================================================================
 void TreeViewTest::testRestoreFoldingStateFrom() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     TreeStateNode state;
     state._label = "Root";
@@ -461,7 +461,7 @@ void TreeViewTest::testRestoreFoldingStateFrom() {
 }
 
 void TreeViewTest::testRetrieveFoldingStateTo() {
-    QVERIFY(_treeView->init(_parentWidget.get()));
+    _treeView->init(_parentWidget.get());
 
     int rootId = _treeView->addItem("Root");
     _treeView->addItem("Child", rootId);
@@ -473,5 +473,3 @@ void TreeViewTest::testRetrieveFoldingStateTo() {
 }
 
 } // namespace Tests
-
-#include "TreeViewTest.moc"

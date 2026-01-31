@@ -202,3 +202,4 @@ run_tests.sh
 # Claude local settings
 .claude/
 /build_test
+/build_tests

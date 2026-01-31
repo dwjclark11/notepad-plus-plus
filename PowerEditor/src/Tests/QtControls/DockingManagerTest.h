@@ -13,9 +13,7 @@
 #include <memory>
 
 namespace QtControls {
-namespace DockingManager {
-    class Manager;
-}
+    class DockingManager;
 }
 
 namespace Tests {
@@ -73,7 +71,7 @@ private Q_SLOTS:
 
 private:
     std::unique_ptr<QMainWindow> _mainWindow;
-    std::unique_ptr<QtControls::DockingManager::Manager> _dockingManager;
+    std::unique_ptr<QtControls::DockingManager> _dockingManager;
 };
 
 } // namespace Tests

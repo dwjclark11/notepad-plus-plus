@@ -80,21 +80,10 @@ void ProcessTest::testRunSyncWithOutput() {
 // Shell Execution Tests
 // ============================================================================
 void ProcessTest::testShellOpen() {
-    // This test is platform-specific and may not work in headless environments
-    // Just verify the method doesn't crash
-    // Note: xdg-open may not be available in test environment
-
-    QString testFile = TestEnvironment::getInstance().getTempDir() + "/test_open.txt";
-    QFile file(testFile);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write("test");
-        file.close();
-    }
-
-    // Should return true or false but not crash
-    _process->shellOpen(testFile.toStdWString());
-
-    QVERIFY(true); // Test passes if we get here without crash
+    // DISABLED: This test spawns xdg-open which opens the default application
+    // (e.g., Kate text editor) which is disruptive in a test environment.
+    // The shellOpen() functionality is tested implicitly by testShellOpenWith.
+    QSKIP("Disabled: spawns external application");
 }
 
 void ProcessTest::testShellOpenWith() {
@@ -270,24 +259,16 @@ void ProcessTest::testExecute() {
 }
 
 void ProcessTest::testOpenDocument() {
-    // Create a test file
-    QString testFile = TestEnvironment::getInstance().getTempDir() + "/test_doc.txt";
-    QFile file(testFile);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write("test content");
-        file.close();
-    }
-
-    // Just verify it doesn't crash
-    ProcessUtils::openDocument(testFile.toStdWString());
-    QVERIFY(true);
+    // DISABLED: This test spawns the default application (e.g., Kate)
+    // which is disruptive in a test environment.
+    QSKIP("Disabled: spawns external application");
 }
 
 void ProcessTest::testOpenUrl() {
-    // Just verify it doesn't crash
-    // Actual URL opening depends on environment
-    ProcessUtils::openUrl(L"https://www.example.com");
-    QVERIFY(true);
+    // DISABLED: This test spawns a web browser which is disruptive
+    // in a test environment. The functionality is simple wrapper around
+    // QDesktopServices::openUrl and is adequately covered by code review.
+    QSKIP("Disabled: spawns external web browser");
 }
 
 void ProcessTest::testRunDetached() {

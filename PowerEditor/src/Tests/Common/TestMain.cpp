@@ -10,11 +10,16 @@
 #include <QApplication>
 #include "TestUtils.h"
 
-// This file provides a main() function for test executables
-// that don't define their own QTEST_MAIN
+// Include Platform test headers
+#include "../Platform/FileSystemTest.h"
+#include "../Platform/SettingsTest.h"
+#include "../Platform/ProcessTest.h"
+#include "../Platform/FileWatcherTest.h"
+#include "../Platform/ClipboardTest.h"
+#include "../Platform/DialogsTest.h"
 
-// If a test file defines QTEST_MAIN, this file should not be linked
-// If a test file doesn't define QTEST_MAIN, this provides a fallback
+// This file provides a main() function for PlatformTests executable
+// that runs all platform layer tests
 
 #ifndef QTEST_CUSTOM_MAIN
 
@@ -28,7 +33,15 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    int result = QTest::qExec(&app, argc, argv);
+    int result = 0;
+
+    // Run all platform tests
+    result |= QTest::qExec(new Tests::FileSystemTest(), argc, argv);
+    result |= QTest::qExec(new Tests::SettingsTest(), argc, argv);
+    result |= QTest::qExec(new Tests::ProcessTest(), argc, argv);
+    result |= QTest::qExec(new Tests::FileWatcherTest(), argc, argv);
+    result |= QTest::qExec(new Tests::ClipboardTest(), argc, argv);
+    result |= QTest::qExec(new Tests::DialogsTest(), argc, argv);
 
     Tests::TestEnvironment::getInstance().cleanup();
 

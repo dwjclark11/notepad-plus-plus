@@ -74,5 +74,3 @@ void AboutDlgTest::testLicenseText() {
 }
 
 } // namespace Tests
-
-#include "AboutDlgTest.moc"

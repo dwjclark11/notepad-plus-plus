@@ -17,6 +17,7 @@ namespace MainWindow {
 }
 }
 
+// Forward declaration - using unique_ptr so we need complete type in destructor
 class Notepad_plus;
 
 namespace Tests {
@@ -77,7 +78,9 @@ private Q_SLOTS:
 
 private:
     std::unique_ptr<QtControls::MainWindow::MainWindow> _mainWindow;
-    std::unique_ptr<Notepad_plus> _nppCore;
+    // Notepad_plus requires complete type for unique_ptr - disabled for now
+    // std::unique_ptr<Notepad_plus> _nppCore;
+    Notepad_plus* _nppCore = nullptr;
 };
 
 } // namespace Tests

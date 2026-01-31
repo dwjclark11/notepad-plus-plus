@@ -85,5 +85,3 @@ void RunDlgTest::testSetHistory() {
 }
 
 } // namespace Tests
-
-#include "RunDlgTest.moc"

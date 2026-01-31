@@ -13,7 +13,9 @@
 #include <memory>
 
 namespace QtControls {
+namespace ShortcutMapper {
     class ShortcutMapper;
+}
 }
 
 namespace Tests {
@@ -37,7 +39,7 @@ private Q_SLOTS:
 
 private:
     std::unique_ptr<QWidget> _parentWidget;
-    std::unique_ptr<QtControls::ShortcutMapper> _dialog;
+    std::unique_ptr<QtControls::ShortcutMapper::ShortcutMapper> _dialog;
 };
 
 } // namespace Tests
