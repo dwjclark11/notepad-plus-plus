@@ -258,6 +258,8 @@ private slots:
     void onTabCloseRequested(int index);
     void onMainTabCloseRequested(int index);
     void onSubTabCloseRequested(int index);
+    void onMainTabChanged(int index);
+    void onSubTabChanged(int index);
 
     // Panel visibility
     void onPanelVisibilityChanged(bool visible);

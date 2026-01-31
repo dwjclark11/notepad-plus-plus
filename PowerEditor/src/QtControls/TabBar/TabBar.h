@@ -102,6 +102,7 @@ signals:
     void tabCloseRequested(int index);
     void tabPinRequested(int index);
     void tabMoved(int fromIndex, int toIndex);
+    void currentChanged(int index);
 
 protected:
     bool _isDragging = false;

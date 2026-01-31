@@ -352,10 +352,16 @@ void MainWindow::connectSignals()
     if (_mainDocTab) {
         connect(_mainDocTab, &DocTabView::tabCloseRequested,
                 this, &MainWindow::onMainTabCloseRequested);
+        // Connect tab change signal to activate buffer
+        connect(_mainDocTab, &DocTabView::currentChanged,
+                this, &MainWindow::onMainTabChanged);
     }
     if (_subDocTab) {
         connect(_subDocTab, &DocTabView::tabCloseRequested,
                 this, &MainWindow::onSubTabCloseRequested);
+        // Connect tab change signal to activate buffer
+        connect(_subDocTab, &DocTabView::currentChanged,
+                this, &MainWindow::onSubTabChanged);
     }
 }
 
@@ -2612,6 +2618,42 @@ void MainWindow::onSubTabCloseRequested(int index)
         _subDocTab->activateBuffer(bufferId);
         // Call fileClose with the specific buffer ID and view
         _pNotepad_plus->fileClose(bufferId, SUB_VIEW);
+    }
+}
+
+void MainWindow::onMainTabChanged(int index)
+{
+    if (!_pNotepad_plus || !_mainDocTab) {
+        return;
+    }
+
+    // Get the buffer ID for the tab being activated
+    QtControls::BufferID bufferId = _mainDocTab->getBufferByIndex(static_cast<size_t>(index));
+    if (bufferId != QtControls::BUFFER_INVALID) {
+        // Switch to the file (this handles view switching and buffer activation)
+        _pNotepad_plus->switchToFile(bufferId);
+        // Update UI state after buffer switch
+        updateMenuState();
+        updateToolBarState();
+        updateStatusBar();
+    }
+}
+
+void MainWindow::onSubTabChanged(int index)
+{
+    if (!_pNotepad_plus || !_subDocTab) {
+        return;
+    }
+
+    // Get the buffer ID for the tab being activated
+    QtControls::BufferID bufferId = _subDocTab->getBufferByIndex(static_cast<size_t>(index));
+    if (bufferId != QtControls::BUFFER_INVALID) {
+        // Switch to the file (this handles view switching and buffer activation)
+        _pNotepad_plus->switchToFile(bufferId);
+        // Update UI state after buffer switch
+        updateMenuState();
+        updateToolBarState();
+        updateStatusBar();
     }
 }
 

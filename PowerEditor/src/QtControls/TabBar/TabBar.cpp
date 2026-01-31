@@ -218,6 +218,7 @@ bool TabBarPlus::init(QWidget* parent, bool isVertical, bool isMultiLine)
 
     // Connect signals
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, &TabBarPlus::tabCloseRequested);
+    connect(tabWidget, &QTabWidget::currentChanged, this, &TabBarPlus::currentChanged);
 
     return true;
 }
