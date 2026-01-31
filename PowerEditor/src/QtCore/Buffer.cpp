@@ -1294,6 +1294,43 @@ void Buffer::setRTL(bool rtl)
     _isRTL = rtl;
 }
 
+bool Buffer::isUntitledTabRenamed() const
+{
+    QMutexLocker locker(&_mutex);
+    return _isUntitledTabRenamed;
+}
+
+void Buffer::setUntitledTabRenamed(bool renamed)
+{
+    QMutexLocker locker(&_mutex);
+    _isUntitledTabRenamed = renamed;
+}
+
+std::wstring Buffer::getBackupFileName() const
+{
+    QMutexLocker locker(&_mutex);
+    return _backupFilePath.toStdWString();
+}
+
+FILETIME Buffer::getLastModifiedFileTimestamp() const
+{
+    QMutexLocker locker(&_mutex);
+    FILETIME ft = {0, 0};
+    if (_lastModifiedTime.isValid()) {
+        // Convert QDateTime to FILETIME
+        // FILETIME is 100-nanosecond intervals since January 1, 1601
+        // QDateTime is milliseconds since January 1, 1970
+        qint64 msecsSinceEpoch = _lastModifiedTime.toMSecsSinceEpoch();
+        // Add difference between 1601 and 1970 in 100-nanosecond intervals
+        // 11644473600 seconds = 11644473600000 * 10000 * 100-nanosecond intervals
+        const qint64 epochDiff = 11644473600000LL * 10000LL;
+        qint64 fileTime = (msecsSinceEpoch * 10000LL) + epochDiff;
+        ft.dwLowDateTime = static_cast<DWORD>(fileTime & 0xFFFFFFFF);
+        ft.dwHighDateTime = static_cast<DWORD>((fileTime >> 32) & 0xFFFFFFFF);
+    }
+    return ft;
+}
+
 int Buffer::getDocColorId() const
 {
     QMutexLocker locker(&_mutex);

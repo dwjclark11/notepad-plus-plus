@@ -268,6 +268,16 @@ public:
     bool isRTL() const;
     void setRTL(bool rtl);
 
+    // Untitled tab renamed status
+    bool isUntitledTabRenamed() const;
+    void setUntitledTabRenamed(bool renamed);
+
+    // Backup file name (as wstring for compatibility)
+    std::wstring getBackupFileName() const;
+
+    // Last modified timestamp (FILETIME format for compatibility)
+    FILETIME getLastModifiedFileTimestamp() const;
+
     // Tab color
     int getDocColorId() const;
     void setDocColorId(int colorId);
@@ -388,6 +398,9 @@ private:
 
     // RTL support
     bool _isRTL = false;
+
+    // Untitled tab renamed status
+    bool _isUntitledTabRenamed = false;
 
     // Tab color ID
     int _docColorId = -1;

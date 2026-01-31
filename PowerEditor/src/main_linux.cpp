@@ -1164,6 +1164,20 @@ int main(int argc, char* argv[])
     // Cleanup
     // ============================================================================
 
+    // Save session before destroying the window
+    NppParameters& nppParams = NppParameters::getInstance();
+    NppGUI& nppGUI = nppParams.getNppGUI();
+    if (nppGUI._rememberLastSession && !nppGUI._isCmdlineNosessionActivated)
+    {
+        Notepad_plus* notepadCore = mainWindow->getNotepadPlusCore();
+        if (notepadCore)
+        {
+            std::cout << "[main] Saving current session before exit..." << std::endl;
+            notepadCore->saveCurrentSession();
+            std::cout << "[main] Session saved." << std::endl;
+        }
+    }
+
     mainWindow->destroy();
     mainWindow.reset();
 

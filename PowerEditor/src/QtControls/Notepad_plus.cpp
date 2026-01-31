@@ -2738,6 +2738,170 @@ void Notepad_plus::loadLastSession()
 }
 
 // ============================================================================
+// Session Saving Operations
+// ============================================================================
+
+void Notepad_plus::saveSession(const Session& session)
+{
+    NppParameters::getInstance().writeSession(session);
+}
+
+void Notepad_plus::saveCurrentSession()
+{
+    NppParameters& nppParam = NppParameters::getInstance();
+    NppGUI& nppGUI = const_cast<NppGUI&>(nppParam.getNppGUI());
+
+    if (!nppGUI._rememberLastSession || nppGUI._isCmdlineNosessionActivated)
+        return;
+
+    Session currentSession;
+    getCurrentOpenedFiles(currentSession);
+    saveSession(currentSession);
+}
+
+std::wstring Notepad_plus::getLangFromMenu(const Buffer* buf)
+{
+    // Qt version: simplified implementation that returns the language type name
+    if (!buf)
+        return L"";
+
+    // For user-defined languages, return the UDL name
+    // Note: isUserDefineLangExt() and getUserDefineLangName() may not be available in Qt version
+    // For now, just return the language type as a string
+    LangType langType = buf->getLangType();
+
+    // Convert LangType to a readable name
+    // This is a simplified version - full implementation would map all language types
+    switch (langType)
+    {
+        case L_TEXT:
+            return L"Normal text";
+        case L_CPP:
+            return L"C++";
+        case L_JAVA:
+            return L"Java";
+        case L_PYTHON:
+            return L"Python";
+        case L_JAVASCRIPT:
+            return L"JavaScript";
+        case L_HTML:
+            return L"HTML";
+        case L_XML:
+            return L"XML";
+        case L_CSS:
+            return L"CSS";
+        case L_PHP:
+            return L"PHP";
+        default:
+            return L"";
+    }
+}
+
+void Notepad_plus::getCurrentOpenedFiles(Session& session, bool includeUntitledDoc)
+{
+    // Save position so it will be correct in the session
+    _mainEditView.saveCurrentPos();
+    _subEditView.saveCurrentPos();
+
+    session._activeView = currentView();
+    session._activeMainIndex = _mainDocTab.getCurrentTabIndex();
+    session._activeSubIndex = _subDocTab.getCurrentTabIndex();
+
+    const int nbElem = 2;
+    DocTabView* docTab[nbElem]{};
+    docTab[0] = &_mainDocTab;
+    docTab[1] = &_subDocTab;
+
+    for (int k = 0; k < nbElem; ++k)
+    {
+        for (size_t i = 0, len = docTab[k]->nbItem(); i < len; ++i)
+        {
+            BufferID bufID = docTab[k]->getBufferByIndex(i);
+            size_t activeIndex = (k == 0) ? session._activeMainIndex : session._activeSubIndex;
+            std::vector<sessionFileInfo>* viewFiles = (k == 0) ? &(session._mainViewFiles) : &(session._subViewFiles);
+
+            Buffer* buf = MainFileManager.getBufferByID(bufID);
+            if (!buf)
+                continue;
+
+            // Skip empty untitled documents
+            if (buf->isUntitled() && buf->docLength() == 0)
+                continue;
+
+            if (!includeUntitledDoc)
+                if (!doesFileExist(buf->getFullPathName()))
+                    continue;
+
+            // Get language name
+            std::wstring languageName = getLangFromMenu(buf);
+            if (languageName.empty())
+            {
+                NppParameters& nppParam = NppParameters::getInstance();
+                const NppGUI& nppGUI = nppParam.getNppGUI();
+
+                for (size_t j = 0; j < nppGUI._excludedLangList.size(); ++j)
+                {
+                    if (buf->getLangType() == nppGUI._excludedLangList[j]._langType)
+                    {
+                        languageName = nppGUI._excludedLangList[j]._langName;
+                        break;
+                    }
+                }
+            }
+
+            const wchar_t* langName = languageName.c_str();
+
+            // Get position from the appropriate view
+            ScintillaEditView* editView = (k == 0) ? &_mainEditView : &_subEditView;
+            Position pos = buf->getPosition(editView);
+
+            // Convert QtCore::MapPosition to global MapPosition
+            QtCore::MapPosition qtMapPos = buf->getMapPosition();
+            MapPosition mapPos;
+            mapPos._firstVisibleDisplayLine = qtMapPos.firstVisibleDisplayLine;
+            mapPos._firstVisibleDocLine = qtMapPos.firstVisibleDocLine;
+            mapPos._lastVisibleDocLine = qtMapPos.lastVisibleDocLine;
+            mapPos._nbLine = qtMapPos.nbLine;
+            mapPos._higherPos = qtMapPos.higherPos;
+            mapPos._width = qtMapPos.width;
+            mapPos._height = qtMapPos.height;
+            mapPos._wrapIndentMode = -1;  // Default value, not available in QtCore::MapPosition
+            mapPos._KByteInDoc = MapPosition::getMaxPeekLenInKB();  // Default value
+            mapPos._isWrap = qtMapPos.isWrap;
+
+            sessionFileInfo sfi(
+                buf->getFullPathName(),
+                langName,
+                buf->getEncodingNumber(),
+                buf->isUserReadOnly(),
+                buf->isPinned(),
+                buf->isUntitledTabRenamed(),
+                pos,
+                buf->getBackupFileName().c_str(),
+                buf->getLastModifiedFileTimestamp(),
+                mapPos
+            );
+
+            sfi._isMonitoring = buf->isMonitoringOn();
+            sfi._individualTabColour = docTab[k]->getIndividualTabColourId(static_cast<int>(i));
+            sfi._isRTL = buf->isRTL();
+
+            // Get fold states for active tab
+            if (i == activeIndex)
+            {
+                editView->getCurrentFoldStates(sfi._foldStates);
+            }
+            else
+            {
+                sfi._foldStates = buf->getHeaderLineState(editView);
+            }
+
+            viewFiles->push_back(sfi);
+        }
+    }
+}
+
+// ============================================================================
 // View Visibility Operations
 // ============================================================================
 
