@@ -1607,10 +1607,36 @@ void ScintillaEditView::bufferUpdated(Buffer* buffer, int mask)
 
 void ScintillaEditView::activateBuffer(BufferID buffer, bool force)
 {
-    if (buffer == BUFFER_INVALID) return;
-    if (!force && buffer == _currentBuffer) return;
+    std::cout << "[ScintillaEditView::activateBuffer] ENTER - buffer=" << buffer
+              << " force=" << force << " _currentBuffer=" << _currentBuffer << std::endl;
+
+    if (buffer == BUFFER_INVALID) {
+        std::cerr << "[ScintillaEditView::activateBuffer] ERROR: BUFFER_INVALID" << std::endl;
+        return;
+    }
+    if (!force && buffer == _currentBuffer) {
+        std::cout << "[ScintillaEditView::activateBuffer] SKIPPED - same buffer" << std::endl;
+        return;
+    }
 
     Buffer* newBuf = MainFileManager.getBufferByID(buffer);
+    std::cout << "[ScintillaEditView::activateBuffer] newBuf=" << newBuf << std::endl;
+
+    if (!newBuf) {
+        std::cerr << "[ScintillaEditView::activateBuffer] ERROR: newBuf is null!" << std::endl;
+        return;
+    }
+
+    // Log current buffer state before switching
+    std::cout << "[ScintillaEditView::activateBuffer] BEFORE SWITCH:"
+              << " _currentBuffer=" << _currentBuffer
+              << " _currentBufferID=" << _currentBufferID << std::endl;
+    if (_currentBuffer) {
+        std::cout << "[ScintillaEditView::activateBuffer] Current buffer document="
+                  << _currentBuffer->getDocument() << std::endl;
+        std::cout << "[ScintillaEditView::activateBuffer] Current buffer hasPendingContent="
+                  << _currentBuffer->hasPendingContent() << std::endl;
+    }
 
     saveCurrentPos();
 
@@ -1622,23 +1648,50 @@ void ScintillaEditView::activateBuffer(BufferID buffer, bool force)
     _currentBufferID = buffer;
     _currentBuffer = newBuf;
 
+    std::cout << "[ScintillaEditView::activateBuffer] AFTER SWITCH ASSIGNMENT:"
+              << " _currentBuffer=" << _currentBuffer
+              << " _currentBufferID=" << _currentBufferID << std::endl;
+
+    // Log new buffer document pointer - CRITICAL for debugging
+    void* docPtr = _currentBuffer->getDocument();
+    std::cout << "[ScintillaEditView::activateBuffer] NEW BUFFER document pointer=" << docPtr << std::endl;
+    if (!docPtr) {
+        std::cerr << "[ScintillaEditView::activateBuffer] WARNING: document pointer is NULL!"
+                  << " Content will not display correctly." << std::endl;
+    }
+
     unsigned long MODEVENTMASK_ON = NppParameters::getInstance().getScintillaModEventMask();
 
     execute(SCI_SETMODEVENTMASK, MODEVENTMASK_OFF);
-    execute(SCI_SETDOCPOINTER, 0, reinterpret_cast<LPARAM>(_currentBuffer->getDocument()));
+
+    std::cout << "[ScintillaEditView::activateBuffer] Calling SCI_SETDOCPOINTER with doc=" << docPtr << std::endl;
+    execute(SCI_SETDOCPOINTER, 0, reinterpret_cast<LPARAM>(docPtr));
+    std::cout << "[ScintillaEditView::activateBuffer] SCI_SETDOCPOINTER completed" << std::endl;
 
     // Load pending content if this buffer has content that was loaded from file
     // but not yet inserted into the Scintilla view. This handles the case where
     // loadFromFile() was called before the buffer was activated in a view.
-    if (_currentBuffer->hasPendingContent()) {
+    bool hasPending = _currentBuffer->hasPendingContent();
+    std::cout << "[ScintillaEditView::activateBuffer] hasPendingContent=" << hasPending << std::endl;
+
+    if (hasPending) {
         QByteArray content = _currentBuffer->takePendingContent();
+        std::cout << "[ScintillaEditView::activateBuffer] Loading pending content, size="
+                  << content.size() << std::endl;
         execute(SCI_CLEARALL);
         if (!content.isEmpty()) {
             execute(SCI_APPENDTEXT, static_cast<WPARAM>(content.size()), reinterpret_cast<LPARAM>(content.constData()));
+            std::cout << "[ScintillaEditView::activateBuffer] Content loaded into Scintilla" << std::endl;
+        } else {
+            std::cout << "[ScintillaEditView::activateBuffer] Pending content was empty" << std::endl;
         }
         execute(SCI_SETSAVEPOINT);
         execute(SCI_EMPTYUNDOBUFFER);
     }
+
+    // Get current Scintilla text length to verify content
+    auto textLen = execute(SCI_GETLENGTH);
+    std::cout << "[ScintillaEditView::activateBuffer] Scintilla text length after activation=" << textLen << std::endl;
 
     execute(SCI_SETMODEVENTMASK, MODEVENTMASK_ON);
 
@@ -1674,6 +1727,11 @@ void ScintillaEditView::activateBuffer(BufferID buffer, bool force)
 
     if (isTextDirectionRTL() != buffer->isRTL())
         changeTextDirection(buffer->isRTL());
+
+    // Final verification - get text length again to confirm everything is set
+    auto finalTextLen = execute(SCI_GETLENGTH);
+    std::cout << "[ScintillaEditView::activateBuffer] EXIT - final text length=" << finalTextLen
+              << " for buffer=" << buffer << std::endl;
 
     return;
 }
@@ -3165,6 +3223,50 @@ void ScintillaEditView::columnReplace(ColumnModeInfos & cmi, size_t initial, siz
             }
             cmi[i]._selRpos += diff;
         }
+    }
+}
+
+// ============================================================================
+// Document Creation for Buffer Management
+// ============================================================================
+
+// Static scratch editor for creating documents without a visible view
+// This is used by FileManager to create Scintilla documents for buffers
+static ScintillaEditView* g_scratchEditor = nullptr;
+
+Document ScintillaEditView::createDocument()
+{
+    // Lazy initialization of scratch editor
+    if (!g_scratchEditor) {
+        g_scratchEditor = new ScintillaEditView(false);
+        // Note: init() must be called later when we have a valid parent widget
+        // For now, return 0 to indicate failure - the caller must handle this
+        std::cerr << "[ScintillaEditView::createDocument] WARNING: scratch editor not initialized" << std::endl;
+        return 0;
+    }
+
+    // Create a new document using the scratch editor
+    Document doc = g_scratchEditor->createNewDocument();
+    std::cout << "[ScintillaEditView::createDocument] Created document=" << doc << std::endl;
+    return doc;
+}
+
+// Initialize the scratch editor - called once during app initialization
+void ScintillaEditView::initScratchEditor(QWidget* /*parent*/)
+{
+    if (!g_scratchEditor) {
+        g_scratchEditor = new ScintillaEditView(false);
+        // Create a hidden parent widget to avoid interfering with main UI
+        QWidget* hiddenParent = new QWidget();
+        hiddenParent->setAttribute(Qt::WA_DontShowOnScreen);
+        hiddenParent->setFixedSize(1, 1);
+        g_scratchEditor->init(hiddenParent);
+        // Ensure the editor widget is hidden
+        if (g_scratchEditor->getWidget()) {
+            g_scratchEditor->getWidget()->setAttribute(Qt::WA_DontShowOnScreen);
+            g_scratchEditor->getWidget()->hide();
+        }
+        std::cout << "[ScintillaEditView::initScratchEditor] Scratch editor initialized (hidden)" << std::endl;
     }
 }
 

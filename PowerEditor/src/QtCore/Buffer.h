@@ -295,6 +295,7 @@ public:
     void setHeaderLineState(const std::vector<size_t>& folds, void* identifier);
     std::vector<size_t> getHeaderLineState(void* identifier) const;
     void* getDocument() const;
+    void setDocument(void* document);
 
     // Position compatibility (for save/restore) - uses Position from QtCore namespace
     void setPosition(const Position& pos, void* identifier);

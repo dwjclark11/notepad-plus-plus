@@ -1571,10 +1571,37 @@ void Notepad_plus::loadBufferIntoView(BufferID id, int view, bool dontClose)
 
 bool Notepad_plus::switchToFile(BufferID id)
 {
+    std::cout << "[Notepad_plus::switchToFile] ENTER - id=" << id << std::endl;
+
+    if (id == BUFFER_INVALID) {
+        std::cerr << "[Notepad_plus::switchToFile] ERROR: BUFFER_INVALID" << std::endl;
+        return false;
+    }
+
+    if (!_pDocTab) {
+        std::cerr << "[Notepad_plus::switchToFile] ERROR: _pDocTab is null" << std::endl;
+        return false;
+    }
+
+    if (!_pEditView) {
+        std::cerr << "[Notepad_plus::switchToFile] ERROR: _pEditView is null" << std::endl;
+        return false;
+    }
+
     // Activate the buffer in the current view
+    std::cout << "[Notepad_plus::switchToFile] Calling _pDocTab->activateBuffer..." << std::endl;
     bool activated = _pDocTab->activateBuffer(id);
-    if (activated)
+    std::cout << "[Notepad_plus::switchToFile] _pDocTab->activateBuffer returned " << activated << std::endl;
+
+    if (activated) {
+        std::cout << "[Notepad_plus::switchToFile] Calling _pEditView->activateBuffer..." << std::endl;
         _pEditView->activateBuffer(id, false);
+        std::cout << "[Notepad_plus::switchToFile] _pEditView->activateBuffer completed" << std::endl;
+    } else {
+        std::cerr << "[Notepad_plus::switchToFile] WARNING: _pDocTab->activateBuffer returned false" << std::endl;
+    }
+
+    std::cout << "[Notepad_plus::switchToFile] EXIT - returning " << activated << std::endl;
     return activated;
 }
 

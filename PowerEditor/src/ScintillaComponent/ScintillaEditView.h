@@ -344,7 +344,19 @@ public:
 
 	void activateBuffer(BufferID buffer, bool force);
 
+	// Create a new Scintilla document for buffer management
+	// Returns the document pointer (Document is intptr_t)
+	Document createNewDocument() {
+		return static_cast<Document>(execute(SCI_CREATEDOCUMENT, 0, SC_DOCUMENTOPTION_TEXT_LARGE));
+	}
 
+	// Static helper to create a document using a scratch editor
+	static Document createDocument();
+
+#ifdef NPP_LINUX
+	// Initialize the scratch editor for document creation (Qt only)
+	static void initScratchEditor(QWidget* parent);
+#endif
 
 	void getText(char *dest, size_t start, size_t end) const;
 	void getGenericText(char* dest, size_t destlen, size_t start, size_t end) const;

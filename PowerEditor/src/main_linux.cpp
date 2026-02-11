@@ -53,6 +53,7 @@
 // QtControls includes
 #include "QtControls/Window.h"
 #include "QtControls/MainWindow/Notepad_plus_Window.h"
+#include "ScintillaComponent/ScintillaEditView.h"
 
 // Notepad++ core includes
 #include "Notepad_plus.h"
@@ -533,6 +534,12 @@ public:
             return false;
         }
         std::cout << "[NotepadPlusPlusApp::init] MainWindow initialized successfully!" << std::endl;
+
+        // Initialize the scratch editor for document creation
+        // This must be done before any buffers are created
+        std::cout << "[NotepadPlusPlusApp::init] Initializing scratch editor for document creation..." << std::endl;
+        ScintillaEditView::initScratchEditor(nullptr);
+        std::cout << "[NotepadPlusPlusApp::init] Scratch editor initialized." << std::endl;
 
         // Set window properties
         setWindowTitle("Notepad++");

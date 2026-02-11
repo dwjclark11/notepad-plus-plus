@@ -23,6 +23,8 @@
 #include <QDebug>
 #include <QCryptographicHash>
 
+#include <iostream>
+
 // Include ScintillaEditView for the real class definition
 #include "ScintillaEditView.h"
 #include "Scintilla.h"  // For SCI_* message constants
@@ -1873,7 +1875,15 @@ void* Buffer::getDocument() const
 {
     QMutexLocker locker(&_mutex);
     // Return the document pointer (would be Scintilla document in full implementation)
+    std::cout << "[Buffer::getDocument] buffer=" << this << " _document=" << _document << std::endl;
     return _document;
+}
+
+void Buffer::setDocument(void* document)
+{
+    QMutexLocker locker(&_mutex);
+    std::cout << "[Buffer::setDocument] buffer=" << this << " old=" << _document << " new=" << document << std::endl;
+    _document = document;
 }
 
 ::UniMode Buffer::getUnicodeMode() const
@@ -1940,12 +1950,15 @@ void Buffer::setNeedsLexing(bool needs)
 bool Buffer::hasPendingContent() const
 {
     QMutexLocker locker(&_mutex);
+    std::cout << "[Buffer::hasPendingContent] buffer=" << this << " _hasPendingContent=" << _hasPendingContent << std::endl;
     return _hasPendingContent;
 }
 
 QByteArray Buffer::takePendingContent()
 {
     QMutexLocker locker(&_mutex);
+    std::cout << "[Buffer::takePendingContent] buffer=" << this
+              << " contentSize=" << _pendingContent.size() << std::endl;
     _hasPendingContent = false;
     return std::move(_pendingContent);
 }
@@ -1996,9 +2009,29 @@ Buffer* FileManager::getBufferByID(Buffer* id)
 
 Buffer* FileManager::newEmptyDocument()
 {
+    std::cout << "[FileManager::newEmptyDocument] ENTER - Creating new buffer" << std::endl;
+
     // Create a new buffer through the BufferManager
     BufferManager* mgr = BufferManager::getInstance();
     Buffer* buf = mgr->createBuffer();
+
+    if (!buf) {
+        std::cerr << "[FileManager::newEmptyDocument] ERROR: Failed to create buffer" << std::endl;
+        return nullptr;
+    }
+
+    // Create a Scintilla document for this buffer
+    // On Windows, this is done via _pscratchTilla->execute(SCI_CREATEDOCUMENT, ...)
+    Document doc = ScintillaEditView::createDocument();
+    if (doc != 0) {
+        buf->setDocument(reinterpret_cast<void*>(doc));
+        std::cout << "[FileManager::newEmptyDocument] Created buffer=" << buf
+                  << " with document=" << doc << std::endl;
+    } else {
+        std::cerr << "[FileManager::newEmptyDocument] WARNING: Could not create Scintilla document, "
+                  << "buffer=" << buf << " will have null document pointer" << std::endl;
+    }
+
     return buf;
 }
 
@@ -2124,7 +2157,16 @@ BufferID FileManager::loadFile(const wchar_t* filename, Document doc, int encodi
     Q_UNUSED(doc)
     Q_UNUSED(fileNameTimestamp)
 
+    std::cout << "[FileManager::loadFile] ENTER - filename=";
+    if (filename) {
+        std::wcout << filename;
+    } else {
+        std::cout << "(null)";
+    }
+    std::cout << " doc=" << doc << std::endl;
+
     if (!filename) {
+        std::cerr << "[FileManager::loadFile] ERROR: filename is null" << std::endl;
         return nullptr;
     }
 
@@ -2138,18 +2180,34 @@ BufferID FileManager::loadFile(const wchar_t* filename, Document doc, int encodi
     }
 
     if (!QFile::exists(loadPath)) {
+        std::cerr << "[FileManager::loadFile] ERROR: file does not exist: " << filePath.toStdString() << std::endl;
         return nullptr;
     }
 
     // Create a new buffer
     Buffer* newBuf = new Buffer();
+    std::cout << "[FileManager::loadFile] Created buffer=" << newBuf << std::endl;
     newBuf->setFilePath(filePath);
+
+    // Create a Scintilla document for this buffer (if not provided)
+    if (doc == 0) {
+        doc = ScintillaEditView::createDocument();
+        std::cout << "[FileManager::loadFile] Created new document=" << doc << " for buffer=" << newBuf << std::endl;
+    }
+    if (doc != 0) {
+        newBuf->setDocument(reinterpret_cast<void*>(doc));
+    } else {
+        std::cerr << "[FileManager::loadFile] WARNING: Could not create Scintilla document for buffer=" << newBuf << std::endl;
+    }
 
     // Load file content
     if (!newBuf->loadFromFile(loadPath)) {
+        std::cerr << "[FileManager::loadFile] ERROR: loadFromFile failed" << std::endl;
         delete newBuf;
         return nullptr;
     }
+
+    std::cout << "[FileManager::loadFile] File loaded successfully into buffer=" << newBuf << std::endl;
 
     // Handle backup file mode
     if (backupFileName != nullptr) {

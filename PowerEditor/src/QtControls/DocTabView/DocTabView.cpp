@@ -108,27 +108,40 @@ void DocTabView::changeIconSet(unsigned char choice)
 
 void DocTabView::addBuffer(BufferID buffer)
 {
-    if (buffer == BUFFER_INVALID)
-        return;
+    std::cout << "[DocTabView::addBuffer] ENTER - buffer=" << buffer << std::endl;
 
-    if (getIndexByBuffer(buffer) != -1)
+    if (buffer == BUFFER_INVALID) {
+        std::cerr << "[DocTabView::addBuffer] ERROR: BUFFER_INVALID" << std::endl;
+        return;
+    }
+
+    if (getIndexByBuffer(buffer) != -1) {
+        std::cout << "[DocTabView::addBuffer] SKIPPED - buffer already exists" << std::endl;
         return; // No duplicates
+    }
 
     // Get the buffer title
     QString title = buffer->getFileNameQString();
     if (title.isEmpty()) {
         title = QString("new %1").arg(getItemCount() + 1);
     }
+    std::cout << "[DocTabView::addBuffer] Adding tab with title: " << title.toStdString() << std::endl;
 
     // Add tab
     QTabWidget* tabWidget = getTabWidget();
-    if (!tabWidget) return;
+    if (!tabWidget) {
+        std::cerr << "[DocTabView::addBuffer] ERROR: tabWidget is null" << std::endl;
+        return;
+    }
 
     QWidget* page = new QWidget();
     int index = tabWidget->addTab(page, title);
+    std::cout << "[DocTabView::addBuffer] Tab added at index=" << index << std::endl;
 
     // Store buffer mapping
     _bufferToIndex[buffer] = index;
+    std::cout << "[DocTabView::addBuffer] Stored mapping buffer=" << buffer
+              << " -> index=" << index << std::endl;
 
     // Update tab appearance
     bufferUpdated(buffer, DocTabBufferChangeMask);
@@ -140,6 +153,9 @@ void DocTabView::addBuffer(BufferID buffer)
     if (_parent) {
         _parent->updateGeometry();
     }
+
+    std::cout << "[DocTabView::addBuffer] EXIT - buffer=" << buffer
+              << " index=" << index << std::endl;
 }
 
 void DocTabView::closeBuffer(BufferID buffer)
@@ -178,9 +194,15 @@ void DocTabView::closeBuffer(BufferID buffer)
 
 bool DocTabView::activateBuffer(BufferID buffer)
 {
+    std::cout << "[DocTabView::activateBuffer] ENTER - buffer=" << buffer << std::endl;
+
     int indexToActivate = getIndexByBuffer(buffer);
-    if (indexToActivate == -1)
+    std::cout << "[DocTabView::activateBuffer] getIndexByBuffer returned=" << indexToActivate << std::endl;
+
+    if (indexToActivate == -1) {
+        std::cerr << "[DocTabView::activateBuffer] ERROR: buffer not found in mapping" << std::endl;
         return false;
+    }
 
     // Make sure tab widget is visible before activating
     QTabWidget* tabWidget = getTabWidget();
@@ -188,7 +210,9 @@ bool DocTabView::activateBuffer(BufferID buffer)
         tabWidget->show();
     }
 
+    std::cout << "[DocTabView::activateBuffer] Calling activateAt(" << indexToActivate << ")" << std::endl;
     activateAt(indexToActivate);
+    std::cout << "[DocTabView::activateBuffer] EXIT - success" << std::endl;
     return true;
 }
 
@@ -223,47 +247,78 @@ BufferID DocTabView::findBufferByName(const wchar_t* fullfilename)
 
 int DocTabView::getIndexByBuffer(BufferID id)
 {
-    if (!id)
+    std::cout << "[DocTabView::getIndexByBuffer] ENTER - id=" << id << std::endl;
+
+    if (!id) {
+        std::cerr << "[DocTabView::getIndexByBuffer] ERROR: id is null" << std::endl;
         return -1;
+    }
 
     auto it = _bufferToIndex.find(id);
     if (it != _bufferToIndex.end()) {
         // Verify the index is still valid
         QTabWidget* tabWidget = getTabWidget();
         if (tabWidget && it.value() < tabWidget->count()) {
+            std::cout << "[DocTabView::getIndexByBuffer] FOUND in map - id=" << id
+                      << " index=" << it.value() << std::endl;
             return it.value();
         }
     }
 
     // Fallback: search through tabs
+    std::cout << "[DocTabView::getIndexByBuffer] Not in map, searching tabs..." << std::endl;
     QTabWidget* tabWidget = getTabWidget();
-    if (!tabWidget) return -1;
+    if (!tabWidget) {
+        std::cerr << "[DocTabView::getIndexByBuffer] ERROR: tabWidget is null" << std::endl;
+        return -1;
+    }
 
     for (int i = 0; i < tabWidget->count(); ++i) {
         BufferID tabBuffer = getBufferByIndex(i);
         if (tabBuffer == id) {
+            std::cout << "[DocTabView::getIndexByBuffer] FOUND in fallback search - id=" << id
+                      << " index=" << i << std::endl;
             _bufferToIndex[id] = i;
             return i;
         }
     }
 
+    std::cerr << "[DocTabView::getIndexByBuffer] ERROR: id=" << id << " not found" << std::endl;
     return -1;
 }
 
 BufferID DocTabView::getBufferByIndex(size_t index)
 {
-    QTabWidget* tabWidget = getTabWidget();
-    if (!tabWidget) return BUFFER_INVALID;
+    std::cout << "[DocTabView::getBufferByIndex] ENTER - index=" << index
+              << " _bufferToIndex.size()=" << _bufferToIndex.size() << std::endl;
 
-    if (index >= static_cast<size_t>(tabWidget->count()))
+    QTabWidget* tabWidget = getTabWidget();
+    if (!tabWidget) {
+        std::cerr << "[DocTabView::getBufferByIndex] ERROR: tabWidget is null" << std::endl;
         return BUFFER_INVALID;
+    }
+
+    if (index >= static_cast<size_t>(tabWidget->count())) {
+        std::cerr << "[DocTabView::getBufferByIndex] ERROR: index " << index
+                  << " out of range (count=" << tabWidget->count() << ")" << std::endl;
+        return BUFFER_INVALID;
+    }
 
     // Find buffer by index in our mapping
     for (auto it = _bufferToIndex.begin(); it != _bufferToIndex.end(); ++it) {
         if (static_cast<size_t>(it.value()) == index) {
+            std::cout << "[DocTabView::getBufferByIndex] FOUND - index=" << index
+                      << " buffer=" << it.key() << std::endl;
             return it.key();
         }
     }
+
+    std::cerr << "[DocTabView::getBufferByIndex] ERROR: No buffer found for index=" << index << std::endl;
+    std::cerr << "[DocTabView::getBufferByIndex] Current mappings:";
+    for (auto it = _bufferToIndex.begin(); it != _bufferToIndex.end(); ++it) {
+        std::cerr << " [buffer=" << it.key() << " -> index=" << it.value() << "]";
+    }
+    std::cerr << std::endl;
 
     return BUFFER_INVALID;
 }

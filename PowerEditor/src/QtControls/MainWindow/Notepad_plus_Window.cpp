@@ -2675,38 +2675,58 @@ void MainWindow::onSubTabCloseRequested(int index)
 
 void MainWindow::onMainTabChanged(int index)
 {
+    std::cout << "[MainWindow::onMainTabChanged] ENTER - index=" << index << std::endl;
+
     if (!_pNotepad_plus || !_mainDocTab) {
+        std::cerr << "[MainWindow::onMainTabChanged] ERROR: _pNotepad_plus or _mainDocTab is null" << std::endl;
         return;
     }
 
     // Get the buffer ID for the tab being activated
     QtControls::BufferID bufferId = _mainDocTab->getBufferByIndex(static_cast<size_t>(index));
+    std::cout << "[MainWindow::onMainTabChanged] Got bufferId=" << bufferId << " for index=" << index << std::endl;
+
     if (bufferId != QtControls::BUFFER_INVALID) {
+        std::cout << "[MainWindow::onMainTabChanged] Calling switchToFile..." << std::endl;
         // Switch to the file (this handles view switching and buffer activation)
         _pNotepad_plus->switchToFile(bufferId);
+        std::cout << "[MainWindow::onMainTabChanged] switchToFile completed" << std::endl;
         // Update UI state after buffer switch
         updateMenuState();
         updateToolBarState();
         updateStatusBar();
+    } else {
+        std::cerr << "[MainWindow::onMainTabChanged] WARNING: BUFFER_INVALID for index=" << index << std::endl;
     }
+    std::cout << "[MainWindow::onMainTabChanged] EXIT" << std::endl;
 }
 
 void MainWindow::onSubTabChanged(int index)
 {
+    std::cout << "[MainWindow::onSubTabChanged] ENTER - index=" << index << std::endl;
+
     if (!_pNotepad_plus || !_subDocTab) {
+        std::cerr << "[MainWindow::onSubTabChanged] ERROR: _pNotepad_plus or _subDocTab is null" << std::endl;
         return;
     }
 
     // Get the buffer ID for the tab being activated
     QtControls::BufferID bufferId = _subDocTab->getBufferByIndex(static_cast<size_t>(index));
+    std::cout << "[MainWindow::onSubTabChanged] Got bufferId=" << bufferId << " for index=" << index << std::endl;
+
     if (bufferId != QtControls::BUFFER_INVALID) {
+        std::cout << "[MainWindow::onSubTabChanged] Calling switchToFile..." << std::endl;
         // Switch to the file (this handles view switching and buffer activation)
         _pNotepad_plus->switchToFile(bufferId);
+        std::cout << "[MainWindow::onSubTabChanged] switchToFile completed" << std::endl;
         // Update UI state after buffer switch
         updateMenuState();
         updateToolBarState();
         updateStatusBar();
+    } else {
+        std::cerr << "[MainWindow::onSubTabChanged] WARNING: BUFFER_INVALID for index=" << index << std::endl;
     }
+    std::cout << "[MainWindow::onSubTabChanged] EXIT" << std::endl;
 }
 
 // ============================================================================
