@@ -13,7 +13,6 @@
 #include "../../Notepad_plus.h"
 #include "../../Parameters.h"
 #include "../../MISC/PluginsManager/Notepad_plus_msgs.h"
-#include "../../QtCore/Buffer.h"
 
 // Dialog includes
 #include "../FindReplace/FindReplaceDlg.h"
@@ -158,16 +157,6 @@ bool MainWindow::init(Notepad_plus* pNotepad_plus)
     std::cout << "[MainWindow::init] About to setupUI..." << std::endl;
     setupUI();
     std::cout << "[MainWindow::init] setupUI done. About to connectSignals..." << std::endl;
-
-    // Initialize FileManager with scratch view for document creation
-    // This must be done after setupUI so that ScintillaEditView is initialized
-    std::cout << "[MainWindow::init] Initializing FileManager..." << std::endl;
-    if (_pNotepad_plus && _pNotepad_plus->getMainEditView()) {
-        QtCore::FileManager::getInstance()->init(_pNotepad_plus, _pNotepad_plus->getMainEditView());
-        std::cout << "[MainWindow::init] FileManager initialized successfully." << std::endl;
-    } else {
-        std::cerr << "[MainWindow::init] WARNING: Could not initialize FileManager - missing Notepad_plus or edit view!" << std::endl;
-    }
     connectSignals();
     std::cout << "[MainWindow::init] connectSignals done. About to createDockWindows..." << std::endl;
     createDockWindows();

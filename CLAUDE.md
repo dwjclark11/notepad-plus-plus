@@ -121,6 +121,94 @@ The Linux port is functional but incomplete. See `REMAINING_WORK.md` for current
 - `QtCore::Buffer::getFullPathName()` - Path retrieval
 - `QtCore::Buffer::setUnsync()` - Sync tracking
 
+### Testing with Computer Use MCP
+
+When using Claude Code's computer-use MCP with the Notepad++ Qt6 port:
+
+**Screenshot Configuration (Wayland/KDE)**
+The default computer-use-mcp uses nut-tree-fork/nut-js which has X11 compatibility issues on Wayland. To fix this:
+
+1. Install spectacle (KDE's screenshot tool):
+   ```bash
+   sudo pacman -S spectacle
+   ```
+
+2. Patch the MCP server to use spectacle instead of nut-js for screenshots:
+   - File: `~/.local/share/fnm/node-versions/v24.3.0/installation/lib/node_modules/computer-use-mcp/dist/tools/computer.js`
+   - Replace `screen.grab()` with `execAsync('spectacle -b -o <tmpfile>')`
+   - Use `readFileSync()` to read the screenshot file
+
+3. Environment variables needed:
+   ```bash
+   export DISPLAY=:0
+   export WAYLAND_DISPLAY=wayland-0
+   export XDG_SESSION_TYPE=wayland
+   export XAUTHORITY=/run/user/1000/xauth_<hash>
+   ```
+
+**Screenshot Timeout Fix (Critical)**
+Claude Code has a hardcoded 10-second timeout for MCP tools. The default screenshot implementation (`spectacle`) takes ~11 seconds, causing timeouts. The fix involves:
+
+1. **Replace `spectacle` with `ffmpeg`** in `computer.js`:
+   ```javascript
+   // Before (slow):
+   await execAsync(`spectacle -b -o "${tmpFile}"`, { timeout: 30000 });
+
+   // After (fast):
+   await execAsync(`ffmpeg -f x11grab -i :0 -vframes 1 "${tmpFile}" -y`, { timeout: 5000 });
+   ```
+
+2. **Remove delays and optimize polling**:
+   - Remove `await setTimeout(1000)` initial delay
+   - Reduce polling: `while (!existsSync(tmpFile) && attempts < 20)` with `setTimeout(50)`
+
+3. **Use sharp instead of Jimp** for image processing (faster resize)
+
+4. **Skip crosshair drawing** (pixel-by-pixel JavaScript is slow for 4K displays)
+
+5. **Reconnect MCP server** after changes:
+   ```bash
+   claude mcp remove computer-use
+   claude mcp add --transport stdio computer-use -- /home/josh/.local/bin/computer-use-mcp-wrapper.sh
+   ```
+
+**Debugging Screenshot Issues**
+If screenshots fail with `ETIMEDOUT` or `Connection closed`:
+
+1. Test MCP server directly:
+   ```bash
+   echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"computer","arguments":{"action":"get_screenshot"}}}' | /home/josh/.local/bin/computer-use-mcp-wrapper.sh
+   ```
+   - If this works but Claude fails, the MCP server needs reconnection
+
+2. Check timing of individual components:
+   ```bash
+   time spectacle -b -o /tmp/test.png        # Should be < 10s
+   time ffmpeg -f x11grab -i :0 -vframes 1 /tmp/test.png -y  # Should be < 1s
+   ```
+
+3. Verify MCP server status:
+   ```bash
+   claude mcp list
+   ```
+
+4. Common errors:
+   - `spawnSync /bin/sh ETIMEDOUT` - Screenshot tool too slow, use ffmpeg
+   - `Connection closed` - MCP server crashed or needs reconnection
+   - `Screenshot file not created` - Display/permissions issue with X11
+
+**Keyboard Automation**
+When screenshots are unavailable, keyboard commands work reliably:
+- `ctrl+n` - New file
+- `ctrl+s` - Save
+- `ctrl+shift+s` - Save As (use absolute paths like `/home/josh/filename.txt`)
+- `ctrl+a` - Select all (useful for replacing filename in save dialog)
+
+**Known Quirks**
+- The Qt6 save dialog may interpret `++` in filenames as `==` due to keyboard event handling
+- Use absolute paths (starting with `/`) to ensure files save to correct location
+- Use `ctrl+shift+s` (Save As) rather than `ctrl+s` for first save to specify location
+
 ## Coding Standards
 
 From `CONTRIBUTING.md`:

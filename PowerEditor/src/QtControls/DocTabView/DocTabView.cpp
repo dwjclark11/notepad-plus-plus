@@ -148,18 +148,26 @@ void DocTabView::closeBuffer(BufferID buffer)
     if (indexToClose == -1)
         return;
 
+    // Save buffer pointers before modifying the tab widget
+    // We need to do this BEFORE clearing the map because getBufferByIndex()
+    // relies on the map being populated
+    QTabWidget* tabWidget = getTabWidget();
+    QVector<BufferID> buffers;
+    if (tabWidget) {
+        for (auto it = _bufferToIndex.begin(); it != _bufferToIndex.end(); ++it) {
+            if (it.key() != buffer) {
+                buffers.append(it.key());
+            }
+        }
+    }
+
     deleteItemAt(static_cast<size_t>(indexToClose));
-    _bufferToIndex.remove(buffer);
 
     // Rebuild index mapping
-    QTabWidget* tabWidget = getTabWidget();
     if (tabWidget) {
         _bufferToIndex.clear();
-        for (int i = 0; i < tabWidget->count(); ++i) {
-            BufferID id = getBufferByIndex(i);
-            if (id) {
-                _bufferToIndex[id] = i;
-            }
+        for (int i = 0; i < tabWidget->count() && i < buffers.size(); ++i) {
+            _bufferToIndex[buffers[i]] = i;
         }
     }
 
