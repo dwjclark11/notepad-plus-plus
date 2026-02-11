@@ -13,6 +13,7 @@
 #include "../../Notepad_plus.h"
 #include "../../Parameters.h"
 #include "../../MISC/PluginsManager/Notepad_plus_msgs.h"
+#include "../../QtCore/Buffer.h"
 
 // Dialog includes
 #include "../FindReplace/FindReplaceDlg.h"
@@ -157,6 +158,16 @@ bool MainWindow::init(Notepad_plus* pNotepad_plus)
     std::cout << "[MainWindow::init] About to setupUI..." << std::endl;
     setupUI();
     std::cout << "[MainWindow::init] setupUI done. About to connectSignals..." << std::endl;
+
+    // Initialize FileManager with scratch view for document creation
+    // This must be done after setupUI so that ScintillaEditView is initialized
+    std::cout << "[MainWindow::init] Initializing FileManager..." << std::endl;
+    if (_pNotepad_plus && _pNotepad_plus->getMainEditView()) {
+        QtCore::FileManager::getInstance()->init(_pNotepad_plus, _pNotepad_plus->getMainEditView());
+        std::cout << "[MainWindow::init] FileManager initialized successfully." << std::endl;
+    } else {
+        std::cerr << "[MainWindow::init] WARNING: Could not initialize FileManager - missing Notepad_plus or edit view!" << std::endl;
+    }
     connectSignals();
     std::cout << "[MainWindow::init] connectSignals done. About to createDockWindows..." << std::endl;
     createDockWindows();
@@ -237,7 +248,6 @@ void MainWindow::setupUI()
     mainVLayout->setSpacing(0);
 
     // Initialize main doc tab and add to container
-    std::cout << "[MainWindow::setupUI] Initializing main doc tab..." << std::endl;
     _mainDocTab = _pNotepad_plus->getMainDocTab();
     if (!_mainDocTab) {
         std::cerr << "[MainWindow::setupUI] ERROR: Main doc tab is null!" << std::endl;
@@ -298,6 +308,13 @@ void MainWindow::setupUI()
     // Also ensure central widget and splitter are visible
     centralWidget->show();
     _editorSplitter->show();
+
+    // Force layout update to ensure proper sizing
+    centralWidget->updateGeometry();
+    _editorSplitter->updateGeometry();
+    mainContainer->updateGeometry();
+
+    std::cout << "[MainWindow::setupUI] Forced layout update" << std::endl;
 
     std::cout << "[MainWindow::setupUI] Layout setup complete." << std::endl;
     std::cout << "[MainWindow::setupUI] centralWidget visible: " << centralWidget->isVisible() << std::endl;
@@ -1695,6 +1712,49 @@ void MainWindow::changeEvent(QEvent* event)
     }
 }
 
+void MainWindow::showEvent(QShowEvent* event)
+{
+    QMainWindow::showEvent(event);
+
+    // Force update of tab bars to ensure tabs are visible after window is shown
+    // This fixes the issue where the initial tab doesn't appear on fresh startup
+    static bool firstShow = true;
+    if (firstShow && _mainDocTab) {
+        firstShow = false;
+
+        QTabWidget* tabWidget = qobject_cast<QTabWidget*>(_mainDocTab->getWidget());
+        if (tabWidget) {
+            // The tab bar may have zero height if created before the window was shown
+            // Force it to recalculate by toggling the tab position
+            QTabWidget::TabPosition originalPos = tabWidget->tabPosition();
+            tabWidget->setTabPosition(QTabWidget::North);
+            tabWidget->setTabPosition(originalPos);
+
+            // Ensure tab bar is visible
+            QTabBar* tabBar = tabWidget->tabBar();
+            if (tabBar) {
+                tabBar->show();
+                tabBar->updateGeometry();
+            }
+
+            // Force layout recalculation of the entire splitter hierarchy
+            if (_editorSplitter) {
+                _editorSplitter->updateGeometry();
+                QList<int> sizes = _editorSplitter->sizes();
+                if (sizes.size() >= 2 && sizes[0] == 0) {
+                    sizes[0] = 800;
+                    sizes[1] = 200;
+                    _editorSplitter->setSizes(sizes);
+                }
+            }
+
+            std::cout << "[MainWindow::showEvent] Forced tab widget update, tab count: "
+                      << tabWidget->count() << ", tabBar visible: "
+                      << (tabBar ? tabBar->isVisible() : false) << std::endl;
+        }
+    }
+}
+
 void MainWindow::dragEnterEvent(QDragEnterEvent* event)
 {
     if (event->mimeData()->hasUrls()) {
@@ -1724,8 +1784,11 @@ void MainWindow::dropEvent(QDropEvent* event)
 
 void MainWindow::onFileNew()
 {
+    std::cout << "[MainWindow::onFileNew] Called, _pNotepad_plus=" << _pNotepad_plus << std::endl;
     if (_pNotepad_plus) {
         _pNotepad_plus->fileNew();
+    } else {
+        std::cerr << "[MainWindow::onFileNew] ERROR: _pNotepad_plus is null!" << std::endl;
     }
 }
 

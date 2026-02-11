@@ -34,6 +34,7 @@
 #include <QToolBar>
 #include <QStatusBar>
 #include <QCloseEvent>
+#include <QShowEvent>
 #include <QTimer>
 #include <QSystemTrayIcon>
 
@@ -158,6 +159,7 @@ protected:
     void changeEvent(QEvent* event) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dropEvent(QDropEvent* event) override;
+    void showEvent(QShowEvent* event) override;
 
 private slots:
     // File menu
