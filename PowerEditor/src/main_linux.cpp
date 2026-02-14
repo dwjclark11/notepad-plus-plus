@@ -760,6 +760,14 @@ private:
             needNewDoc = true;
         }
 
+        // Also ensure we have at least one tab after session loading
+        // (session may have been empty even when _rememberLastSession is true)
+        if (!needNewDoc && _notepad_plus_plus_core.getMainDocTab()->nbItem() == 0)
+        {
+            std::cout << "[initNotepadPlusCore] Session loaded but tab bar is empty, creating initial document" << std::endl;
+            needNewDoc = true;
+        }
+
         if (needNewDoc)
         {
             std::cout << "[initNotepadPlusCore] About to call fileNew..." << std::endl;
