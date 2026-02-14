@@ -429,12 +429,14 @@ private:
 
         QStringList lines = QString(data).split('\n');
         bool inParams = false;
+        int paramIndex = 0;
 
         for (const QString& line : lines)
         {
             if (line == "CMDLINE_PARAMS")
             {
                 inParams = true;
+                paramIndex = 0;
                 continue;
             }
             else if (line == "END_PARAMS")
@@ -450,7 +452,6 @@ private:
             if (inParams)
             {
                 // Parse parameters in order
-                static int paramIndex = 0;
                 switch (paramIndex++)
                 {
                     case 0: params._line2go = line.toLongLong(); break;

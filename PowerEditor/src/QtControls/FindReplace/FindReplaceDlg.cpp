@@ -57,6 +57,7 @@ void FindReplaceDlg::init(ScintillaEditView** ppEditView) {
     setupUI();
     connectSignals();
     updateControlStates();
+    _isCreated = true;
 }
 
 void FindReplaceDlg::setupUI() {
@@ -193,26 +194,61 @@ void FindReplaceDlg::createReplaceTab() {
     _replaceWithEdit = _replaceWithCombo->lineEdit();
     layout->addWidget(_replaceWithCombo, 1, 1);
 
-    // Same options as Find tab (simplified - would share in real implementation)
-    _matchWholeWordCheck = new QCheckBox(tr("Match whole word only"), this);
-    layout->addWidget(_matchWholeWordCheck, 2, 0, 1, 2);
+    // Use local variables for the Replace tab's option checkboxes.
+    // Previously these overwrote the member pointers set by createFindTab(),
+    // so getCurrentOptions() would always read from the Replace tab's
+    // widgets regardless of which tab was active.
+    auto* matchWholeWordCheck = new QCheckBox(tr("Match whole word only"), this);
+    layout->addWidget(matchWholeWordCheck, 2, 0, 1, 2);
 
-    _matchCaseCheck = new QCheckBox(tr("Match case"), this);
-    layout->addWidget(_matchCaseCheck, 3, 0, 1, 2);
+    auto* matchCaseCheck = new QCheckBox(tr("Match case"), this);
+    layout->addWidget(matchCaseCheck, 3, 0, 1, 2);
 
-    _wrapAroundCheck = new QCheckBox(tr("Wrap around"), this);
-    _wrapAroundCheck->setChecked(true);
-    layout->addWidget(_wrapAroundCheck, 4, 0, 1, 2);
+    auto* wrapAroundCheck = new QCheckBox(tr("Wrap around"), this);
+    wrapAroundCheck->setChecked(true);
+    layout->addWidget(wrapAroundCheck, 4, 0, 1, 2);
 
-    _inSelectionCheck = new QCheckBox(tr("In selection"), this);
-    layout->addWidget(_inSelectionCheck, 5, 0, 1, 2);
+    auto* inSelectionCheck = new QCheckBox(tr("In selection"), this);
+    layout->addWidget(inSelectionCheck, 5, 0, 1, 2);
+
+    // Sync Replace tab checkboxes with Find tab checkboxes
+    if (_matchWholeWordCheck)
+    {
+        connect(_matchWholeWordCheck, &QCheckBox::toggled,
+                matchWholeWordCheck, &QCheckBox::setChecked);
+        connect(matchWholeWordCheck, &QCheckBox::toggled,
+                _matchWholeWordCheck, &QCheckBox::setChecked);
+    }
+    if (_matchCaseCheck)
+    {
+        connect(_matchCaseCheck, &QCheckBox::toggled,
+                matchCaseCheck, &QCheckBox::setChecked);
+        connect(matchCaseCheck, &QCheckBox::toggled,
+                _matchCaseCheck, &QCheckBox::setChecked);
+    }
+    if (_wrapAroundCheck)
+    {
+        connect(_wrapAroundCheck, &QCheckBox::toggled,
+                wrapAroundCheck, &QCheckBox::setChecked);
+        connect(wrapAroundCheck, &QCheckBox::toggled,
+                _wrapAroundCheck, &QCheckBox::setChecked);
+    }
+    if (_inSelectionCheck)
+    {
+        connect(_inSelectionCheck, &QCheckBox::toggled,
+                inSelectionCheck, &QCheckBox::setChecked);
+        connect(inSelectionCheck, &QCheckBox::toggled,
+                _inSelectionCheck, &QCheckBox::setChecked);
+    }
 
     // Action buttons
     auto* actionLayout = new QVBoxLayout();
 
-    _findNextButton = new QPushButton(tr("Find Next"), this);
-    _findNextButton->setDefault(true);
-    actionLayout->addWidget(_findNextButton);
+    auto* findNextButton = new QPushButton(tr("Find Next"), this);
+    findNextButton->setDefault(true);
+    actionLayout->addWidget(findNextButton);
+    connect(findNextButton, &QPushButton::clicked,
+            this, &FindReplaceDlg::onFindNextClicked);
 
     _replaceButton = new QPushButton(tr("&Replace"), this);
     actionLayout->addWidget(_replaceButton);
@@ -380,6 +416,12 @@ void FindReplaceDlg::connectSignals() {
 }
 
 void FindReplaceDlg::showDialog(FindDialogType type) {
+    // Guard against use before init() has been called
+    if (!_tabWidget)
+    {
+        return;
+    }
+
     _currentType = type;
     _tabWidget->setCurrentIndex(static_cast<int>(type));
     updateControlStates();
@@ -1723,6 +1765,7 @@ void FindIncrementDlg::init(FindReplaceDlg* pFRDlg, ScintillaEditView** ppEditVi
     _ppEditView = ppEditView;
     setupUI();
     connectSignals();
+    _isCreated = true;
 }
 
 void FindIncrementDlg::setupUI() {

@@ -2532,6 +2532,15 @@ void Notepad_plus::switchToFileBrowser()
 
 void Notepad_plus::showFindReplaceDlg(int dialogType)
 {
+    // Initialize the Find/Replace dialog on first use.
+    // On Windows this is done in Notepad_plus_Window::init(), but
+    // the Qt/Linux path never called _findReplaceDlg.init(), causing
+    // a null _tabWidget crash when showDialog() is invoked.
+    if (!_findReplaceDlg.isCreated())
+    {
+        _findReplaceDlg.init(&_pEditView);
+    }
+
     // Map dialog type to DIALOG_TYPE enum
     DIALOG_TYPE dlgType = static_cast<DIALOG_TYPE>(dialogType);
 
@@ -2569,6 +2578,20 @@ void Notepad_plus::processFindNext(const wchar_t* text, const FindOption* opt)
 
 void Notepad_plus::showIncrementalFindDlg()
 {
+    // Initialize the incremental find dialog on first use.
+    // On Windows this is done in Notepad_plus_Window::init(), but
+    // the Qt/Linux path never called _incrementFindDlg.init().
+    if (!_incrementFindDlg.isCreated())
+    {
+        // Ensure FindReplaceDlg is also initialized since
+        // FindIncrementDlg depends on it
+        if (!_findReplaceDlg.isCreated())
+        {
+            _findReplaceDlg.init(&_pEditView);
+        }
+        _incrementFindDlg.init(&_findReplaceDlg, &_pEditView);
+    }
+
     // Show the incremental find dialog
     _incrementFindDlg.display(true);
 }
@@ -2818,8 +2841,14 @@ int Notepad_plus::switchEditViewTo(int gid)
             _pDocTab = &_mainDocTab;
             _pNonEditView = &_subEditView;
             _pNonDocTab = &_subDocTab;
-            // Update UI focus using Scintilla's focus command
-            _pEditView->execute(SCI_GRABFOCUS);
+            // Only grab focus if the widget is visible; calling
+            // SCI_GRABFOCUS before the window is shown can crash
+            // or cause unexpected behaviour in Qt.
+            QWidget* w = _pEditView->getWidget();
+            if (w && w->isVisible())
+            {
+                _pEditView->execute(SCI_GRABFOCUS);
+            }
         }
     }
     else if (gid == SUB_VIEW)
@@ -2831,8 +2860,12 @@ int Notepad_plus::switchEditViewTo(int gid)
             _pDocTab = &_subDocTab;
             _pNonEditView = &_mainEditView;
             _pNonDocTab = &_mainDocTab;
-            // Update UI focus using Scintilla's focus command
-            _pEditView->execute(SCI_GRABFOCUS);
+            // Only grab focus if the widget is visible
+            QWidget* w = _pEditView->getWidget();
+            if (w && w->isVisible())
+            {
+                _pEditView->execute(SCI_GRABFOCUS);
+            }
         }
     }
     return _activeView;

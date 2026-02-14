@@ -134,12 +134,15 @@ void DocTabView::addBuffer(BufferID buffer)
         return;
     }
 
+    // Block signals while adding the tab and storing the mapping.
+    // addTab() emits currentChanged before we store the buffer mapping,
+    // causing slots to fail looking up the new (unmapped) tab index.
+    tabWidget->blockSignals(true);
     QWidget* page = new QWidget();
     int index = tabWidget->addTab(page, title);
-    std::cout << "[DocTabView::addBuffer] Tab added at index=" << index << std::endl;
-
-    // Store buffer mapping
     _bufferToIndex[buffer] = index;
+    tabWidget->blockSignals(false);
+    std::cout << "[DocTabView::addBuffer] Tab added at index=" << index << std::endl;
     std::cout << "[DocTabView::addBuffer] Stored mapping buffer=" << buffer
               << " -> index=" << index << std::endl;
 
