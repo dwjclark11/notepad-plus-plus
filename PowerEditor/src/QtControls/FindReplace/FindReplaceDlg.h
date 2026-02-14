@@ -48,6 +48,8 @@ class QLabel;
 class QGroupBox;
 class QRadioButton;
 class QProgressBar;
+class QTreeWidget;
+class QTreeWidgetItem;
 
 namespace NppFindReplace {
 
@@ -424,7 +426,7 @@ public:
     void setFinderStyle();
 
 public slots:
-    void onResultDoubleClicked(int line);
+    void onResultDoubleClicked(QTreeWidgetItem* item, int column);
     void onContextMenu(const QPoint& pos);
 
 protected:
@@ -432,14 +434,19 @@ protected:
     void connectSignals() override;
 
 private:
+    QTreeWidget* _resultsTree = nullptr;
     ScintillaEditView* _scintillaView = nullptr;
     ScintillaEditView** _ppEditView = nullptr;
+    QTreeWidgetItem* _currentSearchItem = nullptr;
+    QTreeWidgetItem* _currentFileItem = nullptr;
+    int _currentResultIndex = -1;
 
     struct FoundInfo {
         intptr_t start = 0;
         intptr_t end = 0;
         int lineNumber = 0;
         QString filePath;
+        QString lineText;
     };
 
     std::vector<FoundInfo> _foundInfos;

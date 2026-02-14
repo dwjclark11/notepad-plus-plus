@@ -1654,11 +1654,18 @@ void MainWindow::closeEvent(QCloseEvent* event)
         return;
     }
 
+    // Check for unsaved documents - prompts user to save/discard/cancel
+    if (_pNotepad_plus)
+    {
+        bool isSnapshotMode = NppParameters::getInstance().getNppGUI().isSnapshotMode();
+        if (!_pNotepad_plus->fileCloseAll(false, isSnapshotMode))
+        {
+            event->ignore();
+            return;
+        }
+    }
+
     saveSettings();
-
-    // Check for unsaved documents
-    // TODO: Implement unsaved documents check with Notepad_plus core
-
     event->accept();
 }
 

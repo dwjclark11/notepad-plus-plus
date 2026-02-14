@@ -2011,6 +2011,15 @@ Buffer* FileManager::newEmptyDocument()
 {
     std::cout << "[FileManager::newEmptyDocument] ENTER - Creating new buffer" << std::endl;
 
+    // Get the next untitled number for "new X" naming
+    size_t newNum = nextUntitledNewNumber();
+    std::wstring newTitle = UNTITLED_STR;
+    wchar_t nb[10];
+    swprintf(nb, 10, L"%zu", newNum);
+    newTitle += nb;
+
+    std::wcout << L"[FileManager::newEmptyDocument] Creating buffer with title: " << newTitle << std::endl;
+
     // Create a new buffer through the BufferManager
     BufferManager* mgr = BufferManager::getInstance();
     Buffer* buf = mgr->createBuffer();
@@ -2019,6 +2028,13 @@ Buffer* FileManager::newEmptyDocument()
         std::cerr << "[FileManager::newEmptyDocument] ERROR: Failed to create buffer" << std::endl;
         return nullptr;
     }
+
+    // Set the buffer title and status (like Windows implementation)
+    buf->setFilePath(QString::fromStdWString(newTitle));
+    buf->setStatus(DOC_UNNAMED);
+    buf->setDirty(false);
+
+    std::cout << "[FileManager::newEmptyDocument] Buffer created with status=DOC_UNNAMED, dirty=false" << std::endl;
 
     // Create a Scintilla document for this buffer
     // On Windows, this is done via _pscratchTilla->execute(SCI_CREATEDOCUMENT, ...)
@@ -2032,6 +2048,13 @@ Buffer* FileManager::newEmptyDocument()
                   << "buffer=" << buf << " will have null document pointer" << std::endl;
     }
 
+    // Add to our tracking
+    if (!_buffers.contains(buf)) {
+        _buffers.append(buf);
+        ++_nbBufs;
+    }
+
+    std::cout << "[FileManager::newEmptyDocument] EXIT - returning buffer=" << buf << std::endl;
     return buf;
 }
 
@@ -2323,24 +2346,51 @@ int FileManager::getBufferIndexByID(BufferID id)
 
 size_t FileManager::nextUntitledNewNumber() const
 {
-    size_t maxNumber = 0;
+    std::cout << "[nextUntitledNewNumber] ENTER" << std::endl;
 
+    std::vector<size_t> usedNumbers;
     for (Buffer* buf : _buffers) {
         if (buf->isUntitled()) {
+            // Check if buffer is visible (similar to Windows check)
             QString fileName = buf->getFileNameQString();
             // Parse "new X" format
             QRegularExpression re(R"(new\s+(\d+))");
             QRegularExpressionMatch match = re.match(fileName);
             if (match.hasMatch()) {
                 int num = match.captured(1).toInt();
-                if (static_cast<size_t>(num) > maxNumber) {
-                    maxNumber = num;
+                if (num > 0) {
+                    usedNumbers.push_back(static_cast<size_t>(num));
+                    std::cout << "[nextUntitledNewNumber] Found used number: " << num << std::endl;
                 }
             }
         }
     }
 
-    return maxNumber + 1;
+    // Find the first available number (like Windows implementation)
+    size_t newNumber = 1;
+    bool numberAvailable = true;
+    bool found = false;
+    do {
+        for (size_t usedNum : usedNumbers) {
+            numberAvailable = true;
+            found = false;
+            if (usedNum == newNumber) {
+                numberAvailable = false;
+                found = true;
+                break;
+            }
+        }
+
+        if (!numberAvailable)
+            newNumber++;
+
+        if (!found)
+            break;
+
+    } while (!numberAvailable);
+
+    std::cout << "[nextUntitledNewNumber] Returning: " << newNumber << std::endl;
+    return newNumber;
 }
 
 BufferID FileManager::bufferFromDocument(Document doc, bool isMainEditZone)
@@ -2407,6 +2457,44 @@ SavingStatus FileManager::saveBuffer(BufferID id, const wchar_t* filename, bool 
     }
 
     return SavingStatus::SaveOK;
+}
+
+void FileManager::closeBuffer(BufferID id, const ScintillaEditView* identifier)
+{
+    std::cout << "[FileManager::closeBuffer] ENTER - buffer=" << id << std::endl;
+
+    if (!id) {
+        std::cerr << "[FileManager::closeBuffer] ERROR: null buffer ID" << std::endl;
+        return;
+    }
+
+    int index = getBufferIndexByID(id);
+    if (index == -1) {
+        std::cerr << "[FileManager::closeBuffer] WARNING: buffer not found in tracking" << std::endl;
+        return;
+    }
+
+    Buffer* buf = getBufferByIndex(index);
+    if (!buf) {
+        std::cerr << "[FileManager::closeBuffer] ERROR: buffer is null" << std::endl;
+        return;
+    }
+
+    // Remove reference from the view
+    // Note: In the Qt implementation, we don't use reference counting like Windows
+    // Instead, we just remove the Scintilla view association
+    buf->setScintillaView(nullptr);
+
+    // Check if buffer is still referenced elsewhere (e.g., in another view)
+    // For now, we always delete the buffer when closeBuffer is called
+    // This matches the expected behavior for document closing
+    std::cout << "[FileManager::closeBuffer] Removing buffer from tracking" << std::endl;
+
+    _buffers.removeAt(index);
+    delete buf;
+    --_nbBufs;
+
+    std::cout << "[FileManager::closeBuffer] EXIT - buffer deleted" << std::endl;
 }
 
 } // namespace QtCore

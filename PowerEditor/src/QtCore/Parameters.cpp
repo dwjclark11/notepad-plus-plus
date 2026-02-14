@@ -1102,90 +1102,777 @@ void NppParameters::destroyInstance()
     // In this implementation, the instance is managed by getInstancePointer
 }
 
-// Stub implementations for methods that would require full XML parsing
-// These are minimal implementations to allow linking
+// ============================================================================
+// XML Config Parsing Implementations
+// ============================================================================
 
 void NppParameters::getLangKeywordsFromXmlTree()
 {
-    // Stub - would parse langs.xml for keywords
+    if (!_pXmlDoc)
+        return;
+
+    TiXmlNode* root = _pXmlDoc->FirstChild(L"NotepadPlus");
+    if (!root)
+        return;
+
+    feedKeyWordsParameters(root);
+}
+
+void NppParameters::feedKeyWordsParameters(TiXmlNode* node)
+{
+    TiXmlNode* langRoot = node->FirstChildElement(L"Languages");
+    if (!langRoot)
+        return;
+
+    for (TiXmlNode* langNode = langRoot->FirstChildElement(L"Language");
+        langNode;
+        langNode = langNode->NextSibling(L"Language"))
+    {
+        if (_nbLang < NB_LANG)
+        {
+            TiXmlElement* element = langNode->ToElement();
+            const wchar_t* name = element->Attribute(L"name");
+            if (name)
+            {
+                const wchar_t* ext = element->Attribute(L"ext");
+                const wchar_t* commentLine = element->Attribute(L"commentLine");
+                const wchar_t* commentStart = element->Attribute(L"commentStart");
+                const wchar_t* commentEnd = element->Attribute(L"commentEnd");
+
+                const std::string cmtLine = commentLine ? wstring2string(commentLine, CP_UTF8) : "";
+                const std::string cmtStart = commentStart ? wstring2string(commentStart, CP_UTF8) : "";
+                const std::string cmtEnd = commentEnd ? wstring2string(commentEnd, CP_UTF8) : "";
+
+                int tabSettings = -1;
+                const wchar_t* tsVal = element->Attribute(L"tabSettings", &tabSettings);
+                const wchar_t* buVal = element->Attribute(L"backspaceUnindent");
+
+                _langList[_nbLang] = std::make_unique<Lang>(getLangIDFromStr(name), name, ext ? ext : L"",
+                    cmtLine.c_str(), cmtStart.c_str(), cmtEnd.c_str(),
+                    tsVal ? tabSettings : -1, buVal && (std::wcscmp(buVal, L"yes") == 0));
+
+                for (TiXmlNode* kwNode = langNode->FirstChildElement(L"Keywords");
+                    kwNode;
+                    kwNode = kwNode->NextSibling(L"Keywords"))
+                {
+                    const wchar_t* indexName = (kwNode->ToElement())->Attribute(L"name");
+                    TiXmlNode* kwVal = kwNode->FirstChild();
+                    const wchar_t* keyWords = L"";
+                    if ((indexName) && (kwVal))
+                        keyWords = kwVal->Value();
+
+                    int i = getKwClassFromName(indexName);
+                    if (i >= 0 && i <= KEYWORDSET_MAX)
+                        _langList[_nbLang]->setWords(keyWords, i);
+                }
+                ++_nbLang;
+            }
+        }
+    }
 }
 
 bool NppParameters::getUserParametersFromXmlTree()
 {
-    // Stub - would parse config.xml for user settings
+    if (!_pXmlUserDoc)
+        return false;
+
+    TiXmlNode* root = _pXmlUserDoc->FirstChild(L"NotepadPlus");
+    if (!root)
+        return false;
+
+    feedGUIParameters(root);
+    feedFileListParameters(root);
+
+    // Erase and recreate History root
+    TiXmlNode* node = root->FirstChildElement(L"History");
+    if (node)
+        root->RemoveChild(node);
+
+    TiXmlElement HistoryNode(L"History");
+    root->InsertEndChild(HistoryNode);
+
+    feedFindHistoryParameters(root);
+    feedProjectPanelsParameters(root);
+    feedFileBrowserParameters(root);
+    feedColumnEditorParameters(root);
+
     return true;
+}
+
+void NppParameters::feedGUIParameters(TiXmlNode* node)
+{
+    TiXmlNode* GUIRoot = node->FirstChildElement(L"GUIConfigs");
+    if (!GUIRoot)
+        return;
+
+    for (TiXmlNode* childNode = GUIRoot->FirstChildElement(L"GUIConfig");
+        childNode;
+        childNode = childNode->NextSibling(L"GUIConfig"))
+    {
+        TiXmlElement* element = childNode->ToElement();
+        const wchar_t* nm = element->Attribute(L"name");
+        if (!nm)
+            continue;
+
+        auto parseYesNoBoolAttribute = [&element](const wchar_t* attrName, bool defaultValue = false) -> bool {
+            const wchar_t* val = element->Attribute(attrName);
+            if (val)
+            {
+                if (!lstrcmp(val, L"yes"))
+                    return true;
+                else if (!lstrcmp(val, L"no"))
+                    return false;
+            }
+            return defaultValue;
+        };
+
+        if (!lstrcmp(nm, L"ToolBar"))
+        {
+            TiXmlNode* textNode = childNode->FirstChild();
+            if (textNode)
+            {
+                const wchar_t* val = textNode->Value();
+                if (val)
+                {
+                    if (!lstrcmp(val, L"small"))
+                        _nppGUI._tbIconInfo._tbIconSet = TB_SMALL;
+                    else if (!lstrcmp(val, L"large"))
+                        _nppGUI._tbIconInfo._tbIconSet = TB_LARGE;
+                    else if (!lstrcmp(val, L"small2"))
+                        _nppGUI._tbIconInfo._tbIconSet = TB_SMALL2;
+                    else if (!lstrcmp(val, L"large2"))
+                        _nppGUI._tbIconInfo._tbIconSet = TB_LARGE2;
+                    else
+                        _nppGUI._tbIconInfo._tbIconSet = TB_STANDARD;
+                }
+            }
+        }
+        else if (!lstrcmp(nm, L"StatusBar"))
+        {
+            TiXmlNode* textNode = childNode->FirstChild();
+            if (textNode)
+            {
+                const wchar_t* val = textNode->Value();
+                if (val)
+                {
+                    if (!lstrcmp(val, L"hide"))
+                        _nppGUI._statusBarShow = false;
+                    else
+                        _nppGUI._statusBarShow = true;
+                }
+            }
+        }
+        else if (!lstrcmp(nm, L"TabBar"))
+        {
+            _nppGUI._tabStatus = parseYesNoBoolAttribute(L"dragAndDrop") ? TAB_DRAWTOPBAR : 0;
+            if (parseYesNoBoolAttribute(L"drawTopBar"))
+                _nppGUI._tabStatus |= TAB_DRAWTOPBAR;
+            if (parseYesNoBoolAttribute(L"drawInactiveTab"))
+                _nppGUI._tabStatus |= TAB_DRAWINACTIVETAB;
+            if (parseYesNoBoolAttribute(L"reduce"))
+                _nppGUI._tabStatus |= TAB_REDUCE;
+            if (parseYesNoBoolAttribute(L"closeButton"))
+                _nppGUI._tabStatus |= TAB_CLOSEBUTTON;
+            if (parseYesNoBoolAttribute(L"doubleClick2Close"))
+                _nppGUI._tabStatus |= TAB_DBCLK2CLOSE;
+            if (parseYesNoBoolAttribute(L"vertical"))
+                _nppGUI._tabStatus |= TAB_VERTICAL;
+            if (parseYesNoBoolAttribute(L"multiLine"))
+                _nppGUI._tabStatus |= TAB_MULTILINE;
+            if (parseYesNoBoolAttribute(L"hide"))
+                _nppGUI._tabStatus |= TAB_HIDE;
+            if (parseYesNoBoolAttribute(L"quitOnEmpty"))
+                _nppGUI._tabStatus |= TAB_QUITONEMPTY;
+            if (parseYesNoBoolAttribute(L"iconSetNumber"))
+                _nppGUI._tabStatus |= TAB_ALTICONS;
+        }
+        else if (!lstrcmp(nm, L"RememberLastSession"))
+        {
+            TiXmlNode* textNode = childNode->FirstChild();
+            if (textNode)
+            {
+                const wchar_t* val = textNode->Value();
+                if (val)
+                    _nppGUI._rememberLastSession = (!lstrcmp(val, L"yes"));
+            }
+        }
+        else if (!lstrcmp(nm, L"NewDocDefaultSettings"))
+        {
+            int format = -1;
+            element->Attribute(L"format", &format);
+            if (format >= 0 && format <= 3)
+                _nppGUI._newDocDefaultSettings._format = static_cast<EolType>(format);
+
+            int encoding = -1;
+            element->Attribute(L"encoding", &encoding);
+            if (encoding >= 0)
+                _nppGUI._newDocDefaultSettings._unicodeMode = static_cast<UniMode>(encoding);
+
+            int lang = -1;
+            element->Attribute(L"lang", &lang);
+            if (lang >= 0)
+                _nppGUI._newDocDefaultSettings._lang = static_cast<LangType>(lang);
+        }
+        else if (!lstrcmp(nm, L"langsExcluded"))
+        {
+            int excludedInt = 0;
+            element->Attribute(L"gr0", &excludedInt);
+            // Store as bitmask - simplified
+        }
+        else if (!lstrcmp(nm, L"MaitainIndent"))
+        {
+            TiXmlNode* textNode = childNode->FirstChild();
+            if (textNode)
+            {
+                const wchar_t* val = textNode->Value();
+                if (val)
+                    _nppGUI._maintainIndent = (!lstrcmp(val, L"yes")) ? autoIndent_advanced : autoIndent_none;
+            }
+        }
+        else if (!lstrcmp(nm, L"noUpdate"))
+        {
+            TiXmlNode* textNode = childNode->FirstChild();
+            if (textNode)
+            {
+                const wchar_t* val = textNode->Value();
+                if (val)
+                    _nppGUI._autoUpdateOpt._doAutoUpdate = (lstrcmp(val, L"yes") != 0) ? NppGUI::autoupdate_on_startup : NppGUI::autoupdate_disabled;
+            }
+        }
+    }
+}
+
+void NppParameters::feedFileListParameters(TiXmlNode* node)
+{
+    TiXmlNode* histNode = node->FirstChildElement(L"History");
+    if (!histNode)
+        return;
+
+    int nbMaxFile = 10;
+    const wchar_t* nbMaxStr = (histNode->ToElement())->Attribute(L"nbMaxFile", &nbMaxFile);
+    if (nbMaxStr)
+        _nbMaxRecentFile = nbMaxFile;
+
+    for (TiXmlNode* childNode = histNode->FirstChildElement(L"File");
+        childNode;
+        childNode = childNode->NextSibling(L"File"))
+    {
+        const wchar_t* filePath = (childNode->ToElement())->Attribute(L"filename");
+        if (filePath && _nbRecentFile < NB_MAX_LRF_FILE)
+        {
+            _LRFileList[_nbRecentFile] = std::make_unique<std::wstring>(filePath);
+            ++_nbRecentFile;
+        }
+    }
+}
+
+void NppParameters::feedFindHistoryParameters(TiXmlNode* node)
+{
+    TiXmlNode* findHistoryRoot = node->FirstChildElement(L"FindHistory");
+    if (!findHistoryRoot)
+        return;
+
+    TiXmlElement* element = findHistoryRoot->ToElement();
+    if (element)
+    {
+        int nbMaxFindHistoryFind = NB_MAX_FINDHISTORY_FIND;
+        element->Attribute(L"nbMaxFindHistoryFind", &nbMaxFindHistoryFind);
+        _findHistory._nbMaxFindHistoryFind = nbMaxFindHistoryFind;
+
+        int nbMaxFindHistoryReplace = NB_MAX_FINDHISTORY_REPLACE;
+        element->Attribute(L"nbMaxFindHistoryReplace", &nbMaxFindHistoryReplace);
+        _findHistory._nbMaxFindHistoryReplace = nbMaxFindHistoryReplace;
+
+        int nbMaxFindHistoryPath = NB_MAX_FINDHISTORY_PATH;
+        element->Attribute(L"nbMaxFindHistoryPath", &nbMaxFindHistoryPath);
+        _findHistory._nbMaxFindHistoryPath = nbMaxFindHistoryPath;
+
+        int nbMaxFindHistoryFilter = NB_MAX_FINDHISTORY_FILTER;
+        element->Attribute(L"nbMaxFindHistoryFilter", &nbMaxFindHistoryFilter);
+        _findHistory._nbMaxFindHistoryFilter = nbMaxFindHistoryFilter;
+    }
+
+    for (TiXmlNode* childNode = findHistoryRoot->FirstChildElement(L"Path");
+        childNode;
+        childNode = childNode->NextSibling(L"Path"))
+    {
+        const wchar_t* filePath = (childNode->ToElement())->Attribute(L"name");
+        if (filePath)
+            _findHistory._findHistoryPaths.push_back(std::wstring(filePath));
+    }
+
+    for (TiXmlNode* childNode = findHistoryRoot->FirstChildElement(L"Filter");
+        childNode;
+        childNode = childNode->NextSibling(L"Filter"))
+    {
+        const wchar_t* filter = (childNode->ToElement())->Attribute(L"name");
+        if (filter)
+            _findHistory._findHistoryFilters.push_back(std::wstring(filter));
+    }
+
+    for (TiXmlNode* childNode = findHistoryRoot->FirstChildElement(L"Find");
+        childNode;
+        childNode = childNode->NextSibling(L"Find"))
+    {
+        const wchar_t* find = (childNode->ToElement())->Attribute(L"name");
+        if (find)
+            _findHistory._findHistoryFinds.push_back(std::wstring(find));
+    }
+
+    for (TiXmlNode* childNode = findHistoryRoot->FirstChildElement(L"Replace");
+        childNode;
+        childNode = childNode->NextSibling(L"Replace"))
+    {
+        const wchar_t* replace = (childNode->ToElement())->Attribute(L"name");
+        if (replace)
+            _findHistory._findHistoryReplaces.push_back(std::wstring(replace));
+    }
+}
+
+void NppParameters::feedProjectPanelsParameters(TiXmlNode* node)
+{
+    TiXmlNode* projPanelRoot = node->FirstChildElement(L"ProjectPanels");
+    if (!projPanelRoot)
+        return;
+
+    for (int i = 0; i < 3; ++i)
+    {
+        wchar_t projPanelName[32];
+        swprintf(projPanelName, 32, L"ProjectPanel%d", i + 1);
+        TiXmlNode* projPanelNode = projPanelRoot->FirstChildElement(projPanelName);
+        if (projPanelNode)
+        {
+            const wchar_t* filePath = (projPanelNode->ToElement())->Attribute(L"filePath");
+            if (filePath)
+                _workSpaceFilePaths[i] = filePath;
+        }
+    }
+}
+
+void NppParameters::feedFileBrowserParameters(TiXmlNode* node)
+{
+    TiXmlNode* fileBrowserRoot = node->FirstChildElement(L"FileBrowser");
+    if (!fileBrowserRoot)
+        return;
+
+    for (TiXmlNode* childNode = fileBrowserRoot->FirstChildElement(L"root");
+        childNode;
+        childNode = childNode->NextSibling(L"root"))
+    {
+        const wchar_t* rootPath = (childNode->ToElement())->Attribute(L"foldername");
+        if (rootPath)
+            _fileBrowserRoot.push_back(std::wstring(rootPath));
+    }
+}
+
+void NppParameters::feedColumnEditorParameters(TiXmlNode* node)
+{
+    TiXmlNode* colEdRoot = node->FirstChildElement(L"ColumnEditor");
+    if (!colEdRoot)
+        return;
+
+    // Parse column editor settings if needed
+    (void)colEdRoot;
 }
 
 bool NppParameters::getUserStylersFromXmlTree()
 {
-    // Stub - would parse stylers.xml for styles
+    if (!_pXmlUserStylerDoc)
+        return false;
+
+    TiXmlNode* root = _pXmlUserStylerDoc->FirstChild(L"NotepadPlus");
+    if (!root)
+        return false;
+
+    return feedStylerArray(root);
+}
+
+bool NppParameters::feedStylerArray(TiXmlNode* node)
+{
+    TiXmlNode* lexerStylesRoot = node->FirstChildElement(L"LexerStyles");
+    if (!lexerStylesRoot)
+        return false;
+
+    for (TiXmlNode* childNode = lexerStylesRoot->FirstChildElement(L"LexerType");
+        childNode;
+        childNode = childNode->NextSibling(L"LexerType"))
+    {
+        TiXmlElement* element = childNode->ToElement();
+        const wchar_t* lexerName = element->Attribute(L"name");
+        const wchar_t* lexerDesc = element->Attribute(L"desc");
+        const wchar_t* lexerExcluded = element->Attribute(L"excluded");
+        if (!lexerName)
+            continue;
+
+        _lexerStylerVect.addLexerStyler(lexerName, lexerDesc, lexerExcluded, childNode);
+    }
+
+    // Parse global styles
+    TiXmlNode* globalStylesRoot = node->FirstChildElement(L"GlobalStyles");
+    if (globalStylesRoot)
+    {
+        for (TiXmlNode* styleNode = globalStylesRoot->FirstChildElement(L"WidgetStyle");
+            styleNode;
+            styleNode = styleNode->NextSibling(L"WidgetStyle"))
+        {
+            TiXmlElement* styleElement = styleNode->ToElement();
+            int styleID = -1;
+            styleElement->Attribute(L"styleID", &styleID);
+            _widgetStyleArray.addStyler(styleID, styleNode);
+        }
+    }
+
     return true;
 }
 
 std::pair<unsigned char, unsigned char> NppParameters::addUserDefineLangsFromXmlTree(TiXmlDocument* tixmldoc)
 {
-    // Stub - would parse userDefineLang.xml
-    return std::make_pair(0, 0);
+    if (!tixmldoc)
+        return std::make_pair(static_cast<unsigned char>(0), static_cast<unsigned char>(0));
+
+    TiXmlNode* root = tixmldoc->FirstChild(L"NotepadPlus");
+    if (!root)
+        return std::make_pair(static_cast<unsigned char>(0), static_cast<unsigned char>(0));
+
+    return feedUserLang(root);
+}
+
+// ============================================================================
+// Shortcuts XML Parsing
+// ============================================================================
+
+bool NppParameters::getShortcuts(const NppXml::Element& element, Shortcut& sc, std::string* folderName)
+{
+    if (!element)
+        return false;
+
+    const char* name = NppXml::attribute(element, "name", "");
+
+    const bool isCtrl = getBoolAttribute(element, "Ctrl");
+    const bool isAlt = getBoolAttribute(element, "Alt");
+    const bool isShift = getBoolAttribute(element, "Shift");
+
+    const int key = NppXml::intAttribute(element, "Key", -1);
+    if (key == -1)
+        return false;
+
+    if (folderName)
+        *folderName = NppXml::attribute(element, "FolderName", "");
+
+    sc = Shortcut(name, isCtrl, isAlt, isShift, static_cast<unsigned char>(key));
+    return true;
+}
+
+bool NppParameters::getInternalCommandShortcuts(const NppXml::Element& element, CommandShortcut& cs, std::string* folderName)
+{
+    if (!element)
+        return false;
+
+    Shortcut sc;
+    if (!getShortcuts(element, sc, folderName))
+        return false;
+
+    // Update the base Shortcut portion of the CommandShortcut
+    cs.setName(sc.getName());
+    cs.setKeyCombo(sc.getKeyCombo());
+    return true;
+}
+
+void NppParameters::getActions(const NppXml::Element& element, Macro& macro)
+{
+    for (NppXml::Element actionNode = NppXml::firstChildElement(element, "Action");
+        actionNode;
+        actionNode = NppXml::nextSiblingElement(actionNode, "Action"))
+    {
+        int type = NppXml::intAttribute(actionNode, "type", 0);
+        int msg = NppXml::intAttribute(actionNode, "message", 0);
+        int wParam = NppXml::intAttribute(actionNode, "wParam", 0);
+        int lParam = NppXml::intAttribute(actionNode, "lParam", 0);
+        const char* sParam = NppXml::attribute(actionNode, "sParam", "");
+
+        macro.push_back(recordedMacroStep(msg, wParam, lParam, sParam, type));
+    }
+}
+
+void NppParameters::feedShortcut(const NppXml::Element& element)
+{
+    NppXml::Element shortcutsRoot = NppXml::firstChildElement(element, "InternalCommands");
+    if (!shortcutsRoot)
+        return;
+
+    for (NppXml::Element childNode = NppXml::firstChildElement(shortcutsRoot, "Shortcut");
+        childNode;
+        childNode = NppXml::nextSiblingElement(childNode, "Shortcut"))
+    {
+        const int id = NppXml::intAttribute(childNode, "id", -1);
+        if (id > 0)
+        {
+            size_t len = _shortcuts.size();
+            for (size_t i = 0; i < len; ++i)
+            {
+                if (_shortcuts[i].getID() == static_cast<unsigned long>(id))
+                {
+                    if (getInternalCommandShortcuts(childNode, _shortcuts[i]))
+                        addUserModifiedIndex(i);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void NppParameters::feedMacros(const NppXml::Element& element)
+{
+    NppXml::Element macrosRoot = NppXml::firstChildElement(element, "Macros");
+    if (!macrosRoot)
+        return;
+
+    for (NppXml::Element childNode = NppXml::firstChildElement(macrosRoot, "Macro");
+        childNode;
+        childNode = NppXml::nextSiblingElement(childNode, "Macro"))
+    {
+        Shortcut sc;
+        std::string fdnm;
+        if (getShortcuts(childNode, sc, &fdnm))
+        {
+            Macro macro;
+            getActions(childNode, macro);
+            const auto cmdID = ID_MACRO + static_cast<int>(_macros.size());
+            _macros.push_back(MacroShortcut(sc, macro, cmdID));
+            _macroMenuItems.push_back(MenuItemUnit(cmdID, string2wstring(sc.getName(), CP_UTF8), string2wstring(fdnm, CP_UTF8)));
+        }
+    }
+}
+
+void NppParameters::feedUserCmds(const NppXml::Element& element)
+{
+    NppXml::Element userCmdsRoot = NppXml::firstChildElement(element, "UserDefinedCommands");
+    if (!userCmdsRoot)
+        return;
+
+    for (NppXml::Element childNode = NppXml::firstChildElement(userCmdsRoot, "Command");
+        childNode;
+        childNode = NppXml::nextSiblingElement(childNode, "Command"))
+    {
+        Shortcut sc;
+        std::string fdnm;
+        if (getShortcuts(childNode, sc, &fdnm))
+        {
+            NppXml::Node aNode = NppXml::firstChild(childNode);
+            if (aNode)
+            {
+                const char* cmdStr = NppXml::value(aNode);
+                if (cmdStr)
+                {
+                    const auto cmdID = ID_USER_CMD + static_cast<int>(_userCommands.size());
+                    _userCommands.push_back(UserCommand(sc, cmdStr, cmdID));
+                    _runMenuItems.push_back(MenuItemUnit(cmdID, string2wstring(sc.getName(), CP_UTF8), string2wstring(fdnm, CP_UTF8)));
+                }
+            }
+        }
+    }
+}
+
+void NppParameters::feedPluginCustomizedCmds(const NppXml::Element& element)
+{
+    NppXml::Element pluginCmdsRoot = NppXml::firstChildElement(element, "PluginCommands");
+    if (!pluginCmdsRoot)
+        return;
+
+    for (NppXml::Element childNode = NppXml::firstChildElement(pluginCmdsRoot, "PluginCommand");
+        childNode;
+        childNode = NppXml::nextSiblingElement(childNode, "PluginCommand"))
+    {
+        const char* moduleName = NppXml::attribute(childNode, "moduleName");
+        if (!moduleName)
+            continue;
+
+        const int internalID = NppXml::intAttribute(childNode, "internalID", -1);
+        if (internalID == -1)
+            continue;
+
+        size_t len = _pluginCommands.size();
+        for (size_t i = 0; i < len; ++i)
+        {
+            PluginCmdShortcut& pscOrig = _pluginCommands[i];
+            if (!strncasecmp(pscOrig.getModuleName(), moduleName, std::strlen(moduleName)) &&
+                pscOrig.getInternalID() == internalID)
+            {
+                getShortcuts(childNode, _pluginCommands[i]);
+                addPluginModifiedIndex(i);
+                break;
+            }
+        }
+    }
+}
+
+void NppParameters::feedScintKeys(const NppXml::Element& element)
+{
+    NppXml::Element scintKeysRoot = NppXml::firstChildElement(element, "ScintillaKeys");
+    if (!scintKeysRoot)
+        return;
+
+    for (NppXml::Element childNode = NppXml::firstChildElement(scintKeysRoot, "ScintKey");
+        childNode;
+        childNode = NppXml::nextSiblingElement(childNode, "ScintKey"))
+    {
+        const int scintKey = NppXml::intAttribute(childNode, "ScintID", -1);
+        if (scintKey == -1)
+            continue;
+
+        const int menuID = NppXml::intAttribute(childNode, "menuCmdID", -1);
+        if (menuID == -1)
+            continue;
+
+        size_t len = _scintillaKeyCommands.size();
+        for (int i = 0; i < static_cast<int>(len); ++i)
+        {
+            ScintillaKeyMap& skmOrig = _scintillaKeyCommands[i];
+            if (skmOrig.getScintillaKeyID() == static_cast<unsigned long>(scintKey) &&
+                skmOrig.getMenuCmdID() == menuID)
+            {
+                _scintillaKeyCommands[i].clearDups();
+                getShortcuts(childNode, _scintillaKeyCommands[i]);
+                _scintillaKeyCommands[i].setKeyComboByIndex(0, _scintillaKeyCommands[i].getKeyCombo());
+                addScintillaModifiedIndex(i);
+
+                KeyCombo kc;
+                for (NppXml::Element nextNode = NppXml::firstChildElement(childNode, "NextKey");
+                    nextNode;
+                    nextNode = NppXml::nextSiblingElement(nextNode, "NextKey"))
+                {
+                    const char* str = NppXml::attribute(nextNode, "Ctrl");
+                    if (!str) continue;
+                    kc._isCtrl = (strcmp("yes", str) == 0);
+
+                    str = NppXml::attribute(nextNode, "Alt");
+                    if (!str) continue;
+                    kc._isAlt = (strcmp("yes", str) == 0);
+
+                    str = NppXml::attribute(nextNode, "Shift");
+                    if (!str) continue;
+                    kc._isShift = (strcmp("yes", str) == 0);
+
+                    const int nextKey = NppXml::intAttribute(nextNode, "Key", -1);
+                    if (nextKey >= 0)
+                    {
+                        kc._key = static_cast<unsigned char>(nextKey);
+                        _scintillaKeyCommands[i].addKeyCombo(kc);
+                    }
+                }
+                break;
+            }
+        }
+    }
 }
 
 bool NppParameters::getShortcutsFromXmlTree()
 {
-    // Stub - would parse shortcuts.xml
+    if (!_pXmlShortcutDoc)
+        return false;
+
+    NppXml::Element root = NppXml::firstChildElement(_pXmlShortcutDoc, "NotepadPlus");
+    if (!root)
+        return false;
+
+    feedShortcut(root);
     return true;
 }
 
 bool NppParameters::getMacrosFromXmlTree()
 {
-    // Stub - would parse macros from shortcuts.xml
+    if (!_pXmlShortcutDoc)
+        return false;
+
+    NppXml::Element root = NppXml::firstChildElement(_pXmlShortcutDoc, "NotepadPlus");
+    if (!root)
+        return false;
+
+    feedMacros(root);
     return true;
 }
 
 bool NppParameters::getUserCmdsFromXmlTree()
 {
-    // Stub - would parse user commands from shortcuts.xml
+    if (!_pXmlShortcutDoc)
+        return false;
+
+    NppXml::Element root = NppXml::firstChildElement(_pXmlShortcutDoc, "NotepadPlus");
+    if (!root)
+        return false;
+
+    feedUserCmds(root);
     return true;
 }
 
 bool NppParameters::getPluginCmdsFromXmlTree()
 {
-    // Stub - would parse plugin commands from shortcuts.xml
+    if (!_pXmlShortcutDoc)
+        return false;
+
+    NppXml::Element root = NppXml::firstChildElement(_pXmlShortcutDoc, "NotepadPlus");
+    if (!root)
+        return false;
+
+    feedPluginCustomizedCmds(root);
     return true;
 }
 
 bool NppParameters::getScintKeysFromXmlTree()
 {
-    // Stub - would parse scintilla keys from shortcuts.xml
+    if (!_pXmlShortcutDoc)
+        return false;
+
+    NppXml::Element root = NppXml::firstChildElement(_pXmlShortcutDoc, "NotepadPlus");
+    if (!root)
+        return false;
+
+    feedScintKeys(root);
     return true;
 }
 
 void NppParameters::initMenuKeys()
 {
-    // Initialize menu shortcuts from winKeyDefs
-    // This is a simplified implementation
+    int previousFuncID = 0;
     for (const auto& keyDef : winKeyDefs)
     {
         if (keyDef.vKey == 0 && keyDef.functionId == 0)
             break;
-        // Would add to _shortcuts vector in full implementation
+
+        Shortcut sc((keyDef.specialName ? wstring2string(keyDef.specialName, CP_UTF8).c_str() : ""),
+            keyDef.isCtrl, keyDef.isAlt, keyDef.isShift, static_cast<unsigned char>(keyDef.vKey));
+        _shortcuts.push_back(CommandShortcut(sc, keyDef.functionId, previousFuncID == keyDef.functionId));
+        previousFuncID = keyDef.functionId;
     }
 }
 
 void NppParameters::initScintillaKeys()
 {
-    // Initialize scintilla shortcuts from scintKeyDefs
+    int prevIndex = -1;
+    int prevID = -1;
     for (const auto& keyDef : scintKeyDefs)
     {
         if (keyDef.name == nullptr)
             break;
-        // Would add to _scintillaKeyCommands vector in full implementation
-    }
-}
 
-bool NppParameters::feedStylerArray(TiXmlNode* node)
-{
-    // Stub - would feed styler array from XML
-    (void)node;
-    return true;
+        if (keyDef.functionId == prevID)
+        {
+            KeyCombo kc;
+            kc._isCtrl = keyDef.isCtrl;
+            kc._isAlt = keyDef.isAlt;
+            kc._isShift = keyDef.isShift;
+            kc._key = static_cast<unsigned char>(keyDef.vKey);
+            _scintillaKeyCommands[prevIndex].addKeyCombo(kc);
+        }
+        else
+        {
+            Shortcut s(wstring2string(keyDef.name, CP_UTF8).c_str(), keyDef.isCtrl, keyDef.isAlt, keyDef.isShift, static_cast<unsigned char>(keyDef.vKey));
+            ScintillaKeyMap sm(s, keyDef.functionId, keyDef.redirFunctionId);
+            _scintillaKeyCommands.push_back(sm);
+            ++prevIndex;
+        }
+        prevID = keyDef.functionId;
+    }
 }
 
 // Getter/setter implementations
@@ -2001,6 +2688,96 @@ EolType convertIntToFormatType(int value, EolType defvalue)
         case 3: return EolType::osdefault;
         default: return defvalue;
     }
+}
+
+// ============================================================================
+// Style/Lexer XML parsing helpers (Linux implementations)
+// ============================================================================
+
+void LexerStylerArray::addLexerStyler(const wchar_t* lexerName, const wchar_t* lexerDesc, const wchar_t* lexerUserExt, TiXmlNode* lexerNode)
+{
+    _lexerStylerVect.emplace_back();
+    LexerStyler& ls = _lexerStylerVect.back();
+    ls.setLexerName(lexerName);
+    if (lexerDesc)
+        ls.setLexerDesc(lexerDesc);
+    if (lexerUserExt)
+        ls.setLexerUserExt(lexerUserExt);
+
+    for (TiXmlNode* childNode = lexerNode->FirstChildElement(L"WordsStyle");
+        childNode;
+        childNode = childNode->NextSibling(L"WordsStyle"))
+    {
+        TiXmlElement* element = childNode->ToElement();
+        const wchar_t* styleIDStr = element->Attribute(L"styleID");
+        if (styleIDStr)
+        {
+            int styleID = decStrVal(styleIDStr);
+            if (styleID != -1)
+                ls.addStyler(styleID, childNode);
+        }
+    }
+}
+
+void StyleArray::addStyler(int styleID, TiXmlNode* styleNode)
+{
+    _styleVect.emplace_back();
+    Style& s = _styleVect.back();
+    s._styleID = styleID;
+
+    if (styleNode)
+    {
+        TiXmlElement* element = styleNode->ToElement();
+
+        const wchar_t* str = element->Attribute(L"name");
+        if (str)
+            s._styleDesc = str;
+
+        str = element->Attribute(L"fgColor");
+        if (str)
+        {
+            int result = hexStrVal(str);
+            s._fgColor = static_cast<COLORREF>(result & 0x00FFFFFF);
+        }
+
+        str = element->Attribute(L"bgColor");
+        if (str)
+        {
+            int result = hexStrVal(str);
+            s._bgColor = static_cast<COLORREF>(result & 0x00FFFFFF);
+        }
+
+        str = element->Attribute(L"colorStyle");
+        if (str)
+            s._colorStyle = decStrVal(str);
+
+        str = element->Attribute(L"fontName");
+        if (str)
+        {
+            s._fontName = str;
+            s._isFontEnabled = true;
+        }
+
+        str = element->Attribute(L"fontStyle");
+        if (str)
+            s._fontStyle = decStrVal(str);
+
+        str = element->Attribute(L"fontSize");
+        if (str)
+            s._fontSize = decStrVal(str);
+
+        TiXmlNode* v = styleNode->FirstChild();
+        if (v)
+            s._keywords = v->Value();
+    }
+}
+
+std::pair<unsigned char, unsigned char> NppParameters::feedUserLang(TiXmlNode* node)
+{
+    // User-defined languages parsing - stub for now
+    // Returns (0, 0) indicating no user languages were loaded
+    (void)node;
+    return std::make_pair(static_cast<unsigned char>(0), static_cast<unsigned char>(0));
 }
 
 #endif // !_WIN32

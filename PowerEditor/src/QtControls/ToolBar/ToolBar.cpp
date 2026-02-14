@@ -7,10 +7,12 @@
 // at your option any later version.
 
 #include "ToolBar.h"
+#include "../../menuCmdID.h"
 #include <QToolButton>
 #include <QStyle>
 #include <QMenu>
 #include <QMainWindow>
+#include <QApplication>
 #include <QDebug>
 
 namespace QtControls {
@@ -326,8 +328,13 @@ void ToolBar::reset(bool create)
                 QAction* action = new QAction(toolbar);
                 action->setData(unit->_cmdID);
 
-                // Set icon based on current state
-                // TODO: Load actual icons
+                // Set icon and tooltip
+                QIcon icon = getIconForCommand(unit->_cmdID);
+                if (!icon.isNull())
+                    action->setIcon(icon);
+                QString tooltip = getTooltipForCommand(unit->_cmdID);
+                if (!tooltip.isEmpty())
+                    action->setToolTip(tooltip);
 
                 toolbar->addAction(action);
                 _actions.push_back(action);
@@ -415,10 +422,90 @@ void ToolBar::setDisableImageListDM2()
     // TODO: Set disabled icons for dark mode
 }
 
+QIcon ToolBar::getIconForCommand(int cmdID) const
+{
+    // Use freedesktop icon theme names (works with KDE/GNOME themes)
+    // Falls back to QStyle standard icons where no theme icon exists
+    switch (cmdID)
+    {
+        case IDM_FILE_NEW:      return QIcon::fromTheme("document-new");
+        case IDM_FILE_OPEN:     return QIcon::fromTheme("document-open");
+        case IDM_FILE_SAVE:     return QIcon::fromTheme("document-save");
+        case IDM_FILE_SAVEALL:  return QIcon::fromTheme("document-save-all",
+                                    QIcon::fromTheme("document-save"));
+        case IDM_FILE_CLOSE:    return QIcon::fromTheme("document-close");
+        case IDM_FILE_CLOSEALL: return QIcon::fromTheme("document-close-all",
+                                    QIcon::fromTheme("document-close"));
+        case IDM_FILE_PRINT:    return QIcon::fromTheme("document-print");
+
+        case IDM_EDIT_CUT:      return QIcon::fromTheme("edit-cut");
+        case IDM_EDIT_COPY:     return QIcon::fromTheme("edit-copy");
+        case IDM_EDIT_PASTE:    return QIcon::fromTheme("edit-paste");
+        case IDM_EDIT_UNDO:     return QIcon::fromTheme("edit-undo");
+        case IDM_EDIT_REDO:     return QIcon::fromTheme("edit-redo");
+        case IDM_EDIT_SELECTALL: return QIcon::fromTheme("edit-select-all");
+
+        case IDM_SEARCH_FIND:       return QIcon::fromTheme("edit-find");
+        case IDM_SEARCH_REPLACE:    return QIcon::fromTheme("edit-find-replace");
+        case IDM_SEARCH_FINDINFILES: return QIcon::fromTheme("folder-open",
+                                        QIcon::fromTheme("edit-find"));
+
+        case IDM_VIEW_ZOOMIN:   return QIcon::fromTheme("zoom-in");
+        case IDM_VIEW_ZOOMOUT:  return QIcon::fromTheme("zoom-out");
+        case IDM_VIEW_ZOOMRESTORE: return QIcon::fromTheme("zoom-original");
+
+        case IDM_MACRO_STARTRECORDINGMACRO:   return QIcon::fromTheme("media-record");
+        case IDM_MACRO_STOPRECORDINGMACRO:    return QIcon::fromTheme("media-playback-stop");
+        case IDM_MACRO_PLAYBACKRECORDEDMACRO: return QIcon::fromTheme("media-playback-start");
+
+        default: return QIcon();
+    }
+}
+
+QString ToolBar::getTooltipForCommand(int cmdID) const
+{
+    switch (cmdID)
+    {
+        case IDM_FILE_NEW:      return tr("New File");
+        case IDM_FILE_OPEN:     return tr("Open File");
+        case IDM_FILE_SAVE:     return tr("Save");
+        case IDM_FILE_SAVEALL:  return tr("Save All");
+        case IDM_FILE_CLOSE:    return tr("Close");
+        case IDM_FILE_CLOSEALL: return tr("Close All");
+        case IDM_FILE_PRINT:    return tr("Print");
+
+        case IDM_EDIT_CUT:      return tr("Cut");
+        case IDM_EDIT_COPY:     return tr("Copy");
+        case IDM_EDIT_PASTE:    return tr("Paste");
+        case IDM_EDIT_UNDO:     return tr("Undo");
+        case IDM_EDIT_REDO:     return tr("Redo");
+        case IDM_EDIT_SELECTALL: return tr("Select All");
+
+        case IDM_SEARCH_FIND:       return tr("Find");
+        case IDM_SEARCH_REPLACE:    return tr("Replace");
+        case IDM_SEARCH_FINDINFILES: return tr("Find in Files");
+
+        case IDM_VIEW_ZOOMIN:   return tr("Zoom In");
+        case IDM_VIEW_ZOOMOUT:  return tr("Zoom Out");
+        case IDM_VIEW_ZOOMRESTORE: return tr("Restore Default Zoom");
+
+        case IDM_MACRO_STARTRECORDINGMACRO:   return tr("Start Recording");
+        case IDM_MACRO_STOPRECORDINGMACRO:    return tr("Stop Recording");
+        case IDM_MACRO_PLAYBACKRECORDEDMACRO: return tr("Playback");
+
+        default: return QString();
+    }
+}
+
 void ToolBar::setupIcons(toolBarStatusType type)
 {
-    (void)type;
-    // TODO: Load appropriate icon set based on type and DPI
+    int iconSize = 16;
+    if (type == TB_LARGE || type == TB_LARGE2)
+        iconSize = 32;
+
+    QToolBar* toolbar = getToolBar();
+    if (toolbar)
+        toolbar->setIconSize(QSize(iconSize, iconSize));
 }
 
 void ToolBar::fillToolbar()
@@ -428,8 +515,20 @@ void ToolBar::fillToolbar()
 
 void ToolBar::updateButtonImages()
 {
-    // Update action icons based on current state
-    // TODO: Implement icon switching based on _state
+    // Update action icons for all buttons
+    for (size_t i = 0; i < _nbButtons && i < _pTBB.size(); ++i)
+    {
+        const auto& unit = _pTBB[i];
+        if (!unit || unit->_cmdID == 0) continue;
+
+        auto it = _cmdToAction.find(unit->_cmdID);
+        if (it != _cmdToAction.end() && it->second)
+        {
+            QIcon icon = getIconForCommand(unit->_cmdID);
+            if (!icon.isNull())
+                it->second->setIcon(icon);
+        }
+    }
 }
 
 // ============================================================================

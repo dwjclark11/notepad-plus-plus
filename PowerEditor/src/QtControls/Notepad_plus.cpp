@@ -1607,24 +1607,73 @@ bool Notepad_plus::switchToFile(BufferID id)
 
 bool Notepad_plus::removeBufferFromView(BufferID id, int view)
 {
+    std::cout << "[removeBufferFromView] ENTER - bufferID=" << id << " view=" << view << std::endl;
+
     DocTabView* tabToClose = (view == MAIN_VIEW) ? &_mainDocTab : &_subDocTab;
+    ScintillaEditView* viewToClose = (view == MAIN_VIEW) ? &_mainEditView : &_subEditView;
+
+    // Check if buffer exists
     int index = tabToClose->getIndexByBuffer(id);
-    if (index == -1)
+    if (index == -1) {
+        std::cout << "[removeBufferFromView] Buffer not found in tab, returning false" << std::endl;
         return false;
-
-    // Remove from tab view - use deletItemAt (note the typo in original code)
-    tabToClose->deletItemAt(static_cast<size_t>(index));
-
-    // Check if buffer is still in use in other view
-    int otherViewID = otherFromView(view);
-    DocTabView* pOtherDocTab = (otherViewID == MAIN_VIEW) ? &_mainDocTab : &_subDocTab;
-    if (pOtherDocTab->getIndexByBuffer(id) == -1)
-    {
-        // Buffer no longer in use, can be removed from file manager
-        // MainFileManager.closeBuffer(id, view);
-        return true;
     }
-    return false;
+
+    Buffer* buf = MainFileManager.getBufferByID(id);
+    std::wstring bufFileName = buf->getFullPathName();
+    std::wcout << L"[removeBufferFromView] Tab count=" << tabToClose->nbItem()
+               << L" Buffer dirty=" << buf->isDirty()
+               << L" untitled=" << buf->isUntitled()
+               << L" name=" << bufFileName << std::endl;
+
+    // Cannot close doc if last and clean and not renamed (Windows behavior)
+    if (tabToClose->nbItem() == 1) {
+        std::wstring newTitle = QtCore::UNTITLED_STR;  // "new "
+        std::cout << "[removeBufferFromView] Checking prevent-close: bufFileName starts with 'new '? "
+                  << (bufFileName.rfind(newTitle, 0) == 0 ? "YES" : "NO") << std::endl;
+
+        if (!buf->isDirty() && buf->isUntitled() && bufFileName.rfind(newTitle, 0) == 0) {
+            std::cout << "[removeBufferFromView] PREVENTING CLOSE - empty clean new document" << std::endl;
+            return false;
+        }
+    }
+
+    int active = tabToClose->getCurrentTabIndex();
+    std::cout << "[removeBufferFromView] Active tab index=" << active << " closing index=" << index << std::endl;
+
+    if (active == index) {
+        // Need an alternative (close real doc, put empty one back)
+        if (tabToClose->nbItem() == 1) {
+            // Need alternative doc, add new one. Use special logic to prevent flicker
+            std::cout << "[removeBufferFromView] Creating replacement document" << std::endl;
+            BufferID newID = MainFileManager.newEmptyDocument();
+            MainFileManager.addBufferReference(newID, viewToClose);
+            tabToClose->setBuffer(0, newID);        // Can safely use id 0, last (only) tab open
+            activateBuffer(newID, view);            // Activate. DocTab already activated but not a problem
+            std::cout << "[removeBufferFromView] Replacement document created and activated" << std::endl;
+        } else {
+            int toActivate = 0;
+            // Activate next doc, otherwise prev if not possible
+            if (static_cast<size_t>(active) == tabToClose->nbItem() - 1) {
+                toActivate = active - 1;  // prev
+                std::cout << "[removeBufferFromView] Will activate previous tab: " << toActivate << std::endl;
+            } else {
+                toActivate = active;      // activate the 'active' index. Since we remove the tab first, the indices shift
+                std::cout << "[removeBufferFromView] Will activate same index (shifted): " << toActivate << std::endl;
+            }
+
+            tabToClose->deletItemAt(static_cast<size_t>(index));  // Delete first
+            activateBuffer(tabToClose->getBufferByIndex(toActivate), view);  // Then activate
+        }
+    } else {
+        std::cout << "[removeBufferFromView] Removing non-active tab" << std::endl;
+        tabToClose->deletItemAt(static_cast<size_t>(index));
+    }
+
+    std::cout << "[removeBufferFromView] Calling closeBuffer for buffer=" << id << std::endl;
+    MainFileManager.closeBuffer(id, viewToClose);
+    std::cout << "[removeBufferFromView] EXIT - returning true" << std::endl;
+    return true;
 }
 
 bool Notepad_plus::canHideView(int view)

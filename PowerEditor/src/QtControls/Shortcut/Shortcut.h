@@ -119,11 +119,58 @@ public:
     ~ScintillaAccelerator() = default;
 };
 
-// ScintillaKeyMap stub
-class ScintillaKeyMap {
+// ScintillaKeyMap - maps Scintilla commands to key combinations
+class ScintillaKeyMap : public Shortcut {
 public:
     ScintillaKeyMap() = default;
+    ScintillaKeyMap(const Shortcut& sc, unsigned long scintillaKeyID, unsigned long id)
+        : Shortcut(sc), _scintillaKeyID(scintillaKeyID), _menuCmdID(id) {
+        _keyCombos.clear();
+        _keyCombos.push_back(_keyCombo);
+        _keyCombo._key = 0;
+        _size = 1;
+    }
     ~ScintillaKeyMap() = default;
+
+    unsigned long getScintillaKeyID() const { return _scintillaKeyID; }
+    int getMenuCmdID() const { return _menuCmdID; }
+    size_t getSize() const { return _size; }
+
+    KeyCombo getKeyComboByIndex(size_t index) const {
+        if (index < _keyCombos.size())
+            return _keyCombos[index];
+        return KeyCombo();
+    }
+
+    void setKeyComboByIndex(int index, KeyCombo combo) {
+        if (index >= 0 && static_cast<size_t>(index) < _keyCombos.size())
+            _keyCombos[index] = combo;
+    }
+
+    int addKeyCombo(KeyCombo combo) {
+        _keyCombos.push_back(combo);
+        ++_size;
+        return static_cast<int>(_size - 1);
+    }
+
+    void removeKeyComboByIndex(size_t index) {
+        if (index < _keyCombos.size() && _size > 1) {
+            _keyCombos.erase(_keyCombos.begin() + index);
+            --_size;
+        }
+    }
+
+    void clearDups() {
+        if (_size > 1)
+            _keyCombos.erase(_keyCombos.begin() + 1, _keyCombos.end());
+        _size = 1;
+    }
+
+private:
+    unsigned long _scintillaKeyID = 0;
+    int _menuCmdID = 0;
+    std::vector<KeyCombo> _keyCombos;
+    size_t _size = 0;
 };
 
 // recordedMacroStep for macro support

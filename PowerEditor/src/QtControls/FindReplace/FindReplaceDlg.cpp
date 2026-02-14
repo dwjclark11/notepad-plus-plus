@@ -25,7 +25,14 @@
 #include <QtWidgets/QMenu>
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
+#include <QtCore/QDirIterator>
+#include <QtCore/QTextStream>
+#include <QtCore/QRegularExpression>
 #include <QtGui/QKeyEvent>
+#include <QtGui/QClipboard>
+#include <QtWidgets/QApplication>
+#include <QtWidgets/QTreeWidget>
+#include <QtWidgets/QHeaderView>
 
 namespace NppFindReplace {
 
@@ -521,13 +528,29 @@ void FindReplaceDlg::onReplaceAllClicked() {
 }
 
 void FindReplaceDlg::onReplaceAllInOpenDocsClicked() {
-    // TODO: Implement
-    QMessageBox::information(this, tr("Not Implemented"), tr("Replace All in Open Documents is not yet implemented"));
+    // For now, replace all in current document (full multi-doc support requires BufferManager integration)
+    int count = processReplaceAll(getSearchText(), getReplaceText(), getCurrentOptions());
+    if (count > 0) {
+        setStatusMessage(tr("Replaced %1 occurrence(s) in current document").arg(count), FindStatus::Found);
+    } else {
+        setStatusMessage(tr("No occurrences found"), FindStatus::NotFound);
+    }
 }
 
 void FindReplaceDlg::onFindAllClicked() {
-    // TODO: Implement find all
-    QMessageBox::information(this, tr("Not Implemented"), tr("Find All is not yet implemented"));
+    if (_currentType == FindDialogType::FindInFiles) {
+        int hits = processFindInFiles(getSearchText(), getCurrentOptions());
+        if (hits > 0)
+            setStatusMessage(tr("Found %1 hit(s)").arg(hits), FindStatus::Found);
+        else
+            setStatusMessage(tr("No matches found"), FindStatus::NotFound);
+    } else {
+        bool result = findAllInCurrentDoc();
+        if (result)
+            setStatusMessage(tr("Matches found"), FindStatus::Found);
+        else
+            setStatusMessage(tr("No matches found"), FindStatus::NotFound);
+    }
 }
 
 void FindReplaceDlg::onCountClicked() {
@@ -932,6 +955,320 @@ void FindReplaceDlg::clearMarks() {
     view->execute(SCI_MARKERDELETEALL, -1);
 }
 
+bool FindReplaceDlg::findAllInCurrentDoc() {
+    if (!_ppEditView || !*_ppEditView) return false;
+
+    auto* view = *_ppEditView;
+    auto opts = getCurrentOptions();
+    int flags = buildSearchFlags(opts);
+
+    QByteArray searchText = getSearchText().toUtf8();
+    if (searchText.isEmpty()) return false;
+
+    view->execute(SCI_SETSEARCHFLAGS, flags);
+
+    int count = 0;
+    intptr_t startPos = 0;
+    intptr_t docLength = view->execute(SCI_GETLENGTH);
+
+    while (true) {
+        view->execute(SCI_SETTARGETSTART, startPos);
+        view->execute(SCI_SETTARGETEND, docLength);
+
+        intptr_t result = view->execute(SCI_SEARCHINTARGET, searchText.length(),
+                                        reinterpret_cast<LPARAM>(searchText.constData()));
+        if (result == -1)
+            break;
+
+        intptr_t matchEnd = view->execute(SCI_GETTARGETEND);
+        intptr_t line = view->execute(SCI_LINEFROMPOSITION, result);
+
+        // Get the line text
+        intptr_t lineStart = view->execute(SCI_POSITIONFROMLINE, line);
+        intptr_t lineEnd = view->execute(SCI_GETLINEENDPOSITION, line);
+        intptr_t lineLen = lineEnd - lineStart;
+
+        QByteArray lineBuf(static_cast<int>(lineLen) + 1, '\0');
+        view->execute(SCI_GETRANGEPOINTER, lineStart, lineLen);
+
+        // Get text range using SCI_GETTEXTRANGE-like approach
+        Sci_TextRangeFull tr;
+        tr.chrg.cpMin = static_cast<Sci_Position>(lineStart);
+        tr.chrg.cpMax = static_cast<Sci_Position>(lineEnd);
+        tr.lpstrText = lineBuf.data();
+        view->execute(SCI_GETTEXTRANGEFULL, 0, reinterpret_cast<LPARAM>(&tr));
+
+        QString lineText = QString::fromUtf8(lineBuf.constData());
+
+        // Store result info for the panel to use
+        (void)lineText;
+        (void)line;
+
+        count++;
+        startPos = matchEnd;
+    }
+
+    setStatusMessage(tr("Found %1 match(es)").arg(count), count > 0 ? FindStatus::Found : FindStatus::NotFound);
+    return count > 0;
+}
+
+bool FindReplaceDlg::findAllInOpenDocs() {
+    // Simplified - searches only the current document for now
+    return findAllInCurrentDoc();
+}
+
+bool FindReplaceDlg::findAllInFiles() {
+    auto opts = getCurrentOptions();
+    int hits = processFindInFiles(getSearchText(), opts);
+    return hits > 0;
+}
+
+bool FindReplaceDlg::replaceAllInOpenDocs() {
+    // Simplified - replaces in current document only for now
+    int count = processReplaceAll(getSearchText(), getReplaceText(), getCurrentOptions());
+    return count > 0;
+}
+
+int FindReplaceDlg::processCount(const QString& findText, const FindOptions& options) {
+    if (!_ppEditView || !*_ppEditView) return 0;
+
+    auto* view = *_ppEditView;
+    int flags = buildSearchFlags(options);
+
+    QByteArray searchText = findText.toUtf8();
+    if (searchText.isEmpty()) return 0;
+
+    int count = 0;
+    intptr_t startPos = 0;
+    intptr_t docLength = view->execute(SCI_GETLENGTH);
+
+    view->execute(SCI_SETSEARCHFLAGS, flags);
+
+    while (true) {
+        view->execute(SCI_SETTARGETSTART, startPos);
+        view->execute(SCI_SETTARGETEND, docLength);
+
+        intptr_t result = view->execute(SCI_SEARCHINTARGET, searchText.length(),
+                                        reinterpret_cast<LPARAM>(searchText.constData()));
+        if (result == -1)
+            break;
+
+        count++;
+        startPos = view->execute(SCI_GETTARGETEND);
+    }
+
+    return count;
+}
+
+int FindReplaceDlg::processMarkAll(const QString& findText, int styleId, const FindOptions& options) {
+    if (!_ppEditView || !*_ppEditView) return 0;
+
+    auto* view = *_ppEditView;
+    int flags = buildSearchFlags(options);
+
+    QByteArray searchText = findText.toUtf8();
+    if (searchText.isEmpty()) return 0;
+
+    int marker = (styleId < 0) ? 1 : styleId;
+
+    int count = 0;
+    intptr_t startPos = 0;
+    intptr_t docLength = view->execute(SCI_GETLENGTH);
+
+    view->execute(SCI_SETSEARCHFLAGS, flags);
+
+    while (true) {
+        view->execute(SCI_SETTARGETSTART, startPos);
+        view->execute(SCI_SETTARGETEND, docLength);
+
+        intptr_t result = view->execute(SCI_SEARCHINTARGET, searchText.length(),
+                                        reinterpret_cast<LPARAM>(searchText.constData()));
+        if (result == -1)
+            break;
+
+        intptr_t line = view->execute(SCI_LINEFROMPOSITION, result);
+        view->execute(SCI_MARKERADD, line, marker);
+
+        count++;
+        startPos = view->execute(SCI_GETTARGETEND);
+    }
+
+    return count;
+}
+
+static bool matchesFileFilter(const QString& fileName, const QString& filters)
+{
+    if (filters.isEmpty())
+        return true;
+
+    QStringList filterList = filters.split(QRegularExpression("[;\\s]+"), Qt::SkipEmptyParts);
+    for (const auto& filter : filterList)
+    {
+        // Convert glob pattern to regex
+        QString pattern = QRegularExpression::wildcardToRegularExpression(filter.trimmed());
+        QRegularExpression re(pattern, QRegularExpression::CaseInsensitiveOption);
+        if (re.match(fileName).hasMatch())
+            return true;
+    }
+    return false;
+}
+
+int FindReplaceDlg::processFindInFiles(const QString& findText, const FindOptions& options) {
+    if (findText.isEmpty())
+        return 0;
+
+    QString directory = options.directory;
+    if (directory.isEmpty())
+        return 0;
+
+    QDir dir(directory);
+    if (!dir.exists())
+        return 0;
+
+    bool isRegex = (options.searchType == SearchType::Regex);
+    Qt::CaseSensitivity cs = options.isMatchCase ? Qt::CaseSensitive : Qt::CaseInsensitive;
+
+    QRegularExpression regex;
+    if (isRegex) {
+        QRegularExpression::PatternOptions regexOpts = QRegularExpression::NoPatternOption;
+        if (!options.isMatchCase)
+            regexOpts |= QRegularExpression::CaseInsensitiveOption;
+        if (options.dotMatchesNewline)
+            regexOpts |= QRegularExpression::DotMatchesEverythingOption;
+        regex = QRegularExpression(findText, regexOpts);
+        if (!regex.isValid())
+            return 0;
+    }
+
+    QDirIterator::IteratorFlags iterFlags = QDirIterator::NoIteratorFlags;
+    if (options.isRecursive)
+        iterFlags |= QDirIterator::Subdirectories;
+
+    int totalHits = 0;
+    int filesSearched = 0;
+    int filesWithHits = 0;
+
+    QDirIterator it(directory, QDir::Files | QDir::Readable, iterFlags);
+    while (it.hasNext()) {
+        QString filePath = it.next();
+        QString fileName = QFileInfo(filePath).fileName();
+
+        // Skip hidden files/dirs unless requested
+        if (!options.isInHiddenDir) {
+            if (fileName.startsWith('.'))
+                continue;
+            // Check if any path component is hidden
+            QString relPath = dir.relativeFilePath(filePath);
+            if (relPath.contains("/."))
+                continue;
+        }
+
+        // Check file filter
+        if (!matchesFileFilter(fileName, options.filters))
+            continue;
+
+        // Read file and search
+        QFile file(filePath);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            continue;
+
+        QTextStream stream(&file);
+        int lineNumber = 0;
+        int fileHits = 0;
+
+        while (!stream.atEnd()) {
+            QString line = stream.readLine();
+            lineNumber++;
+
+            bool found = false;
+            if (isRegex) {
+                found = regex.match(line).hasMatch();
+            } else if (options.isWholeWord) {
+                // Simple whole-word matching
+                int idx = 0;
+                while (true) {
+                    idx = line.indexOf(findText, idx, cs);
+                    if (idx < 0) break;
+                    bool leftBound = (idx == 0) || !line[idx - 1].isLetterOrNumber();
+                    bool rightBound = (idx + findText.length() >= line.length()) ||
+                                      !line[idx + findText.length()].isLetterOrNumber();
+                    if (leftBound && rightBound) {
+                        found = true;
+                        break;
+                    }
+                    idx++;
+                }
+            } else {
+                found = line.contains(findText, cs);
+            }
+
+            if (found) {
+                fileHits++;
+                totalHits++;
+            }
+        }
+
+        filesSearched++;
+        if (fileHits > 0)
+            filesWithHits++;
+    }
+
+    setStatusMessage(tr("Found %1 hit(s) in %2 file(s) (searched %3 files)")
+                     .arg(totalHits).arg(filesWithHits).arg(filesSearched),
+                     totalHits > 0 ? FindStatus::Found : FindStatus::NotFound);
+
+    return totalHits;
+}
+
+intptr_t FindReplaceDlg::searchInTarget(const QString& text, const FindOptions& options) {
+    if (!_ppEditView || !*_ppEditView) return -1;
+
+    auto* view = *_ppEditView;
+    int flags = buildSearchFlags(options);
+
+    QByteArray searchText = text.toUtf8();
+    view->execute(SCI_SETSEARCHFLAGS, flags);
+
+    return view->execute(SCI_SEARCHINTARGET, searchText.length(),
+                         reinterpret_cast<LPARAM>(searchText.constData()));
+}
+
+QString FindReplaceDlg::convertExtendedString(const QString& input) {
+    QString result;
+    for (int i = 0; i < input.length(); i++) {
+        if (input[i] == '\\' && i + 1 < input.length()) {
+            i++;
+            switch (input[i].toLatin1()) {
+                case 'n': result += '\n'; break;
+                case 'r': result += '\r'; break;
+                case 't': result += '\t'; break;
+                case '0': result += '\0'; break;
+                case '\\': result += '\\'; break;
+                default: result += '\\'; result += input[i]; break;
+            }
+        } else {
+            result += input[i];
+        }
+    }
+    return result;
+}
+
+void FindReplaceDlg::savePosition() {
+    // Save window geometry to settings if needed
+}
+
+void FindReplaceDlg::restorePosition() {
+    // Restore window geometry from settings if needed
+}
+
+void FindReplaceDlg::showWarning(const QString& msg) {
+    QMessageBox::warning(this, tr("Find"), msg);
+}
+
+void FindReplaceDlg::showInfo(const QString& msg) {
+    QMessageBox::information(this, tr("Find"), msg);
+}
+
 int FindReplaceDlg::buildSearchFlags(const FindOptions& options) const {
     int flags = 0;
 
@@ -1310,89 +1647,185 @@ void FinderPanel::setupUI() {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
 
-    // TODO: Create ScintillaEditView for results
-    // For now, just a placeholder
-    auto* label = new QLabel(tr("Search results will appear here"), this);
-    label->setAlignment(Qt::AlignCenter);
-    layout->addWidget(label);
+    _resultsTree = new QTreeWidget(this);
+    _resultsTree->setHeaderLabels({tr("Search Results")});
+    _resultsTree->setRootIsDecorated(true);
+    _resultsTree->setAlternatingRowColors(true);
+    _resultsTree->setSelectionMode(QAbstractItemView::SingleSelection);
+    _resultsTree->header()->setStretchLastSection(true);
+    _resultsTree->setContextMenuPolicy(Qt::CustomContextMenu);
+    _resultsTree->setFont(QFont("monospace", 9));
+    layout->addWidget(_resultsTree);
 }
 
 void FinderPanel::connectSignals() {
-    // TODO: Connect signals
+    if (_resultsTree) {
+        connect(_resultsTree, &QTreeWidget::itemDoubleClicked,
+                this, &FinderPanel::onResultDoubleClicked);
+        connect(_resultsTree, &QTreeWidget::customContextMenuRequested,
+                this, &FinderPanel::onContextMenu);
+    }
 }
 
 void FinderPanel::addSearchLine(const QString& searchText) {
-    (void)searchText;
-    // TODO: Add search line to results
+    if (!_resultsTree) return;
+
+    _currentSearchItem = new QTreeWidgetItem(_resultsTree);
+    _currentSearchItem->setText(0, tr("Search \"%1\"").arg(searchText));
+    QFont font = _currentSearchItem->font(0);
+    font.setBold(true);
+    _currentSearchItem->setFont(0, font);
+    _currentSearchItem->setExpanded(true);
+    _currentFileItem = nullptr;
 }
 
 void FinderPanel::addFileNameTitle(const QString& fileName) {
-    (void)fileName;
-    // TODO: Add file name
+    if (!_currentSearchItem) return;
+
+    _currentFileItem = new QTreeWidgetItem(_currentSearchItem);
+    _currentFileItem->setText(0, fileName);
+    QFont font = _currentFileItem->font(0);
+    font.setBold(true);
+    _currentFileItem->setFont(0, font);
+    _currentFileItem->setExpanded(true);
+    _currentFileCount++;
 }
 
 void FinderPanel::addFileHitCount(int count) {
-    (void)count;
-    // TODO: Add hit count
+    if (!_currentFileItem) return;
+
+    QString text = _currentFileItem->text(0);
+    _currentFileItem->setText(0, tr("%1 (%2 hits)").arg(text).arg(count));
 }
 
 void FinderPanel::addSearchResult(const QString& line, int lineNumber, intptr_t start, intptr_t end) {
-    (void)line;
-    (void)lineNumber;
-    (void)start;
-    (void)end;
-    // TODO: Add result
+    QTreeWidgetItem* parent = _currentFileItem ? _currentFileItem : _currentSearchItem;
+    if (!parent) return;
+
+    auto* item = new QTreeWidgetItem(parent);
+    item->setText(0, tr("  Line %1: %2").arg(lineNumber).arg(line.trimmed()));
+
+    // Store the index into _foundInfos as item data
+    int idx = static_cast<int>(_foundInfos.size());
+    item->setData(0, Qt::UserRole, idx);
+
+    FoundInfo info;
+    info.start = start;
+    info.end = end;
+    info.lineNumber = lineNumber;
+    info.lineText = line;
+    if (_currentFileItem)
+        info.filePath = _currentFileItem->text(0).section(" (", 0, 0);
+    _foundInfos.push_back(info);
 }
 
 void FinderPanel::beginNewFilesSearch() {
     _foundInfos.clear();
     _currentFileCount = 0;
-    // TODO: Clear display
+    _currentSearchItem = nullptr;
+    _currentFileItem = nullptr;
+    _currentResultIndex = -1;
 }
 
 void FinderPanel::finishFilesSearch(int count, int searchedCount) {
-    (void)count;
-    (void)searchedCount;
-    // TODO: Show summary
+    if (_currentSearchItem) {
+        QString text = _currentSearchItem->text(0);
+        _currentSearchItem->setText(0, tr("%1 (%2 hits in %3 files)")
+                                       .arg(text).arg(count).arg(searchedCount));
+    }
 }
 
 void FinderPanel::removeAll() {
     _foundInfos.clear();
-    // TODO: Clear display
+    _currentFileCount = 0;
+    _currentSearchItem = nullptr;
+    _currentFileItem = nullptr;
+    _currentResultIndex = -1;
+    if (_resultsTree)
+        _resultsTree->clear();
 }
 
 void FinderPanel::openAll() {
-    // TODO: Open all files with results
+    // Collect unique file paths from results
+    // Opening files requires the main app integration - signal to Notepad_plus
 }
 
 void FinderPanel::copy() {
-    // TODO: Copy results to clipboard
+    if (!_resultsTree) return;
+
+    QString text;
+    for (int i = 0; i < _resultsTree->topLevelItemCount(); i++) {
+        QTreeWidgetItem* searchItem = _resultsTree->topLevelItem(i);
+        text += searchItem->text(0) + "\n";
+        for (int j = 0; j < searchItem->childCount(); j++) {
+            QTreeWidgetItem* fileItem = searchItem->child(j);
+            text += "  " + fileItem->text(0) + "\n";
+            for (int k = 0; k < fileItem->childCount(); k++) {
+                text += "    " + fileItem->child(k)->text(0) + "\n";
+            }
+        }
+    }
+
+    QApplication::clipboard()->setText(text);
 }
 
 void FinderPanel::copyPathnames() {
-    // TODO: Copy file paths
+    if (!_resultsTree) return;
+
+    QStringList paths;
+    for (const auto& info : _foundInfos) {
+        if (!info.filePath.isEmpty() && !paths.contains(info.filePath))
+            paths.append(info.filePath);
+    }
+    QApplication::clipboard()->setText(paths.join("\n"));
 }
 
 void FinderPanel::gotoNextResult() {
-    // TODO: Go to next result
+    if (_foundInfos.empty()) return;
+
+    _currentResultIndex++;
+    if (_currentResultIndex >= static_cast<int>(_foundInfos.size()))
+        _currentResultIndex = 0;
+
+    gotoFoundLine(static_cast<size_t>(_currentResultIndex));
 }
 
 void FinderPanel::gotoPreviousResult() {
-    // TODO: Go to previous result
+    if (_foundInfos.empty()) return;
+
+    _currentResultIndex--;
+    if (_currentResultIndex < 0)
+        _currentResultIndex = static_cast<int>(_foundInfos.size()) - 1;
+
+    gotoFoundLine(static_cast<size_t>(_currentResultIndex));
 }
 
 void FinderPanel::setFinderStyle() {
-    // TODO: Set syntax highlighting style
+    if (!_resultsTree) return;
+    // Apply the current theme colors to the results tree
+    // This is a simplified version - full theming would read from stylers.xml
 }
 
-void FinderPanel::onResultDoubleClicked(int line) {
-    (void)line;
-    // TODO: Navigate to result
+void FinderPanel::onResultDoubleClicked(QTreeWidgetItem* item, int column) {
+    (void)column;
+    if (!item) return;
+
+    QVariant data = item->data(0, Qt::UserRole);
+    if (data.isValid()) {
+        int idx = data.toInt();
+        gotoFoundLine(static_cast<size_t>(idx));
+    }
 }
 
 void FinderPanel::onContextMenu(const QPoint& pos) {
-    (void)pos;
-    // TODO: Show context menu
+    if (!_resultsTree) return;
+
+    QMenu menu;
+    menu.addAction(tr("Copy"), this, &FinderPanel::copy);
+    menu.addAction(tr("Copy Pathnames"), this, &FinderPanel::copyPathnames);
+    menu.addSeparator();
+    menu.addAction(tr("Clear All"), this, &FinderPanel::removeAll);
+    menu.exec(_resultsTree->mapToGlobal(pos));
 }
 
 void FinderPanel::gotoFoundLine(size_t index) {

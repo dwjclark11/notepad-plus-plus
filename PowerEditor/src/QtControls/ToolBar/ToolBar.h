@@ -12,6 +12,7 @@
 #include <QToolBar>
 #include <QAction>
 #include <QIcon>
+#include <QString>
 #include <vector>
 #include <memory>
 #include <map>
@@ -184,6 +185,8 @@ private:
     void setupIcons(toolBarStatusType type);
     void fillToolbar();
     void updateButtonImages();
+    QIcon getIconForCommand(int cmdID) const;
+    QString getTooltipForCommand(int cmdID) const;
 };
 
 // ReBar class - container for toolbars

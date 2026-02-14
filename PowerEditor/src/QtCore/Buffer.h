@@ -93,6 +93,9 @@ using Document = intptr_t;
 class Buffer;
 using BufferID = Buffer*;
 
+// Untitled document string constant (mirrors UNTITLED_STR from Windows Buffer.h)
+const wchar_t UNTITLED_STR[] = L"new ";
+
 // Map position for document map
 struct MapPosition {
     int firstVisibleDisplayLine = -1;
