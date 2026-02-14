@@ -41,6 +41,10 @@
 #include "DocumentMap/DocumentMap.h"
 #include "FunctionList/FunctionListPanel.h"
 #include "FileBrowser/FileBrowser.h"
+#include "VerticalFileSwitcher/VerticalFileSwitcher.h"
+
+// MainWindow for panel management
+#include "MainWindow/Notepad_plus_Window.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -51,6 +55,11 @@
 #include <QAbstractButton>
 #include <QClipboard>
 #include <QApplication>
+#include <QPrinter>
+#include <QPrintDialog>
+#include <QTextDocument>
+#include <QXmlStreamReader>
+#include <QXmlStreamWriter>
 #include <memory>
 #include <mutex>
 #include <chrono>
@@ -736,10 +745,27 @@ bool Notepad_plus::fileRename(BufferID id)
 
 void Notepad_plus::filePrint(bool showDialog)
 {
-    // TODO: Implement printing for Linux
-    // This would use QPrinter and QPrintDialog
-    Q_UNUSED(showDialog);
-    QMessageBox::information(nullptr, QObject::tr("Print"), QObject::tr("Printing not yet implemented for Linux."));
+	QPrinter printer(QPrinter::HighResolution);
+	printer.setDocName(QObject::tr("Notepad++"));
+
+	if (showDialog)
+	{
+		QPrintDialog printDialog(&printer, nullptr);
+		if (printDialog.exec() != QDialog::Accepted)
+			return;
+	}
+
+	// Get text from current Scintilla view
+	size_t textLen = _pEditView->execute(SCI_GETLENGTH);
+	if (textLen == 0)
+		return;
+
+	std::string textBuf(textLen + 1, '\0');
+	_pEditView->execute(SCI_GETTEXT, textLen + 1, reinterpret_cast<sptr_t>(textBuf.data()));
+
+	QTextDocument doc;
+	doc.setPlainText(QString::fromUtf8(textBuf.c_str()));
+	doc.print(&printer);
 }
 
 // ============================================================================
@@ -766,17 +792,36 @@ bool Notepad_plus::fileLoadSession(const wchar_t* fn)
         sessionFile = QString::fromStdWString(fn);
     }
 
-    // TODO: Implement session loading
-    // This would parse the session file and open all files
-    Q_UNUSED(sessionFile);
-    return false;
+    QFile file(sessionFile);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return false;
+
+    QXmlStreamReader xml(&file);
+    bool filesOpened = false;
+
+    while (!xml.atEnd() && !xml.hasError())
+    {
+        QXmlStreamReader::TokenType token = xml.readNext();
+        if (token == QXmlStreamReader::StartElement)
+        {
+            if (xml.name() == u"File")
+            {
+                QString filename = xml.attributes().value("filename").toString();
+                if (!filename.isEmpty())
+                {
+                    doOpen(filename.toStdWString());
+                    filesOpened = true;
+                }
+            }
+        }
+    }
+
+    file.close();
+    return filesOpened;
 }
 
 const wchar_t* Notepad_plus::fileSaveSession(size_t nbFile, wchar_t** fileNames, const wchar_t* sessionFile2save, bool includeFileBrowser)
 {
-    Q_UNUSED(nbFile);
-    Q_UNUSED(fileNames);
-    Q_UNUSED(sessionFile2save);
     Q_UNUSED(includeFileBrowser);
 
     QString sessionFile;
@@ -797,10 +842,54 @@ const wchar_t* Notepad_plus::fileSaveSession(size_t nbFile, wchar_t** fileNames,
         sessionFile = QString::fromStdWString(sessionFile2save);
     }
 
-    // TODO: Implement session saving
-    // This would save the current session to a file
+    QFile file(sessionFile);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        return nullptr;
 
-    // Return the session file path (store it in a member variable to keep it valid)
+    QXmlStreamWriter xml(&file);
+    xml.setAutoFormatting(true);
+    xml.writeStartDocument();
+    xml.writeStartElement("NotepadPlus");
+    xml.writeStartElement("Session");
+    xml.writeAttribute("activeView", "0");
+    xml.writeStartElement("mainView");
+    xml.writeAttribute("activeIndex", "0");
+
+    // Write files from the provided list or from currently open buffers
+    if (nbFile > 0 && fileNames != nullptr)
+    {
+        for (size_t i = 0; i < nbFile; ++i)
+        {
+            if (fileNames[i] != nullptr)
+            {
+                xml.writeStartElement("File");
+                xml.writeAttribute("filename", QString::fromWCharArray(fileNames[i]));
+                xml.writeEndElement();
+            }
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < _mainDocTab.nbItem(); ++i)
+        {
+            BufferID id = _mainDocTab.getBufferByIndex(i);
+            Buffer* buf = MainFileManager.getBufferByID(id);
+            if (buf && !buf->isUntitled())
+            {
+                xml.writeStartElement("File");
+                xml.writeAttribute("filename", QString::fromStdWString(buf->getFullPathName()));
+                xml.writeEndElement();
+            }
+        }
+    }
+
+    xml.writeEndElement(); // mainView
+    xml.writeEndElement(); // Session
+    xml.writeEndElement(); // NotepadPlus
+    xml.writeEndDocument();
+    file.close();
+
+    // Return the session file path (store in a static to keep it valid)
     static std::wstring sessionPath;
     sessionPath = sessionFile.toStdWString();
     return sessionPath.c_str();
@@ -1957,28 +2046,47 @@ void Notepad_plus::changeReadOnlyUserModeForAllOpenedTabs(const bool ro)
 }
 
 // ============================================================================
+// Helper: Get MainWindow from widget hierarchy
+// ============================================================================
+
+static QtControls::MainWindow::MainWindow* getMainWindow(ScintillaEditView& editView)
+{
+	QWidget* w = editView.getWidget();
+	if (!w)
+		return nullptr;
+	QWidget* topLevel = w->window();
+	return qobject_cast<QtControls::MainWindow::MainWindow*>(topLevel);
+}
+
+// ============================================================================
 // View Mode Operations (Full Screen, Post-It, Distraction Free)
 // ============================================================================
 
 void Notepad_plus::fullScreenToggle()
 {
-    // TODO: Implement full screen toggle for Qt
-    // This requires access to the main window which is managed by Notepad_plus_Window
-    // For now, this is a stub that will be implemented when the window integration is complete
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (mainWin)
+	{
+		mainWin->toggleFullScreen();
+	}
 }
 
 void Notepad_plus::postItToggle()
 {
-    // TODO: Implement post-it toggle for Qt
-    // This requires access to the main window which is managed by Notepad_plus_Window
-    // For now, this is a stub that will be implemented when the window integration is complete
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (mainWin)
+	{
+		mainWin->togglePostItMode();
+	}
 }
 
 void Notepad_plus::distractionFreeToggle()
 {
-    // TODO: Implement distraction free toggle for Qt
-    // This requires access to the main window which is managed by Notepad_plus_Window
-    // For now, this is a stub that will be implemented when the window integration is complete
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (mainWin)
+	{
+		mainWin->toggleDistractionFreeMode();
+	}
 }
 
 // ============================================================================
@@ -2088,8 +2196,61 @@ void Notepad_plus::toggleSyncScrollH()
 
 void Notepad_plus::showSummary()
 {
-    // TODO: Implement summary dialog for Qt
-    // This would show document statistics like line count, word count, etc.
+	if (!_pEditView)
+		return;
+
+	intptr_t lineCount = _pEditView->execute(SCI_GETLINECOUNT);
+	intptr_t charCount = _pEditView->execute(SCI_GETLENGTH);
+
+	// Count words by iterating through characters
+	intptr_t wordCount = 0;
+	bool inWord = false;
+	for (intptr_t i = 0; i < charCount; ++i)
+	{
+		char ch = static_cast<char>(_pEditView->execute(SCI_GETCHARAT, i));
+		bool isSpace = (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n');
+		if (!isSpace && !inWord)
+		{
+			++wordCount;
+			inWord = true;
+		}
+		else if (isSpace)
+		{
+			inWord = false;
+		}
+	}
+
+	// Get selection info
+	intptr_t selStart = _pEditView->execute(SCI_GETSELECTIONSTART);
+	intptr_t selEnd = _pEditView->execute(SCI_GETSELECTIONEND);
+	intptr_t selLength = selEnd - selStart;
+
+	QString summary = QString("Lines: %1\nWords: %2\nCharacters (with spaces): %3")
+		.arg(lineCount)
+		.arg(wordCount)
+		.arg(charCount);
+
+	if (selLength > 0)
+	{
+		summary += QString("\n\nSelected characters: %1").arg(selLength);
+	}
+
+	Buffer* buf = getCurrentBuffer();
+	QString title = "Summary";
+	if (buf)
+	{
+		QString fileName = QString::fromStdWString(buf->getFullPathName());
+		if (!fileName.isEmpty())
+		{
+			QFileInfo fi(fileName);
+			title = QString("Summary - %1").arg(fi.fileName());
+		}
+	}
+
+	QMessageBox::information(
+		_mainEditView.getWidget() ? _mainEditView.getWidget()->window() : nullptr,
+		title,
+		summary);
 }
 
 void Notepad_plus::toggleMonitoring()
@@ -2119,16 +2280,18 @@ void Notepad_plus::toggleFunctionList()
 
 void Notepad_plus::toggleFileBrowser()
 {
-    // TODO: Implement for Qt
-    // Note: Qt FileBrowser is in QtControls namespace and has different interface
-    // For now, just launch the file browser via launchFileBrowser
-    if (_pFileBrowser == nullptr)
-    {
-        std::vector<std::wstring> folders;
-        launchFileBrowser(folders, L"", true);
-    }
-    // Note: Cannot call display() on _pFileBrowser as it's a forward-declared type
-    // The docking manager handles visibility for Qt version
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (!mainWin)
+		return;
+
+	if (mainWin->isPanelVisible("fileBrowser"))
+	{
+		mainWin->showPanel("fileBrowser", false);
+	}
+	else
+	{
+		mainWin->showPanel("fileBrowser", true);
+	}
 }
 
 void Notepad_plus::toggleProjectPanel(int index)
@@ -2154,9 +2317,24 @@ void Notepad_plus::switchToProjectPanel(int index)
 
 void Notepad_plus::switchToFileBrowser()
 {
-    // TODO: Implement for Qt
-    // Note: Cannot call display() on _pFileBrowser as it's a forward-declared type
-    // The docking manager handles visibility for Qt version
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (!mainWin)
+		return;
+
+	// Make the panel visible if not already
+	if (!mainWin->isPanelVisible("fileBrowser"))
+	{
+		mainWin->showPanel("fileBrowser", true);
+	}
+
+	// Focus the file browser widget
+	auto* fileBrowser = mainWin->getFileBrowser();
+	if (fileBrowser)
+	{
+		QWidget* w = fileBrowser->getWidget();
+		if (w)
+			w->setFocus();
+	}
 }
 
 // ============================================================================
@@ -2394,23 +2572,45 @@ void Notepad_plus::showFindCharsInRangeDlg()
 
 void Notepad_plus::switchToFunctionList()
 {
-    // Switch focus to the function list panel
-    if (_pFuncList)
-    {
-        // Activate the function list panel
-        // For Qt, this would involve focusing the panel widget
-        // The actual implementation depends on the docking manager
-    }
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (!mainWin)
+		return;
+
+	if (!mainWin->isPanelVisible("functionList"))
+	{
+		mainWin->showPanel("functionList", true);
+	}
+
+	auto* funcList = mainWin->getFunctionListPanel();
+	if (funcList)
+	{
+		QWidget* w = funcList->getWidget();
+		if (w)
+			w->setFocus();
+	}
 }
 
 void Notepad_plus::switchToDocumentList()
 {
-    // Switch focus to the document list panel
-    if (_pDocumentListPanel)
-    {
-        // Activate the document list panel
-        // For Qt, this would involve focusing the panel widget
-    }
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (!mainWin)
+		return;
+
+	auto* dockMgr = mainWin->getDockingManager();
+	if (!dockMgr)
+		return;
+
+	if (!dockMgr->isPanelVisible("documentList"))
+	{
+		mainWin->showPanel("documentList", true);
+	}
+
+	// Focus the document list widget
+	QWidget* panelWidget = dockMgr->getPanelWidget("documentList");
+	if (panelWidget)
+	{
+		panelWidget->setFocus();
+	}
 }
 
 // ============================================================================
@@ -2680,99 +2880,125 @@ void Notepad_plus::showPreferenceDlg()
 
 void Notepad_plus::launchDocumentListPanel(bool changeFromBtnCmd)
 {
-    Q_UNUSED(changeFromBtnCmd);
+	Q_UNUSED(changeFromBtnCmd);
 
-    // TODO: Implement Document List panel launch for Qt
-    // This would create and show the VerticalFileSwitcher panel
-    // For now, this is a stub that will be implemented when the panel is fully ported
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (!mainWin)
+		return;
 
-    if (!_pDocumentListPanel)
-    {
-        // Create the document list panel
-        // _pDocumentListPanel = new QtControls::DocumentListPanel(...);
-        // Initialize and dock the panel
-    }
+	auto* dockMgr = mainWin->getDockingManager();
+	if (!dockMgr)
+		return;
 
-    if (_pDocumentListPanel)
-    {
-        // Show/activate the panel
-        // _pDocumentListPanel->display();
-    }
+	// Check if the document list panel is already registered with the dock manager
+	if (!dockMgr->isPanelVisible("documentList") && !dockMgr->hasPanel("documentList"))
+	{
+		// Create and register the document list panel
+		auto* docListPanel = new QtControls::VerticalFileSwitcher(mainWin);
+		docListPanel->init(&_pEditView);
+		dockMgr->addPanel("documentList", docListPanel->getWidget(),
+			QtControls::DockingManager::DockArea::Left, QObject::tr("Document List"));
+	}
+
+	// Toggle visibility
+	if (dockMgr->isPanelVisible("documentList"))
+	{
+		dockMgr->hidePanel("documentList");
+	}
+	else
+	{
+		dockMgr->showPanel("documentList");
+	}
 }
 
 void Notepad_plus::launchDocMap()
 {
-    // TODO: Implement Document Map panel launch for Qt
-    // This would create and show the DocumentMap panel
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (!mainWin)
+		return;
 
-    if (!_pDocMap)
-    {
-        // Create the document map panel
-        // _pDocMap = new QtControls::DocumentMap(...);
-        // _pDocMap->init(&_pEditView);
-        // Initialize and dock the panel
-    }
+	// Toggle visibility of the document map panel
+	if (mainWin->isPanelVisible("documentMap"))
+	{
+		mainWin->showPanel("documentMap", false);
+	}
+	else
+	{
+		mainWin->showPanel("documentMap", true);
 
-    if (_pDocMap)
-    {
-        // Show/activate the panel
-        // _pDocMap->display();
-        // _pDocMap->initWrapMap();
-        // _pDocMap->wrapMap();
-    }
+		// Initialize the map with current editor content
+		auto* docMap = mainWin->getDocumentMap();
+		if (docMap)
+		{
+			docMap->init(&_pEditView);
+			docMap->wrapMap();
+			docMap->scrollMap();
+		}
+	}
 }
 
 void Notepad_plus::launchFunctionList()
 {
-    // TODO: Implement Function List panel launch for Qt
-    // This would create and show the FunctionListPanel
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (!mainWin)
+		return;
 
-    if (!_pFuncList)
-    {
-        // Create the function list panel
-        // _pFuncList = new QtControls::FunctionListPanel(...);
-        // _pFuncList->init(&_pEditView);
-        // Initialize and dock the panel
-    }
+	// Toggle visibility of the function list panel
+	if (mainWin->isPanelVisible("functionList"))
+	{
+		mainWin->showPanel("functionList", false);
+	}
+	else
+	{
+		mainWin->showPanel("functionList", true);
 
-    if (_pFuncList)
-    {
-        // Show/activate the panel
-        // _pFuncList->display();
-    }
+		// Initialize and parse current document
+		auto* funcList = mainWin->getFunctionListPanel();
+		if (funcList)
+		{
+			funcList->init(&_pEditView);
+			funcList->parseCurrentDocument();
+		}
+	}
 }
 
 void Notepad_plus::launchProjectPanel(int cmdID, ProjectPanel** ppProjPanel, int panelID)
 {
-    Q_UNUSED(cmdID);
-    Q_UNUSED(panelID);
+	Q_UNUSED(cmdID);
+	Q_UNUSED(ppProjPanel);
 
-    // TODO: Implement Project Panel launch for Qt
-    // This would create and show the ProjectPanel
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (!mainWin)
+		return;
 
-    if (!(*ppProjPanel))
-    {
-        // Create the project panel
-        // (*ppProjPanel) = new QtControls::ProjectPanel(...);
-        // (*ppProjPanel)->init(&_pEditView);
-        // (*ppProjPanel)->setWorkSpaceFilePath(...);
-        // Initialize and dock the panel
-    }
-    else
-    {
-        // Panel already exists, open workspace if needed
-        // (*ppProjPanel)->openWorkSpace(...);
-    }
+	auto* dockMgr = mainWin->getDockingManager();
+	if (!dockMgr)
+		return;
 
-    if (*ppProjPanel)
-    {
-        // Show/activate the panel
-        // (*ppProjPanel)->display();
-        // Update menu state
-        // checkMenuItem(cmdID, true);
-        // checkProjectMenuItem();
-        // (*ppProjPanel)->setClosed(false);
-    }
+	// Build panel name based on panelID (support up to 3 project panels)
+	QString panelName = (panelID == 0) ? "projectPanel" :
+		QString("projectPanel_%1").arg(panelID + 1);
+
+	// If the panel does not yet exist in the dock manager, create it
+	if (!dockMgr->hasPanel(panelName))
+	{
+		auto* projPanel = new QtControls::ProjectPanel(mainWin);
+		projPanel->init(&_pEditView);
+		projPanel->setPanelTitle(QObject::tr("Project %1").arg(panelID + 1));
+		dockMgr->addPanel(panelName, projPanel->getWidget(),
+			QtControls::DockingManager::DockArea::Left,
+			QObject::tr("Project %1").arg(panelID + 1));
+	}
+
+	// Toggle visibility
+	if (dockMgr->isPanelVisible(panelName))
+	{
+		dockMgr->hidePanel(panelName);
+	}
+	else
+	{
+		dockMgr->showPanel(panelName);
+	}
 }
 
 // ============================================================================

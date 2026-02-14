@@ -255,6 +255,11 @@ private slots:
     void onHelpCmdLineArgs();
     void onHelpDebugInfo();
 
+    // Recent files
+    void onRecentFilesMenuAboutToShow();
+    void onRecentFileTriggered();
+    void onClearRecentFiles();
+
     // Tab bar
     void onTabChanged(int index);
     void onTabCloseRequested(int index);
@@ -333,6 +338,7 @@ private:
     QMenu* _windowMenu = nullptr;
     QMenu* _helpMenu = nullptr;
     QMenu* _pluginsMenu = nullptr;
+    QMenu* _recentFilesMenu = nullptr;
 
     // Toolbars
     ToolBar* _mainToolBar = nullptr;

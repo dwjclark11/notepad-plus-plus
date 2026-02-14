@@ -550,10 +550,8 @@ void MainWindow::createFileMenu()
     _fileMenu->addSeparator();
 
     // Recent files submenu
-    auto* recentMenu = _fileMenu->addMenu(tr("Recent Files"));
-    recentMenu->addAction(tr("Restore Recent Closed File"));
-    recentMenu->addSeparator();
-    recentMenu->addAction(tr("Empty"));
+    _recentFilesMenu = _fileMenu->addMenu(tr("Recent Files"));
+    connect(_recentFilesMenu, &QMenu::aboutToShow, this, &MainWindow::onRecentFilesMenuAboutToShow);
 
     _fileMenu->addSeparator();
 
@@ -1762,15 +1760,15 @@ void MainWindow::dropEvent(QDropEvent* event)
 {
     const QMimeData* mimeData = event->mimeData();
 
-    if (mimeData->hasUrls()) {
+    if (mimeData->hasUrls() && _pNotepad_plus) {
         QList<QUrl> urls = mimeData->urls();
         for (const QUrl& url : urls) {
             QString filePath = url.toLocalFile();
             if (!filePath.isEmpty()) {
-                // TODO: Open file via Notepad_plus core
-                (void)filePath;
+                _pNotepad_plus->doOpen(filePath.toStdWString());
             }
         }
+        event->acceptProposedAction();
     }
 }
 
@@ -1838,6 +1836,60 @@ void MainWindow::onFileCloseAll()
 void MainWindow::onFileExit()
 {
     close();
+}
+
+void MainWindow::onRecentFilesMenuAboutToShow()
+{
+    _recentFilesMenu->clear();
+
+    if (!_pNotepad_plus)
+    {
+        _recentFilesMenu->addAction(tr("(Empty)"))->setEnabled(false);
+        return;
+    }
+
+    LastRecentFileList& lrf = _pNotepad_plus->getLastRecentFileList();
+    int count = lrf.getSize();
+
+    if (count == 0)
+    {
+        _recentFilesMenu->addAction(tr("(Empty)"))->setEnabled(false);
+        return;
+    }
+
+    for (int i = 0; i < count; ++i)
+    {
+        std::wstring& filePath = lrf.getIndex(i);
+        QString label = QString::fromStdWString(filePath);
+        QAction* action = _recentFilesMenu->addAction(label);
+        action->setData(label);
+        connect(action, &QAction::triggered, this, &MainWindow::onRecentFileTriggered);
+    }
+
+    _recentFilesMenu->addSeparator();
+    _recentFilesMenu->addAction(tr("Clear Recent File List"), this, &MainWindow::onClearRecentFiles);
+}
+
+void MainWindow::onRecentFileTriggered()
+{
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (!action || !_pNotepad_plus)
+        return;
+
+    QString filePath = action->data().toString();
+    if (!filePath.isEmpty())
+    {
+        _pNotepad_plus->doOpen(filePath.toStdWString());
+    }
+}
+
+void MainWindow::onClearRecentFiles()
+{
+    if (!_pNotepad_plus)
+        return;
+
+    LastRecentFileList& lrf = _pNotepad_plus->getLastRecentFileList();
+    lrf.clear();
 }
 
 // ============================================================================

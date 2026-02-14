@@ -456,6 +456,9 @@ public:
 	bool goToNextIndicator(int indicID2Search, bool isWrap = true) const;
 	bool goToPreviousIndicator(int indicID2Search, bool isWrap = true) const;
 
+	// Recent file list accessor
+	LastRecentFileList& getLastRecentFileList() { return _lastRecentFileList; }
+
 private:
 	Notepad_plus_Window* _pPublicInterface = nullptr;
     Window* _pMainWindow = nullptr;

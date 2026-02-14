@@ -2969,6 +2969,150 @@ void ScintillaEditView::init(QWidget* parent)
     sciWidget->show();
     sciWidget->raise();
 
+    // Connect charAdded signal for auto-close brackets/quotes
+    QObject::connect(sciWidget, &ScintillaEditBase::charAdded, this, [this](int ch)
+    {
+        const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+        const MatchedPairConf& matchedPairConf = nppGUI._matchedPairConf;
+
+        if (!matchedPairConf.hasAnyPairsPair())
+            return;
+
+        // Don't auto-close in column/multi-selection mode
+        if (execute(SCI_GETSELECTIONS) > 1)
+            return;
+
+        size_t caretPos = execute(SCI_GETCURRENTPOS);
+        char charNext = static_cast<char>(execute(SCI_GETCHARAT, caretPos));
+        char charPrev = (caretPos >= 2) ? static_cast<char>(execute(SCI_GETCHARAT, caretPos - 2)) : '\0';
+
+        bool isCharPrevBlank = (charPrev == ' ' || charPrev == '\t' || charPrev == '\n' || charPrev == '\r' || charPrev == '\0');
+        size_t docLen = getCurrentDocLen();
+        bool isCharNextBlank = (charNext == ' ' || charNext == '\t' || charNext == '\n' || charNext == '\r' || caretPos == docLen);
+        bool isCharNextCloseSymbol = (charNext == ')' || charNext == ']' || charNext == '}');
+        bool isInSandwich = (charPrev == '(' && charNext == ')') || (charPrev == '[' && charNext == ']') || (charPrev == '{' && charNext == '}');
+
+        const char* matchedChars = nullptr;
+
+        // Check user-defined matched pairs first
+        for (size_t i = 0, len = matchedPairConf._matchedPairs.size(); i < len; ++i)
+        {
+            if (matchedPairConf._matchedPairs[i].first == static_cast<char>(ch))
+            {
+                if (isCharNextBlank)
+                {
+                    char userMatchedChar[2] = { matchedPairConf._matchedPairs[i].second, '\0' };
+                    execute(SCI_INSERTTEXT, caretPos, reinterpret_cast<LPARAM>(userMatchedChar));
+                    return;
+                }
+            }
+        }
+
+        switch (ch)
+        {
+            case '(':
+            {
+                if (matchedPairConf._doParentheses && (isCharNextBlank || isCharNextCloseSymbol))
+                    matchedChars = ")";
+                break;
+            }
+
+            case '[':
+            {
+                if (matchedPairConf._doBrackets && (isCharNextBlank || isCharNextCloseSymbol))
+                    matchedChars = "]";
+                break;
+            }
+
+            case '{':
+            {
+                if (matchedPairConf._doCurlyBrackets && (isCharNextBlank || isCharNextCloseSymbol))
+                    matchedChars = "}";
+                break;
+            }
+
+            case '"':
+            {
+                if (matchedPairConf._doDoubleQuotes)
+                {
+                    // If the next char is the same quote, skip over it
+                    if (charNext == '"')
+                    {
+                        execute(SCI_DELETERANGE, caretPos, 1);
+                        return;
+                    }
+
+                    if ((isCharPrevBlank && isCharNextBlank) || isInSandwich ||
+                        (charPrev == '(' && isCharNextBlank) || (isCharPrevBlank && charNext == ')') ||
+                        (charPrev == '[' && isCharNextBlank) || (isCharPrevBlank && charNext == ']') ||
+                        (charPrev == '{' && isCharNextBlank) || (isCharPrevBlank && charNext == '}'))
+                    {
+                        matchedChars = "\"";
+                    }
+                }
+                break;
+            }
+
+            case '\'':
+            {
+                if (matchedPairConf._doQuotes)
+                {
+                    // If the next char is the same quote, skip over it
+                    if (charNext == '\'')
+                    {
+                        execute(SCI_DELETERANGE, caretPos, 1);
+                        return;
+                    }
+
+                    if ((isCharPrevBlank && isCharNextBlank) || isInSandwich ||
+                        (charPrev == '(' && isCharNextBlank) || (isCharPrevBlank && charNext == ')') ||
+                        (charPrev == '[' && isCharNextBlank) || (isCharPrevBlank && charNext == ']') ||
+                        (charPrev == '{' && isCharNextBlank) || (isCharPrevBlank && charNext == '}'))
+                    {
+                        matchedChars = "'";
+                    }
+                }
+                break;
+            }
+
+            case ')':
+            {
+                if (matchedPairConf._doParentheses && charNext == ')')
+                {
+                    execute(SCI_DELETERANGE, caretPos, 1);
+                    return;
+                }
+                break;
+            }
+
+            case ']':
+            {
+                if (matchedPairConf._doBrackets && charNext == ']')
+                {
+                    execute(SCI_DELETERANGE, caretPos, 1);
+                    return;
+                }
+                break;
+            }
+
+            case '}':
+            {
+                if (matchedPairConf._doCurlyBrackets && charNext == '}')
+                {
+                    execute(SCI_DELETERANGE, caretPos, 1);
+                    return;
+                }
+                break;
+            }
+
+            default:
+                break;
+        }
+
+        if (matchedChars)
+            execute(SCI_INSERTTEXT, caretPos, reinterpret_cast<LPARAM>(matchedChars));
+    });
+
     std::cout << "[ScintillaEditView::init] Widget visible after show(): " << sciWidget->isVisible() << std::endl;
     std::cout << "[ScintillaEditView::init] Initialization complete." << std::endl;
 }

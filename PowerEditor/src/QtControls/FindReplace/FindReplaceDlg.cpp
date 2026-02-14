@@ -28,6 +28,7 @@
 #include <QtCore/QDirIterator>
 #include <QtCore/QTextStream>
 #include <QtCore/QRegularExpression>
+#include <QtCore/QSettings>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QClipboard>
 #include <QtWidgets/QApplication>
@@ -528,12 +529,68 @@ void FindReplaceDlg::onReplaceAllClicked() {
 }
 
 void FindReplaceDlg::onReplaceAllInOpenDocsClicked() {
-    // For now, replace all in current document (full multi-doc support requires BufferManager integration)
-    int count = processReplaceAll(getSearchText(), getReplaceText(), getCurrentOptions());
-    if (count > 0) {
-        setStatusMessage(tr("Replaced %1 occurrence(s) in current document").arg(count), FindStatus::Found);
-    } else {
-        setStatusMessage(tr("No occurrences found"), FindStatus::NotFound);
+    if (!_getOpenBuffersCb || !_activateBufferCb)
+    {
+        // Fallback to current document only
+        int count = processReplaceAll(getSearchText(), getReplaceText(), getCurrentOptions());
+        if (count > 0)
+        {
+            setStatusMessage(tr("Replaced %1 occurrence(s) in current document").arg(count), FindStatus::Found);
+        }
+        else
+        {
+            setStatusMessage(tr("No occurrences found"), FindStatus::NotFound);
+        }
+        return;
+    }
+
+    QString findText = getSearchText();
+    QString replaceText = getReplaceText();
+    FindOptions opts = getCurrentOptions();
+
+    if (findText.isEmpty())
+    {
+        return;
+    }
+
+    std::vector<BufferInfo> buffers = _getOpenBuffersCb();
+    void* originalBuffer = nullptr;
+    if (_ppEditView && *_ppEditView)
+    {
+        originalBuffer = (*_ppEditView)->getCurrentBufferID();
+    }
+
+    int totalCount = 0;
+    int docsWithReplacements = 0;
+
+    for (const auto& bufInfo : buffers)
+    {
+        if (!_activateBufferCb(bufInfo.first))
+        {
+            continue;
+        }
+
+        int count = processReplaceAll(findText, replaceText, opts);
+        totalCount += count;
+        if (count > 0)
+        {
+            docsWithReplacements++;
+        }
+    }
+
+    if (originalBuffer)
+    {
+        _activateBufferCb(originalBuffer);
+    }
+
+    if (totalCount > 0)
+    {
+        setStatusMessage(tr("Replaced %1 occurrence(s) in %2 document(s)")
+                         .arg(totalCount).arg(docsWithReplacements), FindStatus::Found);
+    }
+    else
+    {
+        setStatusMessage(tr("No occurrences found in any open document"), FindStatus::NotFound);
     }
 }
 
@@ -609,8 +666,21 @@ void FindReplaceDlg::onBrowseDirectoryClicked() {
 }
 
 void FindReplaceDlg::onDirFromActiveDocClicked() {
-    // TODO: Get directory from active document
-    QMessageBox::information(this, tr("Not Implemented"), tr("Get directory from active document is not yet implemented"));
+    if (_getActiveFilePathCb)
+    {
+        QString filePath = _getActiveFilePathCb();
+        if (!filePath.isEmpty())
+        {
+            QFileInfo fi(filePath);
+            QString dir = fi.absolutePath();
+            if (_directoryCombo)
+            {
+                _directoryCombo->setCurrentText(dir);
+            }
+            return;
+        }
+    }
+    QMessageBox::information(this, tr("Find"), tr("No active document with a file path"));
 }
 
 void FindReplaceDlg::updateControlStates() {
@@ -678,11 +748,109 @@ void FindReplaceDlg::setStatusMessage(const QString& msg, FindStatus status) {
 }
 
 void FindReplaceDlg::loadHistory() {
-    // TODO: Load from settings
+    QSettings settings;
+    settings.beginGroup("FindReplace");
+
+    int findCount = settings.beginReadArray("FindHistory");
+    for (int i = 0; i < findCount; ++i)
+    {
+        settings.setArrayIndex(i);
+        QString text = settings.value("text").toString();
+        if (!text.isEmpty())
+        {
+            _findHistory.push_back(text);
+        }
+    }
+    settings.endArray();
+
+    int replaceCount = settings.beginReadArray("ReplaceHistory");
+    for (int i = 0; i < replaceCount; ++i)
+    {
+        settings.setArrayIndex(i);
+        QString text = settings.value("text").toString();
+        if (!text.isEmpty())
+        {
+            _replaceHistory.push_back(text);
+        }
+    }
+    settings.endArray();
+
+    int filterCount = settings.beginReadArray("FilterHistory");
+    for (int i = 0; i < filterCount; ++i)
+    {
+        settings.setArrayIndex(i);
+        QString text = settings.value("text").toString();
+        if (!text.isEmpty())
+        {
+            _filterHistory.push_back(text);
+        }
+    }
+    settings.endArray();
+
+    int dirCount = settings.beginReadArray("DirectoryHistory");
+    for (int i = 0; i < dirCount; ++i)
+    {
+        settings.setArrayIndex(i);
+        QString text = settings.value("text").toString();
+        if (!text.isEmpty())
+        {
+            _directoryHistory.push_back(text);
+        }
+    }
+    settings.endArray();
+
+    settings.endGroup();
+
+    // Populate combo boxes
+    updateComboHistory(_findWhatCombo, _findHistory);
+    updateComboHistory(_replaceWithCombo, _replaceHistory);
+    updateComboHistory(_filtersCombo, _filterHistory);
+    updateComboHistory(_directoryCombo, _directoryHistory);
 }
 
 void FindReplaceDlg::saveHistory() {
-    // TODO: Save to settings
+    // Capture current text from combos before saving
+    saveComboHistory(_findWhatCombo, _findHistory, 20);
+    saveComboHistory(_replaceWithCombo, _replaceHistory, 20);
+    saveComboHistory(_filtersCombo, _filterHistory, 20);
+    saveComboHistory(_directoryCombo, _directoryHistory, 20);
+
+    QSettings settings;
+    settings.beginGroup("FindReplace");
+
+    settings.beginWriteArray("FindHistory", static_cast<int>(_findHistory.size()));
+    for (size_t i = 0; i < _findHistory.size(); ++i)
+    {
+        settings.setArrayIndex(static_cast<int>(i));
+        settings.setValue("text", _findHistory[i]);
+    }
+    settings.endArray();
+
+    settings.beginWriteArray("ReplaceHistory", static_cast<int>(_replaceHistory.size()));
+    for (size_t i = 0; i < _replaceHistory.size(); ++i)
+    {
+        settings.setArrayIndex(static_cast<int>(i));
+        settings.setValue("text", _replaceHistory[i]);
+    }
+    settings.endArray();
+
+    settings.beginWriteArray("FilterHistory", static_cast<int>(_filterHistory.size()));
+    for (size_t i = 0; i < _filterHistory.size(); ++i)
+    {
+        settings.setArrayIndex(static_cast<int>(i));
+        settings.setValue("text", _filterHistory[i]);
+    }
+    settings.endArray();
+
+    settings.beginWriteArray("DirectoryHistory", static_cast<int>(_directoryHistory.size()));
+    for (size_t i = 0; i < _directoryHistory.size(); ++i)
+    {
+        settings.setArrayIndex(static_cast<int>(i));
+        settings.setValue("text", _directoryHistory[i]);
+    }
+    settings.endArray();
+
+    settings.endGroup();
 }
 
 void FindReplaceDlg::addToHistory(const QString& text, std::vector<QString>& history) {
@@ -1024,9 +1192,69 @@ bool FindReplaceDlg::findAllInFiles() {
 }
 
 bool FindReplaceDlg::replaceAllInOpenDocs() {
-    // Simplified - replaces in current document only for now
-    int count = processReplaceAll(getSearchText(), getReplaceText(), getCurrentOptions());
-    return count > 0;
+    if (!_getOpenBuffersCb || !_activateBufferCb)
+    {
+        // Fallback: replace in current document only
+        int count = processReplaceAll(getSearchText(), getReplaceText(), getCurrentOptions());
+        return count > 0;
+    }
+
+    QString findText = getSearchText();
+    QString replaceText = getReplaceText();
+    FindOptions opts = getCurrentOptions();
+
+    if (findText.isEmpty())
+    {
+        return false;
+    }
+
+    // Remember current buffer so we can switch back
+    std::vector<BufferInfo> buffers = _getOpenBuffersCb();
+    if (buffers.empty())
+    {
+        return false;
+    }
+
+    // Save the current buffer pointer
+    void* originalBuffer = nullptr;
+    if (!buffers.empty())
+    {
+        // Find which buffer is currently active by checking the current view
+        if (_ppEditView && *_ppEditView)
+        {
+            originalBuffer = (*_ppEditView)->getCurrentBufferID();
+        }
+    }
+
+    int totalCount = 0;
+    int docsWithReplacements = 0;
+
+    for (const auto& bufInfo : buffers)
+    {
+        void* bufID = bufInfo.first;
+
+        // Switch to this buffer
+        if (!_activateBufferCb(bufID))
+        {
+            continue;
+        }
+
+        // Perform replace all in this document
+        int count = processReplaceAll(findText, replaceText, opts);
+        totalCount += count;
+        if (count > 0)
+        {
+            docsWithReplacements++;
+        }
+    }
+
+    // Switch back to original buffer
+    if (originalBuffer)
+    {
+        _activateBufferCb(originalBuffer);
+    }
+
+    return totalCount > 0;
 }
 
 int FindReplaceDlg::processCount(const QString& findText, const FindOptions& options) {
@@ -1312,6 +1540,83 @@ bool FindReplaceDlg::run_dlgProc(QEvent* event) {
 }
 
 // ============================================================================
+// Multi-cursor commands
+// ============================================================================
+
+void FindReplaceDlg::multiSelectNextOccurrence(int searchFlags) {
+    if (!_ppEditView || !*_ppEditView)
+    {
+        return;
+    }
+
+    auto* view = *_ppEditView;
+
+    // If no selection, expand to word first
+    bool hasSelection = (view->execute(SCI_GETSELECTIONSTART) != view->execute(SCI_GETSELECTIONEND));
+    if (!hasSelection)
+    {
+        view->expandWordSelection();
+    }
+
+    view->execute(SCI_TARGETWHOLEDOCUMENT);
+    view->execute(SCI_SETSEARCHFLAGS, searchFlags);
+    view->execute(SCI_MULTIPLESELECTADDNEXT);
+}
+
+void FindReplaceDlg::multiSelectAllOccurrences(int searchFlags) {
+    if (!_ppEditView || !*_ppEditView)
+    {
+        return;
+    }
+
+    auto* view = *_ppEditView;
+
+    // If no selection, expand to word first
+    bool hasSelection = (view->execute(SCI_GETSELECTIONSTART) != view->execute(SCI_GETSELECTIONEND));
+    if (!hasSelection)
+    {
+        view->expandWordSelection();
+    }
+
+    view->execute(SCI_TARGETWHOLEDOCUMENT);
+    view->execute(SCI_SETSEARCHFLAGS, searchFlags);
+    view->execute(SCI_MULTIPLESELECTADDEACH);
+}
+
+void FindReplaceDlg::multiSelectUndo() {
+    if (!_ppEditView || !*_ppEditView)
+    {
+        return;
+    }
+
+    auto* view = *_ppEditView;
+    LRESULT n = view->execute(SCI_GETSELECTIONS);
+    if (n > 0)
+    {
+        view->execute(SCI_DROPSELECTIONN, n - 1);
+    }
+}
+
+void FindReplaceDlg::multiSelectSkip(int searchFlags) {
+    if (!_ppEditView || !*_ppEditView)
+    {
+        return;
+    }
+
+    auto* view = *_ppEditView;
+
+    view->execute(SCI_TARGETWHOLEDOCUMENT);
+    view->execute(SCI_SETSEARCHFLAGS, searchFlags);
+    view->execute(SCI_MULTIPLESELECTADDNEXT);
+
+    LRESULT n = view->execute(SCI_GETSELECTIONS);
+    if (n > 1)
+    {
+        view->execute(SCI_DROPSELECTIONN, n - 2);
+    }
+}
+
+// ============================================================================
 // Windows-compatible interface methods
 // ============================================================================
 
@@ -1357,8 +1662,17 @@ void FindReplaceDlg::markAll(const wchar_t* text, int styleID) {
 }
 
 void FindReplaceDlg::gotoNextFoundResult(int direction) const {
-    Q_UNUSED(direction);
-    // TODO: Implement navigation to next found result
+    if (_pFinderPanel)
+    {
+        if (direction >= 0)
+        {
+            _pFinderPanel->gotoNextResult();
+        }
+        else
+        {
+            _pFinderPanel->gotoPreviousResult();
+        }
+    }
 }
 
 bool FindReplaceDlg::processFindNext(const wchar_t* text, const FindOption* opt, ::FindStatus* status, FindNextType type) {
@@ -1529,7 +1843,89 @@ void FindIncrementDlg::onFindPrevious() {
 }
 
 void FindIncrementDlg::onHighlightAll() {
-    // TODO: Highlight all matches
+    if (!_ppEditView || !*_ppEditView)
+    {
+        return;
+    }
+
+    auto* view = *_ppEditView;
+    bool doHighlight = _highlightButton && _highlightButton->isChecked();
+
+    // Indicator number for incremental search highlighting
+    const int INDICATOR_INCREMENTAL = 31;
+
+    // Clear previous highlights
+    intptr_t docLength = view->execute(SCI_GETLENGTH);
+    view->execute(SCI_SETINDICATORCURRENT, INDICATOR_INCREMENTAL);
+    view->execute(SCI_INDICATORCLEARRANGE, 0, docLength);
+
+    if (!doHighlight)
+    {
+        return;
+    }
+
+    QString searchText = _searchEdit ? _searchEdit->text() : QString();
+    if (searchText.isEmpty())
+    {
+        return;
+    }
+
+    // Configure indicator style
+    view->execute(SCI_INDICSETSTYLE, INDICATOR_INCREMENTAL, INDIC_ROUNDBOX);
+    view->execute(SCI_INDICSETFORE, INDICATOR_INCREMENTAL, 0x0000FF);  // Red
+    view->execute(SCI_INDICSETALPHA, INDICATOR_INCREMENTAL, 100);
+    view->execute(SCI_INDICSETOUTLINEALPHA, INDICATOR_INCREMENTAL, 200);
+
+    // Build search flags
+    int flags = 0;
+    if (_caseSensitiveCheck && _caseSensitiveCheck->isChecked())
+    {
+        flags |= SCFIND_MATCHCASE;
+    }
+    if (_wholeWordCheck && _wholeWordCheck->isChecked())
+    {
+        flags |= SCFIND_WHOLEWORD;
+    }
+    if (_regexCheck && _regexCheck->isChecked())
+    {
+        flags |= SCFIND_REGEXP | SCFIND_POSIX;
+    }
+
+    QByteArray searchBytes = searchText.toUtf8();
+    view->execute(SCI_SETSEARCHFLAGS, flags);
+
+    intptr_t startPos = 0;
+    int count = 0;
+
+    while (true)
+    {
+        view->execute(SCI_SETTARGETSTART, startPos);
+        view->execute(SCI_SETTARGETEND, docLength);
+
+        intptr_t result = view->execute(SCI_SEARCHINTARGET, searchBytes.length(),
+                                        reinterpret_cast<LPARAM>(searchBytes.constData()));
+        if (result == -1)
+        {
+            break;
+        }
+
+        intptr_t matchEnd = view->execute(SCI_GETTARGETEND);
+        intptr_t matchLen = matchEnd - result;
+
+        if (matchLen > 0)
+        {
+            view->execute(SCI_INDICATORFILLRANGE, result, matchLen);
+            count++;
+        }
+
+        startPos = matchEnd;
+        if (startPos >= docLength)
+        {
+            break;
+        }
+    }
+
+    setFindStatus(count > 0 ? FindStatus::Found : FindStatus::NotFound, count);
 }
 
 void FindIncrementDlg::onCaseSensitiveToggled(bool checked) {

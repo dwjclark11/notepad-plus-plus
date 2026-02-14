@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include <QString>
 
 // Windows-compatible type definitions (must match Windows version)
 enum DIALOG_TYPE {FIND_DLG, REPLACE_DLG, FINDINFILES_DLG, FINDINPROJECTS_DLG, MARK_DLG};
@@ -52,6 +53,9 @@ class QTreeWidget;
 class QTreeWidgetItem;
 
 namespace NppFindReplace {
+
+// Forward declarations within namespace
+class FinderPanel;
 
 // Search types matching Windows version
 enum class SearchType {
@@ -167,11 +171,31 @@ public:
     void savePosition();
     void restorePosition();
 
+    // Callback types for parent integration (avoids circular deps)
+    using BufferInfo = std::pair<void*, QString>;  // {buffer pointer, file path}
+    using GetOpenBuffersFunc = std::function<std::vector<BufferInfo>()>;
+    using ActivateBufferFunc = std::function<bool(void* bufferID)>;
+    using GetActiveFilePathFunc = std::function<QString()>;
+
+    // Set callbacks from parent (Notepad_plus)
+    void setGetOpenBuffersCallback(GetOpenBuffersFunc cb) { _getOpenBuffersCb = cb; }
+    void setActivateBufferCallback(ActivateBufferFunc cb) { _activateBufferCb = cb; }
+    void setGetActiveFilePathCallback(GetActiveFilePathFunc cb) { _getActiveFilePathCb = cb; }
+
+    // Finder panel management
+    void setFinderPanel(FinderPanel* panel) { _pFinderPanel = panel; }
+
     // Static search options (shared across instances)
     static FindOptions options;
     static FindOptions* env;
     static FindOptions* _env;  // Alias for compatibility
 
+
+    // Multi-cursor commands
+    void multiSelectNextOccurrence(int searchFlags = 0);
+    void multiSelectAllOccurrences(int searchFlags = 0);
+    void multiSelectUndo();
+    void multiSelectSkip(int searchFlags = 0);
 
     // Windows-compatible interface methods
     void doDialog(DIALOG_TYPE type, bool isRTL = false, bool isDelete = false);
@@ -278,6 +302,14 @@ private:
     std::vector<QString> _replaceHistory;
     std::vector<QString> _filterHistory;
     std::vector<QString> _directoryHistory;
+
+    // Callbacks for parent integration
+    GetOpenBuffersFunc _getOpenBuffersCb;
+    ActivateBufferFunc _activateBufferCb;
+    GetActiveFilePathFunc _getActiveFilePathCb;
+
+    // Finder panel
+    FinderPanel* _pFinderPanel = nullptr;
 
     // Internal methods
     void createFindTab();
