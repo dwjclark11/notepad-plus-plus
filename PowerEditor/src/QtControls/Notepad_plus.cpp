@@ -1711,16 +1711,18 @@ void Notepad_plus::loadBufferIntoView(BufferID id, int view, bool dontClose)
     // Add buffer to tab
     tabToOpen->addBuffer(id);
 
-    // Connect file monitoring signal if not already connected
+    // Connect file monitoring signal
     Buffer* buf = MainFileManager.getBufferByID(id);
     if (buf)
     {
+        // Disconnect first to prevent duplicates (Qt::UniqueConnection
+        // is incompatible with lambda connections in Qt6)
+        QObject::disconnect(buf, &QtCore::Buffer::fileModifiedExternally, buf, nullptr);
         QObject::connect(buf, &QtCore::Buffer::fileModifiedExternally,
             buf, [this, buf]()
             {
                 notifyBufferChanged(buf, BufferChangeStatus);
-            },
-            Qt::UniqueConnection);
+            });
     }
 }
 
