@@ -204,6 +204,23 @@ void WindowTest::testRedrawForceUpdate() {
 }
 
 // ============================================================================
+// Visibility Guard Tests (Bug 4)
+// ============================================================================
+void WindowTest::testIsNotVisibleBeforeShow() {
+    _window->init(_parentWidget.get());
+
+    // Widget exists but has never been shown
+    QVERIFY(_window->getWidget() != nullptr);
+    QVERIFY(!_window->isVisible());
+
+    // This is the guard condition that prevents SCI_GRABFOCUS on hidden widgets:
+    // if (w && w->isVisible()) { ... }
+    QWidget* w = _window->getWidget();
+    bool guardPasses = (w && w->isVisible());
+    QVERIFY(!guardPasses);
+}
+
+// ============================================================================
 // Focus Tests
 // ============================================================================
 void WindowTest::testGrabFocus() {

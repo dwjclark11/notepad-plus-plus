@@ -143,6 +143,10 @@ set(QTCONTROLS_TEST_SOURCES
     QtControls/RunDlgTest.h
     QtControls/AboutDlgTest.cpp
     QtControls/AboutDlgTest.h
+    QtControls/ToolBarTest.cpp
+    QtControls/ToolBarTest.h
+    QtControls/TabSignalRaceTest.cpp
+    QtControls/TabSignalRaceTest.h
 )
 
 # Integration Tests
@@ -212,6 +216,13 @@ if(UNIX AND NOT APPLE)
         ${CMAKE_SOURCE_DIR}/QtControls/DockingManager/DockingManager.cpp
         ${CMAKE_SOURCE_DIR}/QtControls/RunDlg/RunDlg.cpp
         ${CMAKE_SOURCE_DIR}/QtControls/AboutDlg/AboutDlg.cpp
+        ${CMAKE_SOURCE_DIR}/QtControls/ToolBar/ToolBar.cpp
+    )
+
+    # Stubs for pre-existing linker errors (RunDlg deps on NppParameters/Buffer/ScintillaEditView)
+    target_sources(QtControlsTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/QtControls/Stubs/QtControlsStubs.cpp
+        ${CMAKE_SOURCE_DIR}/MISC/Common/CommonLinux.cpp
     )
 
     # Add Platform implementation sources (needed by QtControls)
@@ -244,6 +255,11 @@ add_executable(IntegrationTests
     Integration/IOTest.h
     Integration/CommandTest.cpp
     Integration/CommandTest.h
+    Integration/IPCParseTest.cpp
+    Integration/IPCParseTest.h
+    Integration/FindReplaceDlgInitTest.cpp
+    Integration/FindReplaceDlgInitTest.h
+    Integration/Stubs/NppParametersStub.cpp
 )
 
 target_include_directories(IntegrationTests PRIVATE ${TEST_INCLUDE_DIRS})
@@ -261,6 +277,12 @@ if(UNIX AND NOT APPLE)
         ${CMAKE_SOURCE_DIR}/Platform/Linux/Clipboard.cpp
         ${CMAKE_SOURCE_DIR}/Platform/Linux/Dialogs.cpp
         ${CMAKE_SOURCE_DIR}/Platform/Linux/Threading.cpp
+    )
+
+    # Add QtControls implementation sources (needed by FindReplaceDlgInitTest)
+    target_sources(IntegrationTests PRIVATE
+        ${CMAKE_SOURCE_DIR}/QtControls/StaticDialog/StaticDialog.cpp
+        ${CMAKE_SOURCE_DIR}/QtControls/FindReplace/FindReplaceDlg.cpp
     )
 endif()
 

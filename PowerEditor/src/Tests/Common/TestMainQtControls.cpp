@@ -18,6 +18,8 @@
 #include "../QtControls/DockingManagerTest.h"
 #include "../QtControls/RunDlgTest.h"
 #include "../QtControls/AboutDlgTest.h"
+#include "../QtControls/ToolBarTest.h"
+#include "../QtControls/TabSignalRaceTest.h"
 
 // This file provides a main() function for QtControlsTests executable
 // that runs all Qt controls tests
@@ -44,6 +46,8 @@ int main(int argc, char *argv[])
     result |= QTest::qExec(new Tests::DockingManagerTest(), argc, argv);
     result |= QTest::qExec(new Tests::RunDlgTest(), argc, argv);
     result |= QTest::qExec(new Tests::AboutDlgTest(), argc, argv);
+    result |= QTest::qExec(new Tests::ToolBarTest(), argc, argv);
+    result |= QTest::qExec(new Tests::TabSignalRaceTest(), argc, argv);
 
     Tests::TestEnvironment::getInstance().cleanup();
 

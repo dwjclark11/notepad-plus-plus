@@ -51,6 +51,9 @@ private Q_SLOTS:
     void testRedraw();
     void testRedrawForceUpdate();
 
+    // Visibility guard (Bug 4: hidden widget safety)
+    void testIsNotVisibleBeforeShow();
+
     // Focus
     void testGrabFocus();
 
