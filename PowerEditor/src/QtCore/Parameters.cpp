@@ -51,6 +51,7 @@
 #include "menuCmdID.h"
 #include "resource.h"
 #include "Shortcut.h"
+#include "ShortcutManager/ShortcutManager.h"
 
 // VK constants are now included via Common.h -> LinuxTypes.h
 
@@ -852,9 +853,29 @@ bool NppParameters::load()
         _pXmlShortcutDoc = nullptr;
     }
 
-    // Load context menu
+    // Load context menu XML
     _contextMenuPath = _nppPath;
     pathAppend(_contextMenuPath, L"contextMenu.xml");
+
+    _pXmlContextMenuDoc = new NppXml::NewDocument();
+    loadOkay = NppXml::loadFile(_pXmlContextMenuDoc, _contextMenuPath.c_str());
+    if (!loadOkay)
+    {
+        delete _pXmlContextMenuDoc;
+        _pXmlContextMenuDoc = nullptr;
+    }
+
+    // Load tab context menu XML (optional)
+    _tabContextMenuPath = _userPath;
+    pathAppend(_tabContextMenuPath, L"tabContextMenu.xml");
+
+    _pXmlTabContextMenuDoc = new NppXml::NewDocument();
+    loadOkay = NppXml::loadFile(_pXmlTabContextMenuDoc, _tabContextMenuPath.c_str());
+    if (!loadOkay)
+    {
+        delete _pXmlTabContextMenuDoc;
+        _pXmlTabContextMenuDoc = nullptr;
+    }
 
     //----------------------------//
     // session.xml : for per-user //
@@ -2069,11 +2090,138 @@ void NppParameters::createXmlTreeFromGUIParams()
     // Stub - would create XML tree from GUI parameters
 }
 
+static int RGB2int(COLORREF color)
+{
+	return (((color & 0x0000FF) << 16) | ((color & 0x00FF00)) | ((color & 0xFF0000) >> 16));
+}
+
+void NppParameters::writeStyle2Element(const Style& style2Write, Style& style2Sync, TiXmlElement* element)
+{
+	if (style2Write._fgColor != static_cast<COLORREF>(STYLE_NOT_USED))
+	{
+		int rgbVal = RGB2int(style2Write._fgColor);
+		wchar_t fgStr[7];
+		swprintf(fgStr, 7, L"%.6X", rgbVal);
+		element->SetAttribute(L"fgColor", fgStr);
+	}
+
+	if (style2Write._bgColor != static_cast<COLORREF>(STYLE_NOT_USED))
+	{
+		int rgbVal = RGB2int(style2Write._bgColor);
+		wchar_t bgStr[7];
+		swprintf(bgStr, 7, L"%.6X", rgbVal);
+		element->SetAttribute(L"bgColor", bgStr);
+	}
+
+	if (style2Write._colorStyle != COLORSTYLE_ALL)
+	{
+		element->SetAttribute(L"colorStyle", style2Write._colorStyle);
+	}
+
+	if (!style2Write._fontName.empty())
+	{
+		const wchar_t* oldFontName = element->Attribute(L"fontName");
+		if (oldFontName && oldFontName != style2Write._fontName)
+		{
+			element->SetAttribute(L"fontName", style2Write._fontName);
+			style2Sync._fontName = style2Write._fontName;
+		}
+	}
+
+	if (style2Write._fontSize != STYLE_NOT_USED)
+	{
+		if (!style2Write._fontSize)
+			element->SetAttribute(L"fontSize", L"");
+		else
+			element->SetAttribute(L"fontSize", style2Write._fontSize);
+	}
+
+	if (style2Write._fontStyle != STYLE_NOT_USED)
+	{
+		element->SetAttribute(L"fontStyle", style2Write._fontStyle);
+	}
+
+	TiXmlNode* teteDeNoeud = element->LastChild();
+	if (teteDeNoeud)
+		teteDeNoeud->SetValue(style2Write._keywords.c_str());
+	else
+		element->InsertEndChild(TiXmlText(style2Write._keywords.c_str()));
+}
+
 std::wstring NppParameters::writeStyles(LexerStylerArray& lexersStylers, StyleArray& globalStylers)
 {
-    (void)lexersStylers;
-    (void)globalStylers;
-    return L"";
+	if (!_pXmlUserStylerDoc)
+		return L"";
+
+	TiXmlNode* notepadPlusRoot = _pXmlUserStylerDoc->FirstChild(L"NotepadPlus");
+	if (!notepadPlusRoot)
+		return L"";
+
+	// Write lexer styles
+	TiXmlNode* lexersRoot = notepadPlusRoot->FirstChildElement(L"LexerStyles");
+	if (lexersRoot)
+	{
+		for (TiXmlNode* childNode = lexersRoot->FirstChildElement(L"LexerType");
+			childNode;
+			childNode = childNode->NextSibling(L"LexerType"))
+		{
+			TiXmlElement* element = childNode->ToElement();
+			const wchar_t* nm = element->Attribute(L"name");
+
+			LexerStyler* pLs = _lexerStylerVect.getLexerStylerByName(nm);
+			LexerStyler* pLs2 = lexersStylers.getLexerStylerByName(nm);
+
+			if (pLs)
+			{
+				const wchar_t* extStr = pLs->getLexerUserExt();
+				element->SetAttribute(L"ext", extStr);
+				for (TiXmlNode* grChildNode = childNode->FirstChildElement(L"WordsStyle");
+					grChildNode;
+					grChildNode = grChildNode->NextSibling(L"WordsStyle"))
+				{
+					TiXmlElement* grElement = grChildNode->ToElement();
+					const wchar_t* styleName = grElement->Attribute(L"name");
+					const Style* pStyle = pLs->findByName(styleName);
+					Style* pStyle2Sync = pLs2 ? pLs2->findByName(styleName) : nullptr;
+					if (pStyle && pStyle2Sync)
+					{
+						writeStyle2Element(*pStyle, *pStyle2Sync, grElement);
+					}
+				}
+			}
+		}
+	}
+
+	// Write global styles
+	TiXmlNode* globalStylesRoot = notepadPlusRoot->FirstChildElement(L"GlobalStyles");
+	if (globalStylesRoot)
+	{
+		for (TiXmlNode* childNode = globalStylesRoot->FirstChildElement(L"WidgetStyle");
+			childNode;
+			childNode = childNode->NextSibling(L"WidgetStyle"))
+		{
+			TiXmlElement* pElement = childNode->ToElement();
+			const wchar_t* styleName = pElement->Attribute(L"name");
+			const Style* pStyle = _widgetStyleArray.findByName(styleName);
+			Style* pStyle2Sync = globalStylers.findByName(styleName);
+			if (pStyle && pStyle2Sync)
+			{
+				writeStyle2Element(*pStyle, *pStyle2Sync, pElement);
+			}
+		}
+	}
+
+	bool isSaved = _pXmlUserStylerDoc->SaveFile();
+	if (!isSaved)
+	{
+		auto savePath = _themeSwitcher.getSavePathFrom(_pXmlUserStylerDoc->Value());
+		if (!savePath.empty())
+		{
+			_pXmlUserStylerDoc->SaveFile(savePath.c_str());
+			return savePath;
+		}
+	}
+	return L"";
 }
 
 bool NppParameters::insertTabInfo(const wchar_t* langName, int tabInfo, bool backspaceUnindent)
@@ -2342,17 +2490,96 @@ bool NppParameters::loadSession(Session& session, const wchar_t* sessionFileName
 // Context menu
 bool NppParameters::getContextMenuFromXmlTree(HMENU mainMenuHandle, HMENU pluginsMenu, bool isEditCM)
 {
-    (void)mainMenuHandle;
-    (void)pluginsMenu;
-    (void)isEditCM;
-    return true;
+	(void)mainMenuHandle;
+	(void)pluginsMenu;
+
+	NppXml::Document pXmlContextMenuDoc = isEditCM ? _pXmlContextMenuDoc : _pXmlTabContextMenuDoc;
+	std::string cmName = isEditCM ? "ScintillaContextMenu" : "TabContextMenu";
+
+	if (!pXmlContextMenuDoc)
+		return false;
+
+	NppXml::Element root = NppXml::firstChildElement(pXmlContextMenuDoc, "NotepadPlus");
+	if (!root)
+		return false;
+
+	WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+
+	NppXml::Element contextMenuRoot = NppXml::firstChildElement(root, cmName.c_str());
+	if (!contextMenuRoot)
+		return false;
+
+	std::vector<MenuItemUnit>& contextMenuItems = isEditCM ? _contextMenuItems : _tabContextMenuItems;
+
+	// Build a lookup map from ShortcutManager: category+name -> commandId
+	using SM = QtControls::ShortcutManager;
+	SM* sm = SM::getInstance();
+	QMap<QString, int> menuNameToId;
+	if (sm)
+	{
+		QList<SM::CommandInfo> allCmds = sm->getAllCommands();
+		for (const auto& cmd : allCmds)
+		{
+			if (!cmd.category.isEmpty() && !cmd.name.isEmpty())
+			{
+				QString cleanName = cmd.name;
+				cleanName.remove(QLatin1Char('&'));
+				int tabIdx = cleanName.indexOf(QLatin1Char('\t'));
+				if (tabIdx >= 0)
+					cleanName = cleanName.left(tabIdx);
+				cleanName = cleanName.trimmed();
+
+				QString key = cmd.category.toLower() + QLatin1String("|") + cleanName.toLower();
+				menuNameToId[key] = cmd.commandId;
+			}
+		}
+	}
+
+	for (NppXml::Element childNode = NppXml::firstChildElement(contextMenuRoot, "Item");
+		childNode;
+		childNode = NppXml::nextSiblingElement(childNode, "Item"))
+	{
+		const char* folderNameA = NppXml::attribute(childNode, "FolderName");
+		const char* displayAsA = NppXml::attribute(childNode, "ItemNameAs");
+
+		std::wstring folderName = folderNameA ? wmc.char2wchar(folderNameA, SC_CP_UTF8) : L"";
+		std::wstring displayAs = displayAsA ? wmc.char2wchar(displayAsA, SC_CP_UTF8) : L"";
+
+		const int id = NppXml::intAttribute(childNode, "id", -1);
+		if (id >= 0)
+		{
+			contextMenuItems.push_back(MenuItemUnit(id, displayAs.c_str(), folderName.c_str()));
+		}
+		else
+		{
+			const char* menuEntryNameA = NppXml::attribute(childNode, "MenuEntryName");
+			const char* menuItemNameA = NppXml::attribute(childNode, "MenuItemName");
+
+			if (menuEntryNameA && menuItemNameA)
+			{
+				QString entryName = QString::fromUtf8(menuEntryNameA).trimmed();
+				QString itemName = QString::fromUtf8(menuItemNameA).trimmed();
+				QString key = entryName.toLower() + QLatin1String("|") + itemName.toLower();
+
+				auto it = menuNameToId.find(key);
+				if (it != menuNameToId.end())
+				{
+					std::wstring itemNameW = displayAs.empty()
+						? wmc.char2wchar(menuItemNameA, SC_CP_UTF8)
+						: displayAs;
+					contextMenuItems.push_back(MenuItemUnit(it.value(), itemNameW.c_str(), folderName.c_str()));
+				}
+			}
+		}
+	}
+
+	return true;
 }
 
 bool NppParameters::reloadContextMenuFromXmlTree(HMENU mainMenuHandle, HMENU pluginsMenu)
 {
-    (void)mainMenuHandle;
-    (void)pluginsMenu;
-    return true;
+	_contextMenuItems.clear();
+	return getContextMenuFromXmlTree(mainMenuHandle, pluginsMenu);
 }
 
 // Transparency - no-op on Linux (handled by Qt/window manager)

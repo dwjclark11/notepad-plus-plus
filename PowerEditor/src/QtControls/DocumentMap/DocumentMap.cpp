@@ -292,7 +292,7 @@ void DocumentMap::connectSignals()
         connect(_viewZone, &ViewZoneWidget::zoneClicked,
                 this, &DocumentMap::onMapClicked);
         connect(_viewZone, &ViewZoneWidget::zoneDragged,
-                this, &DocumentMap::onMapScrolled);
+                this, &DocumentMap::onMapClicked);
     }
 }
 
@@ -349,50 +349,60 @@ void DocumentMap::reloadMap()
 
 void DocumentMap::showInMapTemporarily(Buffer* buf2show, ScintillaEditView* fromEditView)
 {
-#ifndef NPP_LINUX
-    // Windows implementation uses Buffer methods not available in QtCore::Buffer
-    if (_mapView && fromEditView && buf2show) {
-        _mapView->execute(SCI_SETDOCPOINTER, 0,
-                         reinterpret_cast<sptr_t>(buf2show->getDocument()));
-        _mapView->setCurrentBuffer(buf2show);
+	if (!_mapView || !fromEditView || !buf2show) return;
 
-        // Sync folding state
-        const std::vector<size_t>& lineStateVector = buf2show->getHeaderLineState(fromEditView);
-        _mapView->syncFoldStateWith(lineStateVector);
+	_mapView->execute(SCI_SETDOCPOINTER, 0,
+	                 reinterpret_cast<sptr_t>(buf2show->getDocument()));
+	_mapView->setCurrentBuffer(buf2show);
 
-        // Handle wrapping
-        if (fromEditView->isWrap() && needToRecomputeWith(fromEditView)) {
-            wrapMap(fromEditView);
-        }
+	// Sync folding state
+	const std::vector<size_t>& lineStateVector = buf2show->getHeaderLineState(fromEditView);
+	_mapView->syncFoldStateWith(lineStateVector);
 
-        // Restore map position if available
-        MapPosition mp = buf2show->getMapPosition();
-        if (mp.isValid()) {
-            scrollMapWith(mp);
-        }
+	// Handle wrapping
+	if (fromEditView->isWrap() && needToRecomputeWith(fromEditView))
+	{
+		wrapMap(fromEditView);
+	}
 
-        _isTemporarilyShowing = true;
-    }
+	// Restore map position if available
+#ifdef NPP_LINUX
+	// Convert from QtCore::MapPosition to ::MapPosition
+	auto qtMapPos = buf2show->getMapPosition();
+	if (qtMapPos.isValid())
+	{
+		MapPosition mp;
+		mp._firstVisibleDisplayLine = qtMapPos.firstVisibleDisplayLine;
+		mp._firstVisibleDocLine = qtMapPos.firstVisibleDocLine;
+		mp._lastVisibleDocLine = qtMapPos.lastVisibleDocLine;
+		mp._nbLine = qtMapPos.nbLine;
+		mp._higherPos = qtMapPos.higherPos;
+		mp._width = qtMapPos.width;
+		mp._height = qtMapPos.height;
+		mp._isWrap = qtMapPos.isWrap;
+		scrollMapWith(mp);
+	}
 #else
-    // TODO: Qt implementation
-    (void)buf2show;
-    (void)fromEditView;
+	MapPosition mp = buf2show->getMapPosition();
+	if (mp.isValid())
+	{
+		scrollMapWith(mp);
+	}
 #endif
+
+	_isTemporarilyShowing = true;
 }
 
 void DocumentMap::setSyntaxHighlighting()
 {
-#ifndef NPP_LINUX
-    if (_mapView) {
-        Buffer* buf = _mapView->getCurrentBuffer();
-        if (buf) {
-            _mapView->defineDocType(buf->getLangType());
-            _mapView->showMargin(ScintillaEditView::_SC_MARGE_FOLDER, false);
-        }
-    }
-#else
-    // TODO: Qt implementation
-#endif
+	if (!_mapView) return;
+
+	Buffer* buf = _mapView->getCurrentBuffer();
+	if (buf)
+	{
+		_mapView->defineDocType(buf->getLangType());
+		_mapView->showMargin(ScintillaEditView::_SC_MARGE_FOLDER, false);
+	}
 }
 
 bool DocumentMap::needToRecomputeWith(const ScintillaEditView* editView)
@@ -615,12 +625,16 @@ void DocumentMap::redrawMap(bool forceUpdate)
 
 void DocumentMap::updateMap()
 {
-    if (_updating) return;
-    _updating = true;
+	if (_updating) return;
+	_updating = true;
 
-    scrollMap();
+	if (_ppEditView && *_ppEditView && (*_ppEditView)->isWrap() && needToRecomputeWith())
+	{
+		wrapMap();
+	}
+	scrollMap();
 
-    _updating = false;
+	_updating = false;
 }
 
 void DocumentMap::setZoomLevel(int level)
@@ -671,9 +685,11 @@ void DocumentMap::onZoomChanged(int value)
 
 void DocumentMap::onMainEditorScrolled()
 {
-    if (!_updating) {
-        updateMap();
-    }
+	if (_updating) return;
+	if (!isVisible()) return;
+	if (_isTemporarilyShowing) return;
+
+	updateMap();
 }
 
 void DocumentMap::onMainEditorChanged()

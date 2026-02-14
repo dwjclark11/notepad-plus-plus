@@ -346,6 +346,10 @@ public:
 		return _pEditView;
 	}
 
+	ScintillaEditView** getEditViewPtr() {
+		return &_pEditView;
+	}
+
 	ScintillaEditView* getMainEditView()	{
 		return &_mainEditView;
 	}
@@ -360,6 +364,10 @@ public:
 
 	AutoCompletion* getAutoCompleteSub() {
 		return &_autoCompleteSub;
+	}
+
+	PluginsManager& getPluginsManager() {
+		return _pluginsManager;
 	}
 
 	void launchDocumentBackupTask();

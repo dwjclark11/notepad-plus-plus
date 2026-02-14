@@ -35,6 +35,7 @@
 #include "Platform/Clipboard.h"
 #include "Platform/FileWatcher.h"
 #include "menuCmdID.h"
+#include "MISC/PluginsManager/Notepad_plus_msgs.h"
 
 // Panel headers needed for destructor
 #include "ClipboardHistory/ClipboardHistoryPanel.h"
@@ -701,11 +702,29 @@ bool Notepad_plus::fileDelete(BufferID id)
     if (ret != QMessageBox::Yes)
         return false;
 
-    // Close the buffer first
-    fileClose(bufferID);
+    // Notify plugins that file is about to be deleted
+    SCNotification scnN{};
+    scnN.nmhdr.hwndFrom = nullptr;
+    scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(bufferID);
+    scnN.nmhdr.code = NPPN_FILEBEFOREDELETE;
+    _pluginsManager.notify(&scnN);
 
-    // Delete the file
-    return QFile::remove(filePath);
+    // Delete the file first, then close the buffer
+    bool deleted = QFile::remove(filePath);
+    if (!deleted)
+    {
+        scnN.nmhdr.code = NPPN_FILEDELETEFAILED;
+        _pluginsManager.notify(&scnN);
+        return false;
+    }
+
+    // Notify plugins that file has been deleted
+    scnN.nmhdr.code = NPPN_FILEDELETED;
+    _pluginsManager.notify(&scnN);
+
+    // Close the buffer after deletion
+    fileClose(bufferID);
+    return true;
 }
 
 bool Notepad_plus::fileRename(BufferID id)
@@ -733,14 +752,28 @@ bool Notepad_plus::fileRename(BufferID id)
     if (!ok || newName.isEmpty() || newName == oldName)
         return false;
 
+    // Notify plugins that file is about to be renamed
+    SCNotification scnN{};
+    scnN.nmhdr.hwndFrom = nullptr;
+    scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(bufferID);
+    scnN.nmhdr.code = NPPN_FILEBEFORERENAME;
+    _pluginsManager.notify(&scnN);
+
     QString newPath = QFileInfo(oldPath).path() + "/" + newName;
 
     if (QFile::rename(oldPath, newPath))
     {
         buf->setFileName(newPath.toStdWString().c_str());
+
+        // Notify plugins that file has been renamed
+        scnN.nmhdr.code = NPPN_FILERENAMED;
+        _pluginsManager.notify(&scnN);
         return true;
     }
 
+    // Notify plugins that rename was cancelled/failed
+    scnN.nmhdr.code = NPPN_FILERENAMECANCEL;
+    _pluginsManager.notify(&scnN);
     return false;
 }
 
@@ -1139,6 +1172,13 @@ void Notepad_plus::notifyBufferChanged(Buffer* buffer, int mask)
 
             case QtCore::DOC_DELETED:
             {
+                // Notify plugins about file deletion
+                SCNotification scnN{};
+                scnN.nmhdr.hwndFrom = nullptr;
+                scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(buffer->getID());
+                scnN.nmhdr.code = NPPN_FILEDELETED;
+                _pluginsManager.notify(&scnN);
+
                 // File deleted externally
                 QString fileName = QString::fromStdWString(buffer->getFullPathName());
                 int ret = QMessageBox::question(
@@ -1155,6 +1195,31 @@ void Notepad_plus::notifyBufferChanged(Buffer* buffer, int mask)
                 break;
             }
         }
+    }
+
+    // Notify plugins about read-only state changes
+    if (mask & BufferChangeReadonly)
+    {
+        SCNotification scnN{};
+        scnN.nmhdr.code = NPPN_READONLYCHANGED;
+        scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(buffer->getID());
+        int readonlyFlags = 0;
+        if (buffer->isFileReadOnly() || buffer->isUserReadOnly())
+            readonlyFlags |= DOCSTATUS_READONLY;
+        if (buffer->isDirty())
+            readonlyFlags |= DOCSTATUS_BUFFERDIRTY;
+        scnN.nmhdr.idFrom = static_cast<uptr_t>(readonlyFlags);
+        _pluginsManager.notify(&scnN);
+    }
+
+    // Notify plugins about language changes
+    if (mask & BufferChangeLanguage)
+    {
+        SCNotification scnN{};
+        scnN.nmhdr.hwndFrom = nullptr;
+        scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(buffer->getID());
+        scnN.nmhdr.code = NPPN_LANGCHANGED;
+        _pluginsManager.notify(&scnN);
     }
 }
 
@@ -1319,18 +1384,21 @@ bool Notepad_plus::doSave(BufferID id, const wchar_t* filename, bool isCopy)
     }
 
     // Notify plugins that current file is about to be saved
+    SCNotification scnN{};
+    scnN.nmhdr.hwndFrom = nullptr;
+    scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(id);
     if (!isCopy)
     {
-        // TODO: Plugin notification
-        // scnN.nmhdr.code = NPPN_FILEBEFORESAVE;
+        scnN.nmhdr.code = NPPN_FILEBEFORESAVE;
+        _pluginsManager.notify(&scnN);
     }
 
     SavingStatus res = MainFileManager.saveBuffer(id, filename, isCopy);
 
     if (!isCopy)
     {
-        // TODO: Plugin notification
-        // scnN.nmhdr.code = NPPN_FILESAVED;
+        scnN.nmhdr.code = NPPN_FILESAVED;
+        _pluginsManager.notify(&scnN);
     }
 
     if (res == SavingStatus::FullReadOnlySavingForbidden)
@@ -1405,8 +1473,12 @@ void Notepad_plus::doClose(BufferID id, int whichOne, bool doDeleteBackup)
     if (!buf)
         return;
 
-    // TODO: Notify plugins that current file is about to be closed
-    // scnN.nmhdr.code = NPPN_FILEBEFORECLOSE;
+    // Notify plugins that current file is about to be closed
+    SCNotification scnN{};
+    scnN.nmhdr.hwndFrom = nullptr;
+    scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(id);
+    scnN.nmhdr.code = NPPN_FILEBEFORECLOSE;
+    _pluginsManager.notify(&scnN);
 
     // Get file path for recent files
     std::wstring fileFullPath;
@@ -1442,8 +1514,8 @@ void Notepad_plus::doClose(BufferID id, int whichOne, bool doDeleteBackup)
     // Notify plugins that current file is closed
     if (isBufRemoved)
     {
-        // TODO: Plugin notification
-        // scnN.nmhdr.code = NPPN_FILECLOSED;
+        scnN.nmhdr.code = NPPN_FILECLOSED;
+        _pluginsManager.notify(&scnN);
 
         // Add to recent files if file was removed and exists
         if (!fileFullPath.empty())
@@ -1482,6 +1554,13 @@ BufferID Notepad_plus::doOpen(const std::wstring& fileName, bool isRecursive, bo
         return BUFFER_INVALID;
     }
 
+    // Notify plugins that a file is about to be loaded
+    SCNotification scnN{};
+    scnN.nmhdr.hwndFrom = nullptr;
+    scnN.nmhdr.idFrom = 0;
+    scnN.nmhdr.code = NPPN_FILEBEFORELOAD;
+    _pluginsManager.notify(&scnN);
+
     // Load the file
     BufferID bufferID = MainFileManager.loadFile(fileName.c_str(), static_cast<Document>(NULL), encoding);
 
@@ -1493,9 +1572,31 @@ BufferID Notepad_plus::doOpen(const std::wstring& fileName, bool isRecursive, bo
             if (isReadOnly)
                 buf->setFileReadOnly(true);
 
+            // Notify plugins before opening
+            scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(bufferID);
+            scnN.nmhdr.code = NPPN_FILEBEFOREOPEN;
+            _pluginsManager.notify(&scnN);
+
             loadBufferIntoView(bufferID, currentView());
             switchToFile(bufferID);
+
+            // Notify plugins that file has been opened
+            scnN.nmhdr.code = NPPN_FILEOPENED;
+            _pluginsManager.notify(&scnN);
+
+            // Handle backup file (snapshot dirty file)
+            if (backupFileName && backupFileName[0] != '\0')
+            {
+                scnN.nmhdr.code = NPPN_SNAPSHOTDIRTYFILELOADED;
+                _pluginsManager.notify(&scnN);
+            }
         }
+    }
+    else
+    {
+        // Notify plugins that file loading failed
+        scnN.nmhdr.code = NPPN_FILELOADFAILED;
+        _pluginsManager.notify(&scnN);
     }
 
     return bufferID;
@@ -1754,6 +1855,13 @@ bool Notepad_plus::switchToFile(BufferID id)
         std::cout << "[Notepad_plus::switchToFile] Calling _pEditView->activateBuffer..." << std::endl;
         _pEditView->activateBuffer(id, false);
         std::cout << "[Notepad_plus::switchToFile] _pEditView->activateBuffer completed" << std::endl;
+
+        // Notify plugins that buffer has been activated
+        SCNotification scnN{};
+        scnN.nmhdr.hwndFrom = nullptr;
+        scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(id);
+        scnN.nmhdr.code = NPPN_BUFFERACTIVATED;
+        _pluginsManager.notify(&scnN);
     } else {
         std::cerr << "[Notepad_plus::switchToFile] WARNING: _pDocTab->activateBuffer returned false" << std::endl;
     }

@@ -725,6 +725,8 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtControls/PluginsAdmin/PluginsAdminDlg.cpp
 		./QtControls/PluginsAdmin/PluginViewList.cpp
 		./QtControls/PluginsAdmin/PluginData.cpp
+		./QtControls/ContextMenu/ContextMenu.cpp
+		./QtControls/WindowsDlg/WindowsDlg.cpp
 		./QtControls/Notepad_plus.cpp
 	)
 
@@ -853,6 +855,7 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtControls/StatusBar
 		./QtControls/ShortcutManager
 		./QtControls/PluginsAdmin
+		./QtControls/ContextMenu
 		./MISC
 		./MISC/Common
 		./MISC/PluginsManager
@@ -1003,6 +1006,7 @@ IF(UNIX AND NOT APPLE)
 		./QtControls/FindCharsInRange
 		./QtControls/ColumnEditor
 		./QtControls/VerticalFileSwitcher
+		./QtControls/WindowsDlg
 		./WinControls
 		./WinControls/AboutDlg
 		./WinControls/AnsiCharPanel

@@ -415,8 +415,7 @@ private:
     QAction* _utf16leAction = nullptr;
     QMap<int, QAction*> _charsetActions;  // cmdId -> QAction*
 
-    // Plugin manager
-    PluginsManager _pluginsManager;
+    // Plugin admin dialog (uses core Notepad_plus::_pluginsManager via accessor)
     PluginsAdminDlg* _pluginsAdminDlg = nullptr;
 };
 

@@ -59,6 +59,7 @@
 #include "Notepad_plus.h"
 #include "NppDarkMode.h"
 #include "localization.h"
+#include "MISC/PluginsManager/Notepad_plus_msgs.h"
 
 // ============================================================================
 // Command Line Parameter Types (mirroring Windows version)
@@ -518,9 +519,8 @@ public:
         std::cout << "[NotepadPlusPlusApp::init] NppParameters initialized" << std::endl;
 
         // Apply command line settings to NppParameters
-        // TODO: _pluginsManager is private - need to use public method or friend class
-        // if (cmdLineParams->_isNoPlugin)
-        //     _notepad_plus_plus_core._pluginsManager.disable();
+        if (cmdLineParams->_isNoPlugin)
+            _notepad_plus_plus_core.getPluginsManager().disable();
 
         nppGUI._isCmdlineNosessionActivated = cmdLineParams->_isNoSession;
         nppGUI._isFullReadOnly = cmdLineParams->_isFullReadOnly;
@@ -534,6 +534,16 @@ public:
             return false;
         }
         std::cout << "[NotepadPlusPlusApp::init] MainWindow initialized successfully!" << std::endl;
+
+        // Notify plugins of command line plugin message (if any)
+        if (!cmdLineParams->_pluginMessage.empty())
+        {
+            SCNotification scnN{};
+            scnN.nmhdr.code = NPPN_CMDLINEPLUGINMSG;
+            scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(this);
+            scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(cmdLineParams->_pluginMessage.c_str());
+            _notepad_plus_plus_core.getPluginsManager().notify(&scnN);
+        }
 
         // Initialize the scratch editor for document creation
         // This must be done before any buffers are created

@@ -254,6 +254,15 @@ bool MainWindow::init(Notepad_plus* pNotepad_plus)
     initPlugins();
     std::cout << "[MainWindow::init] initPlugins done." << std::endl;
 
+    // Notify plugins that Notepad++ is ready
+    {
+        SCNotification scnN{};
+        scnN.nmhdr.code = NPPN_READY;
+        scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(this);
+        scnN.nmhdr.idFrom = 0;
+        _pNotepad_plus->getPluginsManager().notify(&scnN);
+    }
+
     std::cout << "[MainWindow::init] Initialization complete!" << std::endl;
     return true;
 }
@@ -487,7 +496,14 @@ void MainWindow::createDockWindows()
 
     // Create Document Map panel
     _documentMap = new DocumentMap(this);
-    _documentMap->init(nullptr);
+    if (_pNotepad_plus)
+    {
+        _documentMap->init(_pNotepad_plus->getEditViewPtr());
+    }
+    else
+    {
+        _documentMap->init(nullptr);
+    }
     _dockingManager->addPanel("documentMap", _documentMap->getWidget(),
                                DockingManager::DockArea::Right, tr("Document Map"));
 
@@ -502,6 +518,33 @@ void MainWindow::createDockWindows()
     _fileBrowser->init(nullptr);
     _dockingManager->addPanel("fileBrowser", _fileBrowser->getWidget(),
                                DockingManager::DockArea::Left, tr("Folder as Workspace"));
+
+    // Connect Scintilla painted() signals to Document Map scroll sync
+    if (_documentMap && _pNotepad_plus)
+    {
+        ScintillaEditView* mainEditView = _pNotepad_plus->getMainEditView();
+        ScintillaEditView* subEditView = _pNotepad_plus->getSubEditView();
+
+        if (mainEditView && mainEditView->getWidget())
+        {
+            auto* mainSci = qobject_cast<ScintillaEditBase*>(mainEditView->getWidget());
+            if (mainSci)
+            {
+                connect(mainSci, &ScintillaEditBase::painted,
+                        _documentMap, &DocumentMap::onMainEditorScrolled);
+            }
+        }
+
+        if (subEditView && subEditView->getWidget())
+        {
+            auto* subSci = qobject_cast<ScintillaEditBase*>(subEditView->getWidget());
+            if (subSci)
+            {
+                connect(subSci, &ScintillaEditBase::painted,
+                        _documentMap, &DocumentMap::onMainEditorScrolled);
+            }
+        }
+    }
 
     // Initially hide all panels
     _dockingManager->hidePanel("functionList");
@@ -1897,12 +1940,29 @@ void MainWindow::closeEvent(QCloseEvent* event)
     // Check for unsaved documents - prompts user to save/discard/cancel
     if (_pNotepad_plus)
     {
+        PluginsManager& pluginsManager = _pNotepad_plus->getPluginsManager();
+
+        // Notify plugins that shutdown is about to begin
+        SCNotification scnN{};
+        scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(this);
+        scnN.nmhdr.idFrom = 0;
+        scnN.nmhdr.code = NPPN_BEFORESHUTDOWN;
+        pluginsManager.notify(&scnN);
+
         bool isSnapshotMode = NppParameters::getInstance().getNppGUI().isSnapshotMode();
         if (!_pNotepad_plus->fileCloseAll(false, isSnapshotMode))
         {
+            // Notify plugins that shutdown was cancelled
+            scnN.nmhdr.code = NPPN_CANCELSHUTDOWN;
+            pluginsManager.notify(&scnN);
+
             event->ignore();
             return;
         }
+
+        // Notify plugins of final shutdown
+        scnN.nmhdr.code = NPPN_SHUTDOWN;
+        pluginsManager.notify(&scnN);
     }
 
     saveSettings();
@@ -2809,6 +2869,16 @@ void MainWindow::onSettingsStyleConfigurator()
         _wordStyleDlg->init();
     }
     _wordStyleDlg->doDialog();
+
+    // Notify plugins that word styles have been updated
+    if (_pNotepad_plus)
+    {
+        SCNotification scnN{};
+        scnN.nmhdr.code = NPPN_WORDSTYLESUPDATED;
+        scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(this);
+        scnN.nmhdr.idFrom = 0;
+        _pNotepad_plus->getPluginsManager().notify(&scnN);
+    }
 }
 
 void MainWindow::onSettingsShortcutMapper()
@@ -2824,7 +2894,7 @@ void MainWindow::onSettingsPluginManager()
     if (!_pluginsAdminDlg) {
         _pluginsAdminDlg = new PluginsAdminDlg(this);
         _pluginsAdminDlg->create(IDD_PLUGINSADMIN_DLG, false);
-        _pluginsAdminDlg->setPluginsManager(&_pluginsManager);
+        _pluginsAdminDlg->setPluginsManager(&_pNotepad_plus->getPluginsManager());
     }
     _pluginsAdminDlg->doDialog(false);
 }
@@ -2850,20 +2920,27 @@ void MainWindow::initPlugins()
     nppData._scintillaSecondHandle = reinterpret_cast<HWND>(subView ? subView->getHSelf() : nullptr);
 
     // Initialize plugin manager
-    _pluginsManager.init(nppData);
+    _pNotepad_plus->getPluginsManager().init(nppData);
 
     // Load plugins from the plugins directory
     NppParameters& nppParam = NppParameters::getInstance();
     std::wstring pluginDir = nppParam.getPluginRootDir();
 
     // Load plugins (without plugin admin list for now)
-    _pluginsManager.loadPlugins(pluginDir.c_str(), nullptr, nullptr);
+    _pNotepad_plus->getPluginsManager().loadPlugins(pluginDir.c_str(), nullptr, nullptr);
 
     // Initialize plugin menu - this registers commands but doesn't create Qt menus
-    _pluginsManager.initMenu(nullptr, false);
+    _pNotepad_plus->getPluginsManager().initMenu(nullptr, false);
+
+    // Notify plugins that toolbar can be modified
+    SCNotification scnN{};
+    scnN.nmhdr.code = NPPN_TBMODIFICATION;
+    scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(this);
+    scnN.nmhdr.idFrom = 0;
+    _pNotepad_plus->getPluginsManager().notify(&scnN);
 
     // Create Qt plugins menu if plugins were loaded
-    if (_pluginsManager.hasPlugins()) {
+    if (_pNotepad_plus->getPluginsManager().hasPlugins()) {
         populatePluginsMenu();
     }
 }
@@ -2892,9 +2969,9 @@ void MainWindow::populatePluginsMenu()
     _pluginsMenu->addSeparator();
 
     // Add plugin commands
-    size_t pluginCount = _pluginsManager.getPluginCount();
+    size_t pluginCount = _pNotepad_plus->getPluginsManager().getPluginCount();
     for (size_t i = 0; i < pluginCount; ++i) {
-        const PluginInfo* pluginInfo = _pluginsManager.getPluginInfo(i);
+        const PluginInfo* pluginInfo = _pNotepad_plus->getPluginsManager().getPluginInfo(i);
         if (!pluginInfo) continue;
 
         // Create submenu for this plugin
@@ -2954,7 +3031,7 @@ void MainWindow::onPluginCommandTriggered()
     // The command ID is ID_PLUGINS_CMD + index into _pluginsCommands
     int commandIndex = cmdID - ID_PLUGINS_CMD;
     if (commandIndex >= 0) {
-        _pluginsManager.runPluginCommand(static_cast<size_t>(commandIndex));
+        _pNotepad_plus->getPluginsManager().runPluginCommand(static_cast<size_t>(commandIndex));
     }
 }
 

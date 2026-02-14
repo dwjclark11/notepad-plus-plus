@@ -27,6 +27,7 @@ class QRadioButton;
 class QPlainTextEdit;
 class QSpinBox;
 class QColorDialog;
+class ScintillaEditBase;
 
 // UDL constants from SciLexer.h
 #ifndef SCE_UDL_VERSION_MAJOR
@@ -416,6 +417,17 @@ public:
     bool isDocked() const { return _isDocked; }
     void setDockStatus(bool docked) { _isDocked = docked; }
 
+    // Apply current UDL styles to the embedded Scintilla preview
+    void applyUDLStylesToPreview();
+
+signals:
+    void dockRequested(bool isDocked);
+    void languageMenuUpdateRequested();
+    void languageAdded(const QString& langName);
+    void languageRemoved(const QString& langName);
+    void languageRenamed(const QString& oldName, const QString& newName);
+
+public:
     // Reload language combo from parameters
     void reloadLangCombo();
 
@@ -561,6 +573,9 @@ private:
 
     // Style buttons array for easy access
     std::vector<QPushButton*> _styleButtons;
+
+    // Scintilla-based preview editor
+    ScintillaEditBase* _previewEditor = nullptr;
 };
 
 } // namespace QtControls

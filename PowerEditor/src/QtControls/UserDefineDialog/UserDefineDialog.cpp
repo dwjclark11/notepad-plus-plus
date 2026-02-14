@@ -32,7 +32,9 @@
 // For NppParameters integration
 #include "../../Parameters.h"
 #include "../../ScintillaComponent/ScintillaEditView.h"
+#include "ScintillaEditBase.h"
 #include <SciLexer.h>
+#include <Scintilla.h>
 
 #include <cwchar>
 #include <algorithm>
@@ -890,6 +892,36 @@ void UserDefineDialog::setupUI()
     createDelimitersTab();
     createFolderTab();
 
+    // Scintilla-based preview editor
+    auto* previewGroup = new QGroupBox(tr("Preview"), dialog);
+    auto* previewLayout = new QVBoxLayout(previewGroup);
+    _previewEditor = new ScintillaEditBase(previewGroup);
+    _previewEditor->setMinimumHeight(120);
+    _previewEditor->setMaximumHeight(200);
+
+    // Configure as read-only preview
+    _previewEditor->send(SCI_SETREADONLY, 0);
+    _previewEditor->send(SCI_SETMARGINWIDTHN, 0, 0);
+    _previewEditor->send(SCI_SETMARGINWIDTHN, 1, 0);
+    _previewEditor->send(SCI_SETMARGINWIDTHN, 2, 0);
+    _previewEditor->send(SCI_SETWRAPMODE, SC_WRAP_WORD);
+    _previewEditor->send(SCI_SETCARETWIDTH, 0);
+
+    // Load sample preview text
+    const char* sampleText =
+        "// Line comment example\n"
+        "/* Block comment example */\n"
+        "keyword1 keyword2 keyword3\n"
+        "number: 42 3.14 0xFF\n"
+        "\"string delimiter\" 'another'\n"
+        "operators: + - * / = < >\n"
+        "identifier normal_text\n";
+    _previewEditor->send(SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(sampleText));
+    _previewEditor->send(SCI_SETREADONLY, 1);
+
+    previewLayout->addWidget(_previewEditor);
+    mainLayout->addWidget(previewGroup);
+
     // Import/Export buttons
     auto* importExportLayout = new QHBoxLayout();
     _importButton = new QPushButton(tr("Import..."), dialog);
@@ -1518,7 +1550,7 @@ void UserDefineDialog::changeStyle()
     _isDocked = !_isDocked;
     _dockButton->setText(_isDocked ? tr("Undock") : tr("Dock"));
 
-    // TODO: Emit signal or call parent to handle docking
+    emit dockRequested(_isDocked);
 }
 
 void UserDefineDialog::setTabName(int index, const wchar_t* name)
@@ -1662,6 +1694,9 @@ void UserDefineDialog::onNewLangClicked()
             // Add to combobox
             _langCombo->addItem(name);
             _langCombo->setCurrentIndex(_langCombo->count() - 1);
+
+            emit languageAdded(name);
+            emit languageMenuUpdateRequested();
         }
     }
 }
@@ -1685,8 +1720,8 @@ void UserDefineDialog::onRemoveLangClicked()
         _langCombo->removeItem(currentIndex);
         _langCombo->setCurrentIndex(0);
 
-        // Notify parent window to update menu
-        // TODO: Emit signal to update language menu
+        emit languageRemoved(langName);
+        emit languageMenuUpdateRequested();
     }
 }
 
@@ -1721,7 +1756,8 @@ void UserDefineDialog::onRenameLangClicked()
             // Update combobox
             _langCombo->setItemText(currentIndex, newName);
 
-            // TODO: Update language menu
+            emit languageRenamed(currentName, newName);
+            emit languageMenuUpdateRequested();
         }
     }
 }
@@ -1762,6 +1798,9 @@ void UserDefineDialog::onSaveAsClicked()
             // Add to combobox
             _langCombo->addItem(name);
             _langCombo->setCurrentIndex(_langCombo->count() - 1);
+
+            emit languageAdded(name);
+            emit languageMenuUpdateRequested();
         }
     }
 }
@@ -2085,10 +2124,87 @@ void UserDefineDialog::saveLanguage()
 
 void UserDefineDialog::updatePreview()
 {
-    // TODO: Update Scintilla preview if available
-    if (_ppEditView && *_ppEditView) {
-        // Trigger style update in Scintilla
+    applyUDLStylesToPreview();
+
+    if (_ppEditView && *_ppEditView)
+    {
+        // Also trigger style update in the main Scintilla editor
     }
+}
+
+static COLORREF qColorToColorRef(const QColor& color)
+{
+    return static_cast<COLORREF>(color.red() | (color.green() << 8) | (color.blue() << 16));
+}
+
+void UserDefineDialog::applyUDLStylesToPreview()
+{
+    if (!_previewEditor || !_pUserLang)
+        return;
+
+    // Apply default style first
+    auto* defaultStyle = _pUserLang->getStyler(SCE_USER_STYLE_DEFAULT);
+    if (defaultStyle)
+    {
+        if (defaultStyle->_colorStyle & COLORSTYLE_FOREGROUND)
+            _previewEditor->send(SCI_STYLESETFORE, STYLE_DEFAULT, qColorToColorRef(defaultStyle->_fgColor));
+        if (defaultStyle->_colorStyle & COLORSTYLE_BACKGROUND)
+            _previewEditor->send(SCI_STYLESETBACK, STYLE_DEFAULT, qColorToColorRef(defaultStyle->_bgColor));
+
+        _previewEditor->send(SCI_STYLESETBOLD, STYLE_DEFAULT,
+            (defaultStyle->_fontStyle & FONTSTYLE_BOLD) ? 1 : 0);
+        _previewEditor->send(SCI_STYLESETITALIC, STYLE_DEFAULT,
+            (defaultStyle->_fontStyle & FONTSTYLE_ITALIC) ? 1 : 0);
+        _previewEditor->send(SCI_STYLESETUNDERLINE, STYLE_DEFAULT,
+            (defaultStyle->_fontStyle & FONTSTYLE_UNDERLINE) ? 1 : 0);
+
+        if (defaultStyle->_fontSize > 0)
+            _previewEditor->send(SCI_STYLESETSIZE, STYLE_DEFAULT, defaultStyle->_fontSize);
+
+        if (!defaultStyle->_fontName.isEmpty())
+        {
+            QByteArray fontNameUtf8 = defaultStyle->_fontName.toUtf8();
+            _previewEditor->send(SCI_STYLESETFONT, STYLE_DEFAULT,
+                reinterpret_cast<sptr_t>(fontNameUtf8.constData()));
+        }
+    }
+
+    // Clear all styles to inherit from default
+    _previewEditor->send(SCI_STYLECLEARALL);
+
+    // Apply each UDL style
+    for (int i = 0; i <= SCE_USER_STYLE_TOTAL_STYLES; ++i)
+    {
+        auto* style = _pUserLang->getStyler(i);
+        if (!style || i == SCE_USER_STYLE_DEFAULT)
+            continue;
+
+        if (style->_colorStyle & COLORSTYLE_FOREGROUND)
+            _previewEditor->send(SCI_STYLESETFORE, i, qColorToColorRef(style->_fgColor));
+        if (style->_colorStyle & COLORSTYLE_BACKGROUND)
+            _previewEditor->send(SCI_STYLESETBACK, i, qColorToColorRef(style->_bgColor));
+
+        _previewEditor->send(SCI_STYLESETBOLD, i,
+            (style->_fontStyle & FONTSTYLE_BOLD) ? 1 : 0);
+        _previewEditor->send(SCI_STYLESETITALIC, i,
+            (style->_fontStyle & FONTSTYLE_ITALIC) ? 1 : 0);
+        _previewEditor->send(SCI_STYLESETUNDERLINE, i,
+            (style->_fontStyle & FONTSTYLE_UNDERLINE) ? 1 : 0);
+
+        if (style->_fontSize > 0)
+            _previewEditor->send(SCI_STYLESETSIZE, i, style->_fontSize);
+
+        if (!style->_fontName.isEmpty())
+        {
+            QByteArray fontNameUtf8 = style->_fontName.toUtf8();
+            _previewEditor->send(SCI_STYLESETFONT, i,
+                reinterpret_cast<sptr_t>(fontNameUtf8.constData()));
+        }
+    }
+
+    // Force restyle of the entire document
+    sptr_t docLen = _previewEditor->send(SCI_GETLENGTH);
+    _previewEditor->send(SCI_COLOURISE, 0, docLen);
 }
 
 void UserDefineDialog::enableLangAndControlsBy(int index)
