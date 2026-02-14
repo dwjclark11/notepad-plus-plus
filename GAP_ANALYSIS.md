@@ -53,14 +53,14 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | Reload from disk | Implemented | **Working** | — | |
 | Rename | Implemented | **Working** | — | |
 | Delete (Recycle Bin) | Implemented | **Working** | — | |
-| Print | Full dialog + Print Now | **Stub** | P1 | `filePrint()` is TODO |
+| Print | Full dialog + Print Now | **Working** | — | QPrinter/QPrintDialog (Phase 2) |
 | Print Now (direct) | Implemented | **Not started** | P2 | |
-| Load Session | Implemented | **Stub** | P1 | TODO in Notepad_plus.cpp |
-| Save Session | Implemented | **Stub** | P1 | TODO in Notepad_plus.cpp |
+| Load Session | Implemented | **Working** | — | QXmlStreamReader session parsing (Phase 2) |
+| Save Session | Implemented | **Working** | — | QXmlStreamWriter session output (Phase 2) |
 | Restore Last Closed | Implemented | **Working** | — | |
-| Recent Files list | Implemented | **Partial** | P1 | Internal list works, no Qt menu integration |
-| Unsaved check on close | Implemented | **Missing** | P0 | `closeEvent()` does NOT check — data loss risk |
-| Drag & drop open | Implemented | **Stub** | P1 | `dropEvent()` doesn't open files |
+| Recent Files list | Implemented | **Working** | — | Dynamic Qt menu population (Phase 2) |
+| Unsaved check on close | Implemented | **Working** | — | closeEvent() calls fileCloseAll() (Phase 1) |
+| Drag & drop open | Implemented | **Working** | — | dropEvent() opens files via doOpen() (Phase 2) |
 | Open Containing Folder | Implemented | **Working** | — | |
 | Open Default Viewer | Implemented | **Working** | — | |
 | File monitoring (tail -f) | ReadDirectoryChanges | **Stub** | P2 | TODOs for start/stop monitoring |
@@ -85,12 +85,12 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | Remove empty lines | Implemented | **Not started** | P2 | |
 | Column/Block editing | Dialog implemented | **Working** | — | ColumnEditorDlg is 95% complete |
 | Column mode select | Implemented | **Working** | — | Alt+drag, beginOrEndSelect |
-| Multi-cursor editing | Implemented | **Partial** | P1 | Scintilla supports it, but Multi-Select All/Next commands not wired |
+| Multi-cursor editing | Implemented | **Working** | — | Select Next/All/Undo/Skip via Scintilla API (Phase 2) |
 | Auto-completion (function) | XML-based per-language | **Not started** | P1 | No auto-completion engine on Linux |
 | Auto-completion (word) | Implemented | **Not started** | P1 | |
 | Auto-completion (path) | Implemented | **Not started** | P2 | |
 | Function call tips | Implemented | **Not started** | P2 | |
-| Auto-close brackets | Implemented | **Not started** | P1 | |
+| Auto-close brackets | Implemented | **Working** | — | SCN_CHARADDED handler with skip-over (Phase 2) |
 | Auto-close HTML tags | Implemented | **Not started** | P2 | |
 | Auto-indent | Implemented | **Partial** | P1 | Basic indent works via Scintilla |
 | Insert date/time | Implemented | **Not started** | P3 | |
@@ -113,22 +113,22 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | Regex support | Boost regex | **Working** | — | Qt regex |
 | Wrap around | Implemented | **Working** | — | |
 | Extended mode (\n, \t) | Implemented | **Unknown** | P1 | Needs verification |
-| Replace All in Open Docs | Implemented | **Stub** | P1 | Shows "Not Implemented" |
-| Find All in Current Doc | Implemented | **Stub** | P1 | Shows "Not Implemented" |
+| Replace All in Open Docs | Implemented | **Working** | — | Iterates all open buffers (Phase 2) |
+| Find All in Current Doc | Implemented | **Working** | — | Scintilla search API (Phase 1) |
 | Find All in All Open Docs | Implemented | **Stub** | P1 | |
-| Find in Files (Ctrl+Shift+F) | Full recursive search | **Stub** | P0 | Tab UI exists, no backend |
+| Find in Files (Ctrl+Shift+F) | Full recursive search | **Working** | — | QDirIterator recursive search (Phase 1) |
 | Find in Projects | Implemented | **Not started** | P2 | |
 | Mark tab | Implemented | **Stub** | P2 | Tab exists, highlight not working |
 | Incremental search | Implemented | **Not started** | P2 | |
-| Search Results panel (F7) | Full panel with folding | **Complete stub** | P0 | FindResultDlg: 12+ stub methods |
-| Navigate search results | Implemented | **Not started** | P1 | |
+| Search Results panel (F7) | Full panel with folding | **Working** | — | QTreeWidget hierarchical results (Phase 1) |
+| Navigate search results | Implemented | **Working** | — | gotoNextFoundResult with direction (Phase 2) |
 | Go to Line | Implemented | **Working** | — | |
 | Go to Matching Brace | Implemented | **Working** | — | |
 | Find Characters in Range | Implemented | **Working** | — | FindCharsInRangeDlg is 95% |
 | Bookmarks (toggle/nav/clear) | Implemented | **Working** | — | |
 | Bookmark line operations | Cut/copy/paste/remove | **Not started** | P2 | |
 | Style tokens (5 styles) | Implemented | **Not started** | P2 | |
-| Smart Highlighting | Implemented | **Complete stub** | P1 | All 3 methods empty |
+| Smart Highlighting | Implemented | **Working** | — | Scintilla indicators, word boundary aware (Phase 2) |
 | Change history navigation | Implemented | **Not started** | P3 | |
 
 ### 4. VIEW & DISPLAY
@@ -142,9 +142,9 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | Show indent guide | Implemented | **Working** | — | |
 | Zoom in/out/restore | Implemented | **Working** | — | |
 | Code folding | Implemented | **Working** | — | Fold all, by level |
-| Full screen mode | Implemented | **Stub** | P2 | Empty function |
-| Post-It mode | Implemented | **Stub** | P2 | Empty function |
-| Distraction-free mode | Implemented | **Stub** | P2 | Empty function |
+| Full screen mode | Implemented | **Working** | — | Delegates to MainWindow (Phase 2) |
+| Post-It mode | Implemented | **Working** | — | Frameless window mode (Phase 2) |
+| Distraction-free mode | Implemented | **Working** | — | Fullscreen + hidden UI (Phase 2) |
 | Always on top | Implemented | **Stub** | P3 | |
 | Hide lines | Implemented | **Not started** | P3 | |
 | Line numbers | Implemented | **Working** | — | |
@@ -156,20 +156,20 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | Tab pinning | Implemented | **Working** | — | |
 | View in browser | 4 browsers | **Not started** | P3 | |
 | RTL/LTR text direction | Implemented | **Stub** | P3 | TODO in ScintillaEditViewQt |
-| File summary | Implemented | **Stub** | P3 | |
+| File summary | Implemented | **Working** | — | Line/word/char count via Scintilla (Phase 2) |
 
 ### 5. PANELS (Dockable)
 
 | Panel | Windows | Linux | Priority | Notes |
 |-------|---------|-------|----------|-------|
-| Document Map | Full minimap | **Partial (50%)** | P2 | UI exists, scroll sync/viewport stubs |
-| Document List | Full switcher | **Mostly done (80%)** | P1 | activateDoc/closeDoc are placeholders |
-| Function List | 40+ language parsers | **Substantial (75%)** | P1 | 5 parsers, not connected to toggle |
-| Folder as Workspace | Full file browser | **Substantial (75%)** | P2 | Open file and locate stubs |
-| Project Panels (×3) | Full tree management | **Substantial (75%)** | P2 | Not connected to main app |
+| Document Map | Full minimap | **Connected (70%)** | P2 | Toggle working, scroll sync still partial (Phase 2) |
+| Document List | Full switcher | **Connected (90%)** | — | Panel launch + toggle via DockingManager (Phase 2) |
+| Function List | 40+ language parsers | **Connected (85%)** | — | Panel launch + toggle, parses on show (Phase 2) |
+| Folder as Workspace | Full file browser | **Connected (80%)** | P2 | Toggle working, some stubs remain (Phase 2) |
+| Project Panels (×3) | Full tree management | **Connected (85%)** | — | All 3 panels launchable via menu (Phase 2) |
 | Clipboard History | Full clipboard mgmt | **Substantial (80%)** | P2 | |
 | ANSI Char Panel | Full 256-char table | **Working (95%)** | — | |
-| Search Results | Full results panel | **Complete stub (0%)** | P0 | See Search section |
+| Search Results | Full results panel | **Working** | — | QTreeWidget with navigation (Phase 1) |
 
 ### 6. ENCODING
 
@@ -201,7 +201,7 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 |---------|---------|-------|----------|-------|
 | Preferences dialog | 24 sub-pages | **16 sub-pages (67%)** | P1 | Missing: File Association, Misc, Indentation separate page |
 | Settings persistence | Registry + INI + XML | **QSettings (working)** | — | |
-| XML config parsing | Full XML load/save | **Stubs** | P0 | `feedKeyWordsParameters`, `feedGUIParameters`, `feedStylerArray`, etc. are all stubs in Parameters.cpp |
+| XML config parsing | Full XML load/save | **Working** | — | 25+ methods implemented in Parameters.cpp (Phase 1) |
 | Shortcut Mapper | 5 tabs, full editing | **Substantial (70%)** | P1 | Modify uses placeholder, delete/import/export/reset are stubs |
 | Shortcut customization | Full remap | **Partial** | P1 | Scintilla shortcuts not loaded |
 | Context menu customization | Editable XML | **Stub** | P2 | ContextMenu is empty stub |
@@ -258,7 +258,7 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 |---------|---------|-------|----------|-------|
 | Dark mode | Full custom rendering | **Qt theme-based** | — | Different approach, works via KDE integration |
 | KDE integration | N/A | **Extensive (90%)** | — | Color scheme, fonts, icons, animations |
-| Toolbar icons | Multiple icon sets | **No icons (0%)** | P0 | All icon loading stubs — text-only buttons |
+| Toolbar icons | Multiple icon sets | **Working** | — | QIcon::fromTheme() freedesktop icons (Phase 1) |
 | Dark mode color pickers | 12 customizable | **Working via Preferences** | — | |
 | Custom title bar | Win32 dark title bar | **Qt native** | — | Not needed |
 
@@ -277,42 +277,42 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 
 | Status | Count | Examples |
 |--------|-------|---------|
-| **Working** | ~65 features | Basic editing, find/replace, save, syntax highlighting, folding, bookmarks, hash tools |
-| **Partial** | ~30 features | Multi-cursor, encoding conversion, macro record, dual view, session management |
-| **Stub/UI only** | ~25 features | Find in Files, Search Results, print, file monitoring, view modes, plugin admin |
-| **Not started** | ~45 features | Auto-completion, sort lines, trim whitespace, most panels integration, plugin system, localization |
+| **Working** | ~85 features | Basic editing, find/replace, save, syntax highlighting, folding, bookmarks, hash tools, **print, sessions, drag-drop, recent files, smart highlighting, auto-close brackets, multi-cursor, Find in Files, Search Results, toolbar icons, XML config, view modes, panel toggles** |
+| **Partial** | ~20 features | Encoding conversion, macro record, dual view, auto-completion (word/function/path) |
+| **Stub/UI only** | ~15 features | File monitoring, plugin admin, context menu, some close variants |
+| **Not started** | ~40 features | Auto-completion engine, sort lines, trim whitespace, plugin system, localization |
 
 ### By Priority
 
 | Priority | Count | Key Items |
 |----------|-------|-----------|
-| **P0 — CRITICAL** | 5 | Unsaved-check-on-close, toolbar icons, Find in Files, Search Results panel, XML config parsing |
-| **P1 — HIGH** | 22 | Print, sessions, recent files menu, drag-drop, smart highlighting, auto-completion, auto-close brackets, multi-cursor commands, dual view, preferences completeness, shortcut editing |
-| **P2 — MEDIUM** | 35 | View modes, panels integration, encoding charsets, file monitoring, macro save, plugin system, localization, line sorting, UDL preview, document map, run variables |
+| **P0 — CRITICAL** | ~~5~~ **0 remaining** | ~~Unsaved-check-on-close, toolbar icons, Find in Files, Search Results panel, XML config parsing~~ All resolved in Phase 1 |
+| **P1 — HIGH** | ~~22~~ **~10 remaining** | ~~Print, sessions, recent files, drag-drop, smart highlighting, auto-close brackets, multi-cursor~~ resolved in Phase 2. Remaining: auto-completion engine, dual view, preferences completeness, shortcut editing |
+| **P2 — MEDIUM** | ~30 | ~~View modes, panels integration~~ resolved. Remaining: encoding charsets, file monitoring, macro save, plugin system, localization, line sorting, UDL preview, document map sync, run variables |
 | **P3 — LOW** | 15 | Date/time insert, paste HTML/RTF, view in browser, always-on-top, hide lines, change history |
 
 ---
 
 ## Recommended Implementation Priority
 
-### Phase 1 — Critical Fixes (Data loss prevention + basic usability)
-1. **Unsaved document check on close** — Prevent data loss
-2. **Toolbar icons** — Currently text-only, unusable for visual users
-3. **XML config parsing** — Parameters.cpp stubs prevent loading themes, shortcuts, user languages, macros from config
-4. **Find in Files backend** — Core editor feature
-5. **Search Results panel** — Required by Find in Files and Find All
+### Phase 1 — Critical Fixes (Data loss prevention + basic usability) — COMPLETED
+1. ~~**Unsaved document check on close**~~ — closeEvent() calls fileCloseAll()
+2. ~~**Toolbar icons**~~ — QIcon::fromTheme() freedesktop icons
+3. ~~**XML config parsing**~~ — 25+ methods implemented in Parameters.cpp
+4. ~~**Find in Files backend**~~ — QDirIterator recursive search with filters
+5. ~~**Search Results panel**~~ — QTreeWidget hierarchical results with navigation
 
-### Phase 2 — Core Feature Parity
-6. **Recent Files menu integration** — List works, needs Qt menu
-7. **Drag & drop file opening** — Expected desktop behavior
-8. **Smart Highlighting** — Core editing feedback
-9. **Auto-completion engine** — Function + word + path completion
-10. **Auto-close brackets/tags** — Expected coding feature
-11. **Print support** — Basic requirement
-12. **Session load/save** — Workflow feature
-13. **Panel integration** — Connect existing panels to menu toggles
-14. **Replace All in Open Docs / Find All** — Complete the find dialog
-15. **Multi-cursor commands** — Wire Multi-Select All/Next
+### Phase 2 — Core Feature Parity — COMPLETED
+6. ~~**Recent Files menu integration**~~ — Dynamic Qt menu population
+7. ~~**Drag & drop file opening**~~ — dropEvent() opens files via doOpen()
+8. ~~**Smart Highlighting**~~ — Scintilla indicators, word boundary aware
+9. **Auto-completion engine** — Function + word + path completion *(deferred to Phase 3)*
+10. ~~**Auto-close brackets/tags**~~ — SCN_CHARADDED handler with skip-over
+11. ~~**Print support**~~ — QPrinter/QPrintDialog/QTextDocument
+12. ~~**Session load/save**~~ — QXmlStreamReader/Writer compatible format
+13. ~~**Panel integration**~~ — Doc List, Doc Map, Function List, Project Panels connected
+14. ~~**Replace All in Open Docs / Find All**~~ — Buffer iteration + find history persistence
+15. ~~**Multi-cursor commands**~~ — Select Next/All/Undo/Skip via Scintilla API
 
 ### Phase 3 — Feature Completeness
 16. **Dual view (split editor)** — Wire move/clone commands to existing splitter
