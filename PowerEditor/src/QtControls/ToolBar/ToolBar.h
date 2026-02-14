@@ -144,6 +144,9 @@ public:
     // Get underlying toolbar
     QToolBar* getToolBar() const { return qobject_cast<QToolBar*>(_widget); }
 
+signals:
+    void commandTriggered(int cmdID);
+
 private:
     std::vector<std::unique_ptr<ToolBarButtonUnit>> _pTBB;
     std::vector<QAction*> _actions;

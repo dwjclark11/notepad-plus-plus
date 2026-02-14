@@ -79,6 +79,18 @@ bool ToolBar::init(QWidget* parent, toolBarStatusType type,
     toolbar->setFloatable(true);
     toolbar->setIconSize(QSize(16, 16));
 
+    // Connect actionTriggered once - fires for any action click on this toolbar
+    connect(toolbar, &QToolBar::actionTriggered, this, [this](QAction* action) {
+        if (action)
+        {
+            int cmdID = action->data().toInt();
+            if (cmdID != 0)
+            {
+                emit commandTriggered(cmdID);
+            }
+        }
+    });
+
     // Setup icon lists
     setupIcons(type);
 

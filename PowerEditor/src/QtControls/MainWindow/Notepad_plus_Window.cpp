@@ -1436,6 +1436,13 @@ void MainWindow::initToolBar()
     _mainToolBar->init(this, TB_STANDARD, toolBarButtons,
                        sizeof(toolBarButtons) / sizeof(ToolBarButtonUnit));
 
+    // Connect toolbar button clicks to command dispatch
+    connect(_mainToolBar, &ToolBar::commandTriggered, this, [this](int cmdID) {
+        if (_shortcutManager) {
+            _shortcutManager->executeCommand(cmdID);
+        }
+    });
+
     // Add toolbar to main window
     addToolBar(_mainToolBar->getToolBar());
 }
