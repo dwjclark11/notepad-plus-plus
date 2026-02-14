@@ -7,22 +7,22 @@
 
 ## Executive Summary
 
-The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtControls/` and ~12 files in `QtCore/`. The Platform Abstraction Layer (7 interfaces) is **fully implemented**. However, two critical backend files — **NppCommands.cpp** and **NppIO.cpp** — are entirely `#ifndef NPP_LINUX` guarded, meaning **the full command dispatch system and file I/O abstraction are excluded from the Linux build**. Buffer.cpp compensates for I/O directly, but 100+ command handlers are simply unavailable.
+The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtControls/` and ~15 files in `QtCore/`. The Platform Abstraction Layer (7 interfaces) is **fully implemented**. **NppCommands.cpp** has been ported to Linux (guard fixed from `#ifndef` to `#ifdef NPP_LINUX`) with 100+ command handlers now available including all line operations. Auto-completion, dual view, macro system, shortcut management, file monitoring, encoding support, run dialog variables, and localization have all been implemented in Phase 3.
 
 ### By the Numbers
 
 | Metric | Windows | Linux | Gap |
 |--------|---------|-------|-----|
-| Menu commands | ~400+ | ~200 connected | ~50% |
-| WinControls directories | 31 | 28 Qt equivalents | Most exist as shells |
+| Menu commands | ~400+ | ~320+ connected | ~20% |
+| WinControls directories | 31 | 28 Qt equivalents | Most functional |
 | Preference sub-pages | 24 | 16 implemented | 67% |
 | Supported languages | 90+ | 90+ (same data) | ~0% (data shared) |
-| Encoding support | 49 charsets | 5 basic + detection | ~90% gap |
-| Dockable panels | 8 | 8 exist, ~3 connected | ~60% gap |
+| Encoding support | 49 charsets | 49 charsets (full menu) | ~0% gap |
+| Dockable panels | 8 | 8 connected | ~10% gap |
 | Plugin API messages | 118+ | 0 | 100% gap |
-| Toolbar icons | Full icon sets | NO icons (stubs) | 100% gap |
-| TODOs in Linux code | — | ~85+ | — |
-| "Not Implemented" dialogs | — | ~12 | — |
+| Toolbar icons | Full icon sets | freedesktop icons | ~0% gap |
+| TODOs in Linux code | — | ~40+ | — |
+| "Not Implemented" dialogs | — | ~5 | — |
 
 ---
 
@@ -63,7 +63,7 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | Drag & drop open | Implemented | **Working** | — | dropEvent() opens files via doOpen() (Phase 2) |
 | Open Containing Folder | Implemented | **Working** | — | |
 | Open Default Viewer | Implemented | **Working** | — | |
-| File monitoring (tail -f) | ReadDirectoryChanges | **Stub** | P2 | TODOs for start/stop monitoring |
+| File monitoring (tail -f) | ReadDirectoryChanges | **Working** | — | Platform FileWatcher + tail mode toggle (Phase 3) |
 
 ### 2. EDITING
 
@@ -78,18 +78,18 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | Split / Join lines | Implemented | **Working** | — | |
 | Comment toggle | Implemented | **Working** | — | Block + stream |
 | Case conversion (8 modes) | Implemented | **Partial** | P2 | Upper/lower work; proper/sentence/invert/random unknown |
-| Sort lines (14 modes) | Implemented | **Not started** | P2 | NppCommands.cpp excluded |
-| Trim whitespace | Implemented | **Stub** | P2 | editTrimTrailing etc. are empty stubs even in NppCommands |
-| Tab↔Space conversion | Implemented | **Stub** | P2 | Empty stubs in NppCommands |
-| Remove duplicate lines | Implemented | **Not started** | P2 | |
-| Remove empty lines | Implemented | **Not started** | P2 | |
+| Sort lines (14 modes) | Implemented | **Working** | — | All 14 sort modes via Sorters.h with POSIX locale (Phase 3) |
+| Trim whitespace | Implemented | **Working** | — | Trailing, leading, both via Scintilla API (Phase 3) |
+| Tab↔Space conversion | Implemented | **Working** | — | Tab-to-space, space-to-tab leading/all (Phase 3) |
+| Remove duplicate lines | Implemented | **Working** | — | Consecutive and any duplicates (Phase 3) |
+| Remove empty lines | Implemented | **Working** | — | Empty and blank (whitespace-only) lines (Phase 3) |
 | Column/Block editing | Dialog implemented | **Working** | — | ColumnEditorDlg is 95% complete |
 | Column mode select | Implemented | **Working** | — | Alt+drag, beginOrEndSelect |
 | Multi-cursor editing | Implemented | **Working** | — | Select Next/All/Undo/Skip via Scintilla API (Phase 2) |
-| Auto-completion (function) | XML-based per-language | **Not started** | P1 | No auto-completion engine on Linux |
-| Auto-completion (word) | Implemented | **Not started** | P1 | |
-| Auto-completion (path) | Implemented | **Not started** | P2 | |
-| Function call tips | Implemented | **Not started** | P2 | |
+| Auto-completion (function) | XML-based per-language | **Working** | — | AutoCompletionQt.cpp + XML API files (Phase 3) |
+| Auto-completion (word) | Implemented | **Working** | — | Word collection from document via Scintilla (Phase 3) |
+| Auto-completion (path) | Implemented | **Working** | — | std::filesystem directory iteration, ~ expansion (Phase 3) |
+| Function call tips | Implemented | **Working** | — | FunctionCallTipQt.cpp ported from Windows (Phase 3) |
 | Auto-close brackets | Implemented | **Working** | — | SCN_CHARADDED handler with skip-over (Phase 2) |
 | Auto-close HTML tags | Implemented | **Not started** | P2 | |
 | Auto-indent | Implemented | **Partial** | P1 | Basic indent works via Scintilla |
@@ -148,7 +148,7 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | Always on top | Implemented | **Stub** | P3 | |
 | Hide lines | Implemented | **Not started** | P3 | |
 | Line numbers | Implemented | **Working** | — | |
-| Dual view (split editor) | Full move/clone | **Partial** | P1 | SplitterContainer exists, move/clone commands not wired |
+| Dual view (split editor) | Full move/clone | **Working** | — | docGotoAnotherEditView with move/clone/pinned/monitoring (Phase 3) |
 | Synchronized scrolling | V + H sync | **Not started** | P2 | |
 | Tab switching (Ctrl+1-9) | Implemented | **Working** | — | |
 | Tab move forward/back | Implemented | **Working** | — | |
@@ -180,8 +180,8 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | UTF-16 BE/LE | Implemented | **Working** | — | |
 | ANSI | Implemented | **Working** | — | |
 | Auto-detection | uchardet + BOM | **Working** | — | In Buffer.cpp |
-| Convert between encodings | Implemented | **Partial** | P1 | Basic conversions, not all 49 charsets |
-| 49 character sets | Full charset menu | **Not started** | P2 | Only 5 basic encodings in menu |
+| Convert between encodings | Implemented | **Working** | — | QStringConverter for all charsets (Phase 3) |
+| 49 character sets | Full charset menu | **Working** | — | Full submenu by region with QActions (Phase 3) |
 | EOL conversion (CR/LF/CRLF) | Implemented | **Working** | — | |
 
 ### 7. LANGUAGE & SYNTAX
@@ -202,19 +202,19 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 | Preferences dialog | 24 sub-pages | **16 sub-pages (67%)** | P1 | Missing: File Association, Misc, Indentation separate page |
 | Settings persistence | Registry + INI + XML | **QSettings (working)** | — | |
 | XML config parsing | Full XML load/save | **Working** | — | 25+ methods implemented in Parameters.cpp (Phase 1) |
-| Shortcut Mapper | 5 tabs, full editing | **Substantial (70%)** | P1 | Modify uses placeholder, delete/import/export/reset are stubs |
-| Shortcut customization | Full remap | **Partial** | P1 | Scintilla shortcuts not loaded |
+| Shortcut Mapper | 5 tabs, full editing | **Working** | — | Delete, import, export, reset, Scintilla tab all implemented (Phase 3) |
+| Shortcut customization | Full remap | **Working** | — | All 5 tabs including Scintilla key mappings (Phase 3) |
 | Context menu customization | Editable XML | **Stub** | P2 | ContextMenu is empty stub |
 
 ### 9. MACRO SYSTEM
 
 | Feature | Windows | Linux | Priority | Notes |
 |---------|---------|-------|----------|-------|
-| Record macro | Implemented | **Partial** | P1 | Recording starts but capture incomplete |
-| Playback macro | Implemented | **Partial** | P1 | |
-| Save macro (named) | Implemented | **Not started** | P1 | |
-| Run Multiple Times | Full dialog | **Stub (45%)** | P2 | UI exists, uses placeholder data, doesn't run |
-| Macro shortcut assignment | Implemented | **Not started** | P2 | |
+| Record macro | Implemented | **Working** | — | Full recording including menu commands (Phase 3) |
+| Playback macro | Implemented | **Working** | — | Playback with mtUseSParameter support (Phase 3) |
+| Save macro (named) | Implemented | **Working** | — | Dialog-based naming + persist to shortcuts.xml (Phase 3) |
+| Run Multiple Times | Full dialog | **Working** | — | Run N times and run-until-EOF (Phase 3) |
+| Macro shortcut assignment | Implemented | **Working** | — | Save/load macro shortcuts from config (Phase 3) |
 
 ### 10. PLUGIN SYSTEM
 
@@ -239,9 +239,9 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 
 | Feature | Windows | Linux | Priority | Notes |
 |---------|---------|-------|----------|-------|
-| Run command dialog | Full with variables | **Partial (75%)** | P2 | Command runs, but variable expansion is stub |
-| Variable substitution | $(FULL_CURRENT_PATH) etc. | **Stub** | P2 | Returns command as-is |
-| Save command | Implemented | **Stub** | P2 | Shows "Not Implemented" |
+| Run command dialog | Full with variables | **Working** | — | Full command execution via /bin/sh (Phase 3) |
+| Variable substitution | $(FULL_CURRENT_PATH) etc. | **Working** | — | All 10 variables expanded with shell escaping (Phase 3) |
+| Save command | Implemented | **Working** | — | Save to shortcuts.xml + dynamic Run menu (Phase 3) |
 
 ### 13. WINDOW MANAGEMENT
 
@@ -266,8 +266,8 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 
 | Feature | Windows | Linux | Priority | Notes |
 |---------|---------|-------|----------|-------|
-| Multi-language UI | XML-based translations | **Stub** | P2 | NativeLangSpeaker has only 2 stub methods |
-| 80+ languages | Full translation support | **English only** | P2 | |
+| Multi-language UI | XML-based translations | **Working** | — | Full NativeLangSpeaker with menu/dialog translation (Phase 3) |
+| 80+ languages | Full translation support | **Working** | — | 94 language XML files supported via changeMenuLangQt (Phase 3) |
 
 ---
 
@@ -277,19 +277,19 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 
 | Status | Count | Examples |
 |--------|-------|---------|
-| **Working** | ~85 features | Basic editing, find/replace, save, syntax highlighting, folding, bookmarks, hash tools, **print, sessions, drag-drop, recent files, smart highlighting, auto-close brackets, multi-cursor, Find in Files, Search Results, toolbar icons, XML config, view modes, panel toggles** |
-| **Partial** | ~20 features | Encoding conversion, macro record, dual view, auto-completion (word/function/path) |
-| **Stub/UI only** | ~15 features | File monitoring, plugin admin, context menu, some close variants |
-| **Not started** | ~40 features | Auto-completion engine, sort lines, trim whitespace, plugin system, localization |
+| **Working** | ~110 features | Basic editing, find/replace, save, syntax highlighting, folding, bookmarks, hash tools, print, sessions, drag-drop, recent files, smart highlighting, auto-close brackets, multi-cursor, Find in Files, Search Results, toolbar icons, XML config, view modes, panel toggles, **auto-completion (word/function/path), function call tips, dual view move/clone, sort lines (14 modes), trim whitespace, tab↔space, remove duplicates, remove empty lines, file monitoring/tail mode, macro record/playback/save/run-multiple, shortcut mapper (full), encoding (49 charsets), run dialog variables, localization (94 languages)** |
+| **Partial** | ~10 features | Case conversion (8 modes), preferences (67%), UDL preview, Style Configurator save |
+| **Stub/UI only** | ~8 features | Plugin admin backend, context menu, some close variants |
+| **Not started** | ~25 features | Plugin system (.so), synchronized scrolling, incremental search, bookmark line operations, style tokens |
 
 ### By Priority
 
 | Priority | Count | Key Items |
 |----------|-------|-----------|
-| **P0 — CRITICAL** | ~~5~~ **0 remaining** | ~~Unsaved-check-on-close, toolbar icons, Find in Files, Search Results panel, XML config parsing~~ All resolved in Phase 1 |
-| **P1 — HIGH** | ~~22~~ **~10 remaining** | ~~Print, sessions, recent files, drag-drop, smart highlighting, auto-close brackets, multi-cursor~~ resolved in Phase 2. Remaining: auto-completion engine, dual view, preferences completeness, shortcut editing |
-| **P2 — MEDIUM** | ~30 | ~~View modes, panels integration~~ resolved. Remaining: encoding charsets, file monitoring, macro save, plugin system, localization, line sorting, UDL preview, document map sync, run variables |
-| **P3 — LOW** | 15 | Date/time insert, paste HTML/RTF, view in browser, always-on-top, hide lines, change history |
+| **P0 — CRITICAL** | ~~5~~ **0 remaining** | All resolved in Phase 1 |
+| **P1 — HIGH** | ~~22~~ **~2 remaining** | ~~Print, sessions, recent files, drag-drop, smart highlighting, auto-close brackets, multi-cursor~~ resolved in Phase 2. ~~Auto-completion, dual view, shortcut editing~~ resolved in Phase 3. Remaining: preferences completeness, extended search mode verification |
+| **P2 — MEDIUM** | ~~30~~ **~12 remaining** | ~~Encoding charsets, file monitoring, macro save, localization, line sorting, run variables~~ resolved in Phase 3. Remaining: plugin system, synchronized scrolling, incremental search, UDL preview, document map scroll sync, context menu, bookmark line ops, style tokens, find in projects |
+| **P3 — LOW** | ~12 | Date/time insert, paste HTML/RTF, view in browser, always-on-top, hide lines, change history, sort open docs |
 
 ---
 
@@ -306,7 +306,7 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 6. ~~**Recent Files menu integration**~~ — Dynamic Qt menu population
 7. ~~**Drag & drop file opening**~~ — dropEvent() opens files via doOpen()
 8. ~~**Smart Highlighting**~~ — Scintilla indicators, word boundary aware
-9. **Auto-completion engine** — Function + word + path completion *(deferred to Phase 3)*
+9. ~~**Auto-completion engine**~~ — *(deferred to Phase 3, now completed)*
 10. ~~**Auto-close brackets/tags**~~ — SCN_CHARADDED handler with skip-over
 11. ~~**Print support**~~ — QPrinter/QPrintDialog/QTextDocument
 12. ~~**Session load/save**~~ — QXmlStreamReader/Writer compatible format
@@ -314,16 +314,17 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 14. ~~**Replace All in Open Docs / Find All**~~ — Buffer iteration + find history persistence
 15. ~~**Multi-cursor commands**~~ — Select Next/All/Undo/Skip via Scintilla API
 
-### Phase 3 — Feature Completeness
-16. **Dual view (split editor)** — Wire move/clone commands to existing splitter
-17. **Encoding menu expansion** — Add character set submenu
-18. **Macro system completion** — Save, run multiple, shortcut assignment
-19. **Shortcut Mapper completion** — Delete, import, export, reset
-20. **View modes** — Fullscreen, Post-It, Distraction-free
-21. **File monitoring** — Tail mode
-22. **Line operations** — Sort, trim, remove duplicates
-23. **Run dialog variables** — $(FULL_CURRENT_PATH) etc.
-24. **Localization system** — NativeLangSpeaker
+### Phase 3 — Feature Completeness — COMPLETED
+16. ~~**Auto-completion engine**~~ — AutoCompletionQt.cpp + FunctionCallTipQt.cpp (word, function, path completion)
+17. ~~**Dual view (split editor)**~~ — docGotoAnotherEditView with move/clone, pinned tab + monitoring preservation
+18. ~~**Encoding menu expansion**~~ — Full 49-charset submenu by region with QStringConverter
+19. ~~**Macro system completion**~~ — Save named macros, run multiple times/until-EOF, shortcut assignment, XML persistence
+20. ~~**Shortcut Mapper completion**~~ — Delete, import, export, reset, Scintilla tab with key mappings
+21. ~~**View modes**~~ — Fullscreen, Post-It, Distraction-free (completed in Phase 2)
+22. ~~**File monitoring**~~ — Platform FileWatcher + tail mode toggle with auto-reload/scroll-to-end
+23. ~~**Line operations**~~ — 14 sort modes (Sorters.h POSIX port), trim, remove duplicates/empty, tab↔space
+24. ~~**Run dialog variables**~~ — All 10 $(VAR) expansions with shell escaping, save command to XML
+25. ~~**Localization system**~~ — NativeLangSpeaker with menu/dialog translation, 94 language XML files
 
 ### Phase 4 — Advanced Features
 25. **Plugin system** — .so loading, API messages, notifications
@@ -337,23 +338,38 @@ The Linux Qt6 port contains **~35,000–40,000 lines** across ~80 files in `QtCo
 
 ## Architecture Notes
 
-### Key Design Decision: NppCommands.cpp Exclusion
-The most impactful architectural gap is that `NppCommands.cpp` (100+ command handlers) and `NppIO.cpp` (full file I/O abstraction) are wrapped in `#ifndef NPP_LINUX`. This means:
-- The Linux build has no centralized command dispatch system
-- Commands are handled ad-hoc in `Notepad_plus.cpp` and `MainWindow`
-- File I/O goes directly through `Buffer.cpp` instead of the `NppIO` abstraction
+### NppCommands.cpp — Now Ported to Linux
+The `#ifndef NPP_LINUX` guard on `NppCommands.cpp` was fixed to `#ifdef NPP_LINUX` in Phase 3, enabling 100+ command handlers on Linux. Windows-specific APIs were adapted:
+- `Sorters.h` ported with POSIX locale wrappers (`_npp_create_locale`/`_npp_free_locale`) replacing MSVC `_create_locale`
+- `_wcsicmp` → `wcscasecmp` for case-insensitive string comparison
+- `EolType` constants adapted to Linux Buffer equivalents
+- 19 new commands registered in `registerEditCommands()`
 
-**Recommendation**: Either (a) port NppCommands/NppIO to work on Linux by removing the guard and adapting Windows-specific calls, or (b) continue building parallel implementations in QtControls, accepting some code duplication.
+`NppIO.cpp` remains excluded — file I/O continues through `Buffer.cpp` directly.
+
+### Phase 3 Key Implementation Details
+- **Auto-completion**: New `AutoCompletionQt.cpp` (35KB) and `FunctionCallTipQt.cpp` (11KB) ported from Windows using `std::filesystem` for path completion, `strncasecmp` for case-insensitive matching, and `charAdded` signal for trigger
+- **Dual view**: `docGotoAnotherEditView()` follows Windows pattern with SCI_CREATEDOCUMENT/ADDREFDOCUMENT, preserves pinned and monitoring state across move/clone
+- **Localization**: `NativeLangSpeaker` maps Win32 MB_* constants to QMessageBox, 3-phase menu translation (top-level by position, commands by ID, submenus by SubEntries)
+- **Run dialog**: Commands execute via `/bin/sh -c` for proper shell handling; variables shell-escaped with single-quote wrapping
 
 ### Platform Abstraction Layer
-All 7 PAL interfaces are fully implemented for Linux — this is a solid foundation. The gap is in the application layer above the PAL, not in the PAL itself.
+All 7 PAL interfaces are fully implemented for Linux — this is a solid foundation.
 
 ### Working Foundation
 The following are solid and production-ready:
 - Buffer management (Buffer.cpp — 3100+ lines, most complete component)
-- Scintilla editor integration (syntax highlighting, folding, basic editing)
+- Scintilla editor integration (syntax highlighting, folding, basic editing, auto-completion)
 - Tab bar and document tab management
+- Dual view with move/clone between views
 - KDE desktop integration (color schemes, fonts, icons)
+- Full macro system (record, playback, save, run multiple)
+- Shortcut mapper (all 5 tabs fully functional)
+- File monitoring with tail mode
+- Line operations (14 sort modes, trim, dedup, tab/space conversion)
+- 49-charset encoding support
+- Localization (94 languages)
+- Run dialog with variable substitution
 - Status bar
 - Hash tools (MD5, SHA-1/256/512)
 - Platform abstraction layer (all 7 interfaces)

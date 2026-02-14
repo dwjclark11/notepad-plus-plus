@@ -196,23 +196,31 @@ void BufferTest::testSetReadOnly() {
 // Encoding Tests
 // ============================================================================
 void BufferTest::testGetEncoding() {
-    // Default encoding should be UTF-8
-    QCOMPARE(_buffer->getEncoding(), QString("UTF-8"));
+    // Default encoding codepage should be -1 (use unicode mode)
+    QCOMPARE(_buffer->getEncoding(), -1);
+    // Default encoding name should be UTF-8
+    QCOMPARE(_buffer->getEncodingName(), QString("UTF-8"));
 }
 
 void BufferTest::testSetEncoding() {
-    // Test setting encoding
-    _buffer->setEncoding("UTF-16");
-    QCOMPARE(_buffer->getEncoding(), QString("UTF-16"));
+    // Test setting encoding by name
+    _buffer->setEncodingName("UTF-16");
+    QCOMPARE(_buffer->getEncodingName(), QString("UTF-16"));
 
-    _buffer->setEncoding("ISO-8859-1");
-    QCOMPARE(_buffer->getEncoding(), QString("ISO-8859-1"));
+    _buffer->setEncodingName("ISO-8859-1");
+    QCOMPARE(_buffer->getEncodingName(), QString("ISO-8859-1"));
 
     // Test signal emission
     QSignalSpy spy(_buffer.get(), &QtCore::Buffer::encodingChanged);
-    _buffer->setEncoding("UTF-8");
+    _buffer->setEncodingName("UTF-8");
     QCOMPARE(spy.count(), 1);
     QCOMPARE(spy.takeFirst().at(0).toString(), QString("UTF-8"));
+
+    // Test setting encoding by codepage
+    _buffer->setEncoding(1252);
+    QCOMPARE(_buffer->getEncoding(), 1252);
+    _buffer->setEncoding(-1);
+    QCOMPARE(_buffer->getEncoding(), -1);
 }
 
 void BufferTest::testGetBom() {

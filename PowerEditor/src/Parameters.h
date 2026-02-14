@@ -1546,6 +1546,7 @@ public:
 	void writeNonDefaultUDL();
 	void writeNeed2SaveUDL();
 	void writeShortcuts();
+	bool reloadShortcutsFromFile();
 	void writeSession(const Session& session, const wchar_t* fileName = nullptr);
 	bool writeFindHistory();
 

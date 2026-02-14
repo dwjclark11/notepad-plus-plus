@@ -7,6 +7,9 @@
 // at your option any later version.
 
 #include "RunDlg.h"
+#include "../../Notepad_plus.h"
+#include "../../ScintillaComponent/ScintillaEditView.h"
+#include "../../Parameters.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QGridLayout>
@@ -17,9 +20,11 @@
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QInputDialog>
 #include <QtCore/QProcess>
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
+#include <QtCore/QCoreApplication>
 
 namespace QtControls {
 
@@ -200,16 +205,93 @@ void RunDlg::updateComboHistory() {
     _commandCombo->setCurrentText(currentText);
 }
 
-QString RunDlg::expandVariables(const QString& command) {
-    // TODO: Implement variable expansion
-    // This should expand:
-    // $(FULL_CURRENT_PATH), $(CURRENT_DIRECTORY), $(FILE_NAME)
-    // $(NAME_PART), $(EXT_PART), $(CURRENT_WORD)
-    // $(CURRENT_LINE), $(CURRENT_COLUMN), $(NPP_DIRECTORY)
-    //
-    // For now, return the command as-is
-    // The actual implementation should query the editor for these values
-    return command;
+static QString shellEscape(const QString& value)
+{
+	QString escaped = value;
+	escaped.replace(QLatin1Char('\''), QStringLiteral("'\\''"));
+	return QLatin1Char('\'') + escaped + QLatin1Char('\'');
+}
+
+QString RunDlg::expandVariables(const QString& command)
+{
+	QString result = command;
+
+	// Only expand if there are variable patterns
+	if (!result.contains(QStringLiteral("$(")))
+		return result;
+
+	// File-related variables from the current buffer
+	QString fullPath;
+	QString currentDir;
+	QString fileName;
+	QString namePart;
+	QString extPart;
+
+	if (_pNotepad)
+	{
+		Buffer* buf = _pNotepad->getCurrentBuffer();
+		if (buf)
+		{
+			fullPath = buf->getFilePath();
+			QFileInfo fi(fullPath);
+			currentDir = fi.absolutePath();
+			fileName = fi.fileName();
+			namePart = fi.completeBaseName();
+			extPart = fi.suffix();
+		}
+	}
+
+	// Editor-related variables
+	QString currentWord;
+	QString currentLine;
+	QString currentColumn;
+
+	if (_pNotepad)
+	{
+		ScintillaEditView* editView = _pNotepad->getCurrentEditView();
+		if (editView)
+		{
+			// Get selected text or word at caret
+			auto sel = editView->getSelection();
+			if (sel.cpMax > sel.cpMin)
+			{
+				// There's a selection - get selected text
+				intptr_t len = sel.cpMax - sel.cpMin + 1;
+				std::vector<char> buf(len + 1, 0);
+				editView->execute(SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(buf.data()));
+				currentWord = QString::fromUtf8(buf.data());
+			}
+			else
+			{
+				// No selection - get word at caret position
+				char wordBuf[2048] = {0};
+				editView->getWordOnCaretPos(wordBuf, sizeof(wordBuf));
+				currentWord = QString::fromUtf8(wordBuf);
+			}
+
+			// Line and column are 1-based for user display
+			currentLine = QString::number(editView->getCurrentLineNumber() + 1);
+			currentColumn = QString::number(editView->getCurrentColumnNumber() + 1);
+		}
+	}
+
+	// Application-related variables
+	QString nppDir = QCoreApplication::applicationDirPath();
+	QString nppFullPath = QCoreApplication::applicationFilePath();
+
+	// Perform replacements - escape values to prevent shell injection
+	result.replace(QStringLiteral("$(FULL_CURRENT_PATH)"), shellEscape(fullPath));
+	result.replace(QStringLiteral("$(CURRENT_DIRECTORY)"), shellEscape(currentDir));
+	result.replace(QStringLiteral("$(FILE_NAME)"), shellEscape(fileName));
+	result.replace(QStringLiteral("$(NAME_PART)"), shellEscape(namePart));
+	result.replace(QStringLiteral("$(EXT_PART)"), shellEscape(extPart));
+	result.replace(QStringLiteral("$(CURRENT_WORD)"), shellEscape(currentWord));
+	result.replace(QStringLiteral("$(CURRENT_LINE)"), currentLine);
+	result.replace(QStringLiteral("$(CURRENT_COLUMN)"), currentColumn);
+	result.replace(QStringLiteral("$(NPP_DIRECTORY)"), shellEscape(nppDir));
+	result.replace(QStringLiteral("$(NPP_FULL_FILE_PATH)"), shellEscape(nppFullPath));
+
+	return result;
 }
 
 void RunDlg::executeCommand() {
@@ -222,35 +304,11 @@ void RunDlg::executeCommand() {
     // Expand variables in the command
     QString expandedCommand = expandVariables(command);
 
-    // Parse command and arguments
-    QString program;
-    QStringList arguments;
-
-    // Handle quoted paths
-    if (expandedCommand.startsWith('"')) {
-        int endQuote = expandedCommand.indexOf('"', 1);
-        if (endQuote > 0) {
-            program = expandedCommand.mid(1, endQuote - 1);
-            QString args = expandedCommand.mid(endQuote + 1).trimmed();
-            if (!args.isEmpty()) {
-                arguments = args.split(' ', Qt::SkipEmptyParts);
-            }
-        } else {
-            program = expandedCommand;
-        }
-    } else {
-        int spaceIdx = expandedCommand.indexOf(' ');
-        if (spaceIdx > 0) {
-            program = expandedCommand.left(spaceIdx);
-            QString args = expandedCommand.mid(spaceIdx + 1).trimmed();
-            arguments = args.split(' ', Qt::SkipEmptyParts);
-        } else {
-            program = expandedCommand;
-        }
-    }
-
-    // Execute the command
-    bool started = QProcess::startDetached(program, arguments);
+    // Execute via /bin/sh -c to properly handle shell quoting,
+    // pipes, redirections, and paths with spaces
+    bool started = QProcess::startDetached(
+        QStringLiteral("/bin/sh"),
+        QStringList{QStringLiteral("-c"), expandedCommand});
 
     if (started) {
         // Add to history on successful execution
@@ -290,18 +348,52 @@ void RunDlg::onBrowseClicked() {
     }
 }
 
-void RunDlg::onSaveClicked() {
-    QString command = getCommand();
-    if (command.isEmpty()) {
-        QMessageBox::warning(getDialog(), tr("Error"), tr("Please enter a command to save."));
-        return;
-    }
+void RunDlg::onSaveClicked()
+{
+	QString command = getCommand();
+	if (command.isEmpty())
+	{
+		QMessageBox::warning(getDialog(), tr("Error"), tr("Please enter a command to save."));
+		return;
+	}
 
-    // TODO: Implement saving command to Run menu
-    // This should open a dialog to save the command with a name
-    // and add it to the Run menu for quick access
-    QMessageBox::information(getDialog(), tr("Not Implemented"),
-        tr("Save command to Run menu is not yet implemented."));
+	// Ask user for a name for this command
+	bool ok = false;
+	QString name = QInputDialog::getText(
+		getDialog(),
+		tr("Save Command"),
+		tr("Enter a name for this command:"),
+		QLineEdit::Normal,
+		QString(),
+		&ok
+	);
+
+	if (!ok || name.trimmed().isEmpty())
+		return;
+
+	name = name.trimmed();
+
+	// Add to NppParameters user command list
+	NppParameters& nppParams = NppParameters::getInstance();
+	std::vector<UserCommand>& userCmds = nppParams.getUserCommandList();
+
+	int cmdID = ID_USER_CMD + static_cast<int>(userCmds.size());
+
+	// Create a shortcut with the given name (no key binding by default)
+	std::string nameUtf8 = name.toStdString();
+	std::string cmdUtf8 = command.toStdString();
+	Shortcut sc(nameUtf8.c_str(), false, false, false, 0);
+	userCmds.push_back(UserCommand(sc, cmdUtf8.c_str(), cmdID));
+
+	// Add to run menu items
+	DynamicMenu& runMenu = nppParams.getRunMenuItems();
+	runMenu.push_back(MenuItemUnit(cmdID, name.toStdWString()));
+
+	// Mark shortcuts as dirty so they'll be saved
+	nppParams.setShortcutDirty();
+
+	QMessageBox::information(getDialog(), tr("Saved"),
+		tr("Command '%1' has been saved to the Run menu.").arg(name));
 }
 
 void RunDlg::onCommandChanged(const QString& text) {

@@ -195,9 +195,13 @@ public:
     bool getFileReadOnly() const { return isFileReadOnly(); }
     void setFileReadOnly(bool readOnly);
 
-    // Encoding
-    QString getEncoding() const;
-    void setEncoding(const QString& encoding);
+    // Encoding - codepage (matches Windows API: -1 means use _unicodeMode)
+    int getEncoding() const;
+    void setEncoding(int encoding);
+
+    // Encoding - Qt codec name (for text conversion)
+    QString getEncodingName() const;
+    void setEncodingName(const QString& encoding);
     bool getUseBOM() const;
     void setUseBOM(bool use);
 
@@ -330,6 +334,10 @@ public:
     void startMonitoring();
     void stopMonitoring();
 
+    // Platform FileWatcher handle (for tail mode)
+    void setFileWatchHandle(uint64_t handle) { _platformWatchHandle = handle; }
+    uint64_t getFileWatchHandle() const { return _platformWatchHandle; }
+
 signals:
     void contentChanged();
     void statusChanged(DocFileStatus status);
@@ -355,7 +363,10 @@ private:
     bool _isUntitled = true;
 
     // Encoding settings
-    QString _encoding = "UTF-8";
+    // _encoding: codepage number (-1 means use _unicodeMode, matches Windows Buffer)
+    int _encoding = -1;
+    // _encodingName: Qt text codec name for text conversion
+    QString _encodingName = "UTF-8";
     bool _useBOM = false;
 
     // Line ending
@@ -384,6 +395,7 @@ private:
     bool _fileMonitoringEnabled = true;
     bool _isMonitoringOn = false;
     QFileSystemWatcher* _fileWatcher = nullptr;
+    uint64_t _platformWatchHandle = 0;  // Platform FileWatcher handle for tail mode
 
     // Timestamps
     QDateTime _lastModifiedTime;

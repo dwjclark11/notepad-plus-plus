@@ -32,6 +32,8 @@
 #include <QtCore/QDateTime>
 #include <QtGui/QDesktopServices>
 
+#include "../../Parameters.h"
+
 namespace QtControls {
 
 // ============================================================================
@@ -1557,6 +1559,25 @@ void AutoCompletionSubDlg::loadSettings()
     _enableAutoIndentCheck->setChecked(_enableAutoIndent);
     _completionSourceCombo->setCurrentIndex(_autoCompletionSource);
     _ignoreNumbersCheck->setChecked(_autoCompletionIgnoreNumbers);
+
+    // Sync to NppGUI so AutoCompletion engine reads correct values
+    NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+    if (_enableAutoCompletion)
+    {
+        switch (_autoCompletionSource)
+        {
+            case 0: nppGUI._autocStatus = NppGUI::autoc_both; break;
+            case 1: nppGUI._autocStatus = NppGUI::autoc_word; break;
+            case 2: nppGUI._autocStatus = NppGUI::autoc_func; break;
+            default: nppGUI._autocStatus = NppGUI::autoc_both; break;
+        }
+    }
+    else
+    {
+        nppGUI._autocStatus = NppGUI::autoc_none;
+    }
+    nppGUI._autocFromLen = static_cast<UINT>(_autoCompletionThreshold);
+    nppGUI._autocIgnoreNumbers = _autoCompletionIgnoreNumbers;
 }
 
 void AutoCompletionSubDlg::saveSettings()
@@ -1575,6 +1596,28 @@ void AutoCompletionSubDlg::saveSettings()
 bool AutoCompletionSubDlg::applySettings()
 {
     saveSettings();
+
+    // Sync settings to NppGUI so the AutoCompletion engine reads correct values
+    NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+    if (_enableAutoCompletion)
+    {
+        // Map combo box index to autocomplete status
+        // 0 = word + function, 1 = word only, 2 = function only
+        switch (_autoCompletionSource)
+        {
+            case 0: nppGUI._autocStatus = NppGUI::autoc_both; break;
+            case 1: nppGUI._autocStatus = NppGUI::autoc_word; break;
+            case 2: nppGUI._autocStatus = NppGUI::autoc_func; break;
+            default: nppGUI._autocStatus = NppGUI::autoc_both; break;
+        }
+    }
+    else
+    {
+        nppGUI._autocStatus = NppGUI::autoc_none;
+    }
+    nppGUI._autocFromLen = static_cast<UINT>(_autoCompletionThreshold);
+    nppGUI._autocIgnoreNumbers = _autoCompletionIgnoreNumbers;
+
     return true;
 }
 

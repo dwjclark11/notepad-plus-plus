@@ -20,6 +20,56 @@
 #include <utility>
 #include <random>
 
+#ifdef NPP_LINUX
+#include <locale.h>
+#include <cwchar>
+#include <string>
+#include <cerrno>
+
+// _locale_t is already defined as void* in LinuxTypes.h.
+// These helpers cast to/from the POSIX locale_t type.
+
+inline _locale_t _npp_create_locale(int category, const char* localeName)
+{
+	int mask = 0;
+	if (category == LC_NUMERIC) mask = LC_NUMERIC_MASK;
+	else if (category == LC_ALL) mask = LC_ALL_MASK;
+	else mask = LC_ALL_MASK;
+	locale_t loc = newlocale(mask, localeName, nullptr);
+	return reinterpret_cast<_locale_t>(loc);
+}
+
+inline void _npp_free_locale(_locale_t loc)
+{
+	if (loc) freelocale(reinterpret_cast<locale_t>(loc));
+}
+
+inline std::wstring stringTakeWhileAdmissable(const std::wstring& input, const std::wstring& admissable)
+{
+	size_t idx = input.find_first_not_of(admissable);
+	if (idx == std::string::npos)
+		return input;
+	else
+		return input.substr(0, idx);
+}
+
+inline double stodLocale(const std::wstring& str, _locale_t loc, size_t* idx = nullptr)
+{
+	const wchar_t* ptr = str.c_str();
+	wchar_t* eptr;
+	errno = 0;
+	double result = wcstod(ptr, &eptr);
+	(void)loc;
+	if (ptr == eptr)
+		throw std::invalid_argument("stodLocale: no conversion");
+	if (errno == ERANGE)
+		throw std::out_of_range("stodLocale: out of range");
+	if (idx)
+		*idx = static_cast<size_t>(eptr - ptr);
+	return result;
+}
+#endif // NPP_LINUX
+
 // Base interface for line sorting.
 class ISorter
 {
@@ -507,7 +557,9 @@ class NumericSorter : public ISorter
 public:
 	NumericSorter(bool isDescending, size_t fromColumn, size_t toColumn) : ISorter(isDescending, fromColumn, toColumn)
 	{
-#ifdef __MINGW32__
+#ifdef NPP_LINUX
+		_usLocale = _npp_create_locale(LC_NUMERIC, "en_US.UTF-8");
+#elif defined(__MINGW32__)
 		_usLocale = NULL;
 #else
 		_usLocale = ::_create_locale(LC_NUMERIC, "en-US");
@@ -516,7 +568,9 @@ public:
 
 	~NumericSorter() override
 	{
-#ifndef __MINGW32__
+#ifdef NPP_LINUX
+		_npp_free_locale(_usLocale);
+#elif !defined(__MINGW32__)
 		::_free_locale(_usLocale);
 #endif
 	}

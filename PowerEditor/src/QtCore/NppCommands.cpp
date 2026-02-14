@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// This file implements Windows-style commands
-// On Linux, many of these commands need to be adapted for Qt
-#ifndef NPP_LINUX
+// This file implements Qt/Linux-specific command handlers
+#ifdef NPP_LINUX
 
 // Qt headers first (for moc compatibility)
 #include <QApplication>
@@ -38,6 +37,11 @@
 #include "FindReplaceDlg.h"
 #include "GoToLineDlg.h"
 #include "menuCmdID.h"
+#include "MISC/Common/Sorters.h"
+
+#include <algorithm>
+#include <random>
+#include <set>
 
 namespace QtCommands {
 
@@ -384,6 +388,22 @@ void NppCommands::registerEditCommands() {
     _handler.registerCommand(CMD_EDIT_TAB2SPACE, [this]() { editTabToSpace(); });
     _handler.registerCommand(CMD_EDIT_SPACE2TAB_LEADING, [this]() { editSpaceToTabLeading(); });
     _handler.registerCommand(CMD_EDIT_SPACE2TAB_ALL, [this]() { editSpaceToTabAll(); });
+    _handler.registerCommand(CMD_EDIT_REMOVEEMPTYLINES, [this]() { editRemoveEmptyLines(); });
+    _handler.registerCommand(CMD_EDIT_REMOVEEMPTYLINESWITHBLANK, [this]() { editRemoveEmptyLinesWithBlank(); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_LEXICO_ASC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LEXICO_ASC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_LEXICO_DESC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LEXICO_DESC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_LEXICO_CI_ASC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LEXICO_CI_ASC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_LEXICO_CI_DESC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LEXICO_CI_DESC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_INTEGER_ASC, [this]() { editSortLines(CMD_EDIT_SORTLINES_INTEGER_ASC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_INTEGER_DESC, [this]() { editSortLines(CMD_EDIT_SORTLINES_INTEGER_DESC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_DECCOMMA_ASC, [this]() { editSortLines(CMD_EDIT_SORTLINES_DECCOMMA_ASC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_DECCOMMA_DESC, [this]() { editSortLines(CMD_EDIT_SORTLINES_DECCOMMA_DESC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_DECDOT_ASC, [this]() { editSortLines(CMD_EDIT_SORTLINES_DECDOT_ASC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_DECDOT_DESC, [this]() { editSortLines(CMD_EDIT_SORTLINES_DECDOT_DESC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_REVERSE, [this]() { editSortLines(CMD_EDIT_SORTLINES_REVERSE); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_RANDOMLY, [this]() { editSortLines(CMD_EDIT_SORTLINES_RANDOMLY); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_LENGTH_ASC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LENGTH_ASC); });
+    _handler.registerCommand(CMD_EDIT_SORTLINES_LENGTH_DESC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LENGTH_DESC); });
 }
 
 void NppCommands::editUndo() {
@@ -504,12 +524,69 @@ void NppCommands::editDuplicateLine() {
 
 void NppCommands::editRemoveDuplicateLines() {
     ScintillaEditView* view = getCurrentEditView();
-    if (view) {
-        view->execute(SCI_BEGINUNDOACTION);
-        // Call remove duplicate lines function
-        // This would need to be implemented or call existing function
-        view->execute(SCI_ENDUNDOACTION);
+    if (!view) return;
+
+    auto selStart = view->execute(SCI_GETSELECTIONSTART);
+    auto selEnd = view->execute(SCI_GETSELECTIONEND);
+    bool isEntireDoc = (selStart == selEnd);
+
+    intptr_t startLine = 0;
+    intptr_t endLine = view->execute(SCI_GETLINECOUNT) - 1;
+
+    if (!isEntireDoc)
+    {
+        startLine = view->execute(SCI_LINEFROMPOSITION, selStart);
+        endLine = view->execute(SCI_LINEFROMPOSITION, selEnd);
+        if (selEnd == view->execute(SCI_POSITIONFROMLINE, endLine))
+            endLine -= 1;
     }
+
+    if (startLine == endLine)
+        return;
+
+    view->execute(SCI_BEGINUNDOACTION);
+
+    intptr_t firstMatchLineNr = 0;
+    intptr_t lastMatchLineNr = 0;
+    std::wstring firstMatchLineStr;
+    std::wstring lastMatchLineStr;
+
+    for (intptr_t i = startLine; i <= endLine; ++i)
+    {
+        if (firstMatchLineStr.empty())
+        {
+            firstMatchLineNr = lastMatchLineNr = i;
+            firstMatchLineStr = view->getLine(i);
+            continue;
+        }
+        else
+        {
+            lastMatchLineStr = view->getLine(i);
+        }
+
+        if (firstMatchLineStr == lastMatchLineStr)
+        {
+            lastMatchLineNr = i;
+            if (i != endLine)
+                continue;
+        }
+
+        if (firstMatchLineNr != lastMatchLineNr)
+        {
+            intptr_t startPos = view->execute(SCI_POSITIONFROMLINE, firstMatchLineNr + 1);
+            intptr_t endPos = view->execute(SCI_POSITIONFROMLINE, lastMatchLineNr) +
+                view->execute(SCI_LINELENGTH, lastMatchLineNr);
+            view->execute(SCI_DELETERANGE, startPos, endPos - startPos);
+            intptr_t removedLines = lastMatchLineNr - firstMatchLineNr;
+            i -= removedLines;
+            endLine -= removedLines;
+        }
+
+        firstMatchLineStr = lastMatchLineStr;
+        firstMatchLineNr = lastMatchLineNr = i;
+    }
+
+    view->execute(SCI_ENDUNDOACTION);
 }
 
 void NppCommands::editRemoveAnyDuplicateLines() {
@@ -643,50 +720,382 @@ void NppCommands::editStreamUncomment() {
     }
 }
 
-void NppCommands::editTrimTrailing() {
-    ScintillaEditView* view = getCurrentEditView();
-    if (view) {
-        view->execute(SCI_BEGINUNDOACTION);
-        // Call trim trailing function
-        view->execute(SCI_ENDUNDOACTION);
+static void doTrimLines(ScintillaEditView* view, const char* pattern)
+{
+    if (!view) return;
+
+    auto selStart = view->execute(SCI_GETSELECTIONSTART);
+    auto selEnd = view->execute(SCI_GETSELECTIONEND);
+    bool isEntireDoc = (selStart == selEnd);
+
+    intptr_t startLine = 0;
+    intptr_t endLine = view->execute(SCI_GETLINECOUNT) - 1;
+
+    if (!isEntireDoc)
+    {
+        startLine = view->execute(SCI_LINEFROMPOSITION, selStart);
+        endLine = view->execute(SCI_LINEFROMPOSITION, selEnd);
     }
+
+    view->execute(SCI_BEGINUNDOACTION);
+
+    for (intptr_t line = startLine; line <= endLine; ++line)
+    {
+        intptr_t lineStart = view->execute(SCI_POSITIONFROMLINE, line);
+        intptr_t lineEnd = view->execute(SCI_GETLINEENDPOSITION, line);
+        intptr_t lineLen = lineEnd - lineStart;
+        if (lineLen <= 0)
+            continue;
+
+        std::string lineText(lineLen, '\0');
+        view->execute(SCI_SETTARGETRANGE, lineStart, lineEnd);
+        view->execute(SCI_GETTARGETTEXT, 0, reinterpret_cast<sptr_t>(lineText.data()));
+
+        size_t firstNonWS = lineText.find_first_not_of(" \t");
+        size_t lastNonWS = lineText.find_last_not_of(" \t");
+
+        std::string trimmed;
+        if (firstNonWS == std::string::npos)
+        {
+            // Line is all whitespace
+            trimmed = "";
+        }
+        else if (strcmp(pattern, "trailing") == 0)
+        {
+            trimmed = lineText.substr(0, lastNonWS + 1);
+        }
+        else if (strcmp(pattern, "leading") == 0)
+        {
+            trimmed = lineText.substr(firstNonWS);
+        }
+        else // "both"
+        {
+            trimmed = lineText.substr(firstNonWS, lastNonWS - firstNonWS + 1);
+        }
+
+        if (trimmed != lineText)
+        {
+            view->execute(SCI_SETTARGETRANGE, lineStart, lineEnd);
+            view->execute(SCI_REPLACETARGET, static_cast<uptr_t>(trimmed.length()),
+                reinterpret_cast<sptr_t>(trimmed.c_str()));
+
+            // Adjust endLine if line lengths changed
+            intptr_t newLineEnd = view->execute(SCI_GETLINEENDPOSITION, line);
+            intptr_t diff = newLineEnd - lineEnd;
+            // No need to adjust endLine since we're working line by line
+            (void)diff;
+        }
+    }
+
+    view->execute(SCI_ENDUNDOACTION);
+}
+
+void NppCommands::editTrimTrailing() {
+    doTrimLines(getCurrentEditView(), "trailing");
 }
 
 void NppCommands::editTrimLineHead() {
-    // Trim leading whitespace
-    ScintillaEditView* view = getCurrentEditView();
-    if (view) {
-        view->execute(SCI_BEGINUNDOACTION);
-        // Call trim leading function
-        view->execute(SCI_ENDUNDOACTION);
-    }
+    doTrimLines(getCurrentEditView(), "leading");
 }
 
 void NppCommands::editTrimBoth() {
-    // Trim both leading and trailing whitespace
-    ScintillaEditView* view = getCurrentEditView();
-    if (view) {
-        view->execute(SCI_BEGINUNDOACTION);
-        // Call trim both function
-        view->execute(SCI_ENDUNDOACTION);
+    doTrimLines(getCurrentEditView(), "both");
+}
+
+enum class SpaceTabMode { tab2Space, space2TabLeading, space2TabAll };
+
+static void wsTabConvert(ScintillaEditView* view, SpaceTabMode whichWay)
+{
+    if (!view) return;
+
+    // Block selection not supported
+    if (view->execute(SCI_GETSELECTIONMODE) == SC_SEL_RECTANGLE ||
+        view->execute(SCI_GETSELECTIONMODE) == SC_SEL_THIN)
+        return;
+
+    intptr_t tabWidth = view->execute(SCI_GETTABWIDTH);
+    auto selStart = view->execute(SCI_GETSELECTIONSTART);
+    auto selEnd = view->execute(SCI_GETSELECTIONEND);
+    bool isEntireDoc = (selStart == selEnd);
+
+    intptr_t startLine = 0;
+    intptr_t endLine = view->execute(SCI_GETLINECOUNT) - 1;
+
+    if (!isEntireDoc)
+    {
+        startLine = view->execute(SCI_LINEFROMPOSITION, selStart);
+        endLine = view->execute(SCI_LINEFROMPOSITION, selEnd);
     }
+
+    view->execute(SCI_BEGINUNDOACTION);
+
+    for (intptr_t line = startLine; line <= endLine; ++line)
+    {
+        intptr_t lineStart = view->execute(SCI_POSITIONFROMLINE, line);
+        intptr_t lineEnd = view->execute(SCI_GETLINEENDPOSITION, line);
+        intptr_t lineLen = lineEnd - lineStart;
+        if (lineLen <= 0)
+            continue;
+
+        std::string source(lineLen, '\0');
+        view->execute(SCI_SETTARGETRANGE, lineStart, lineEnd);
+        view->execute(SCI_GETTARGETTEXT, 0, reinterpret_cast<sptr_t>(source.data()));
+
+        std::string result;
+        result.reserve(source.size() + 16);
+
+        if (whichWay == SpaceTabMode::tab2Space)
+        {
+            intptr_t column = 0;
+            for (size_t i = 0; i < source.size(); ++i)
+            {
+                if (source[i] == '\t')
+                {
+                    intptr_t spacesToInsert = tabWidth - (column % tabWidth);
+                    result.append(spacesToInsert, ' ');
+                    column += spacesToInsert;
+                }
+                else
+                {
+                    result += source[i];
+                    if ((source[i] & 0xC0) != 0x80) // UTF-8 support
+                        ++column;
+                }
+            }
+        }
+        else // space2Tab
+        {
+            bool onlyLeading = (whichWay == SpaceTabMode::space2TabLeading);
+            bool nonSpaceFound = false;
+            intptr_t column = 0;
+            size_t i = 0;
+
+            while (i < source.size())
+            {
+                if (!nonSpaceFound && source[i] == ' ')
+                {
+                    // Count consecutive spaces
+                    intptr_t spaceCount = 0;
+                    size_t start = i;
+                    while (i < source.size() && source[i] == ' ')
+                    {
+                        ++spaceCount;
+                        ++i;
+                        if ((column + spaceCount) % tabWidth == 0 && spaceCount > 1)
+                        {
+                            result += '\t';
+                            column += spaceCount;
+                            spaceCount = 0;
+                            start = i;
+                        }
+                    }
+                    // Remaining spaces that don't fill a tab stop
+                    for (intptr_t s = 0; s < spaceCount; ++s)
+                        result += ' ';
+                    column += spaceCount;
+                }
+                else
+                {
+                    if (onlyLeading && source[i] != ' ' && source[i] != '\t')
+                        nonSpaceFound = true;
+
+                    if (source[i] == '\t')
+                    {
+                        result += '\t';
+                        column = ((column / tabWidth) + 1) * tabWidth;
+                    }
+                    else
+                    {
+                        result += source[i];
+                        if ((source[i] & 0xC0) != 0x80)
+                            ++column;
+                    }
+                    ++i;
+                }
+            }
+        }
+
+        if (result != source)
+        {
+            view->execute(SCI_SETTARGETRANGE, lineStart, lineEnd);
+            view->execute(SCI_REPLACETARGET, static_cast<uptr_t>(result.length()),
+                reinterpret_cast<sptr_t>(result.c_str()));
+        }
+    }
+
+    view->execute(SCI_ENDUNDOACTION);
 }
 
 void NppCommands::editTabToSpace() {
-    if (_pNotepad_plus) {
-        // Convert tabs to spaces
-    }
+    wsTabConvert(getCurrentEditView(), SpaceTabMode::tab2Space);
 }
 
 void NppCommands::editSpaceToTabLeading() {
-    if (_pNotepad_plus) {
-        // Convert leading spaces to tabs
-    }
+    wsTabConvert(getCurrentEditView(), SpaceTabMode::space2TabLeading);
 }
 
 void NppCommands::editSpaceToTabAll() {
-    if (_pNotepad_plus) {
-        // Convert all spaces to tabs
+    wsTabConvert(getCurrentEditView(), SpaceTabMode::space2TabAll);
+}
+
+void NppCommands::editRemoveEmptyLines() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view) return;
+
+    auto selStart = view->execute(SCI_GETSELECTIONSTART);
+    auto selEnd = view->execute(SCI_GETSELECTIONEND);
+    bool isEntireDoc = (selStart == selEnd);
+
+    intptr_t startLine = 0;
+    intptr_t endLine = view->execute(SCI_GETLINECOUNT) - 1;
+
+    if (!isEntireDoc)
+    {
+        startLine = view->execute(SCI_LINEFROMPOSITION, selStart);
+        endLine = view->execute(SCI_LINEFROMPOSITION, selEnd);
+    }
+
+    view->execute(SCI_BEGINUNDOACTION);
+
+    for (intptr_t line = endLine; line >= startLine; --line)
+    {
+        intptr_t lineStart = view->execute(SCI_POSITIONFROMLINE, line);
+        intptr_t lineEnd = view->execute(SCI_GETLINEENDPOSITION, line);
+        if (lineEnd == lineStart) // empty line
+        {
+            intptr_t lineFullEnd = lineStart + view->execute(SCI_LINELENGTH, line);
+            view->execute(SCI_DELETERANGE, lineStart, lineFullEnd - lineStart);
+        }
+    }
+
+    view->execute(SCI_ENDUNDOACTION);
+}
+
+void NppCommands::editRemoveEmptyLinesWithBlank() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view) return;
+
+    auto selStart = view->execute(SCI_GETSELECTIONSTART);
+    auto selEnd = view->execute(SCI_GETSELECTIONEND);
+    bool isEntireDoc = (selStart == selEnd);
+
+    intptr_t startLine = 0;
+    intptr_t endLine = view->execute(SCI_GETLINECOUNT) - 1;
+
+    if (!isEntireDoc)
+    {
+        startLine = view->execute(SCI_LINEFROMPOSITION, selStart);
+        endLine = view->execute(SCI_LINEFROMPOSITION, selEnd);
+    }
+
+    view->execute(SCI_BEGINUNDOACTION);
+
+    for (intptr_t line = endLine; line >= startLine; --line)
+    {
+        intptr_t lineStart = view->execute(SCI_POSITIONFROMLINE, line);
+        intptr_t lineEnd = view->execute(SCI_GETLINEENDPOSITION, line);
+        intptr_t lineLen = lineEnd - lineStart;
+
+        bool isBlank = true;
+        if (lineLen > 0)
+        {
+            std::string lineText(lineLen, '\0');
+            view->execute(SCI_SETTARGETRANGE, lineStart, lineEnd);
+            view->execute(SCI_GETTARGETTEXT, 0, reinterpret_cast<sptr_t>(lineText.data()));
+
+            for (char ch : lineText)
+            {
+                if (ch != ' ' && ch != '\t')
+                {
+                    isBlank = false;
+                    break;
+                }
+            }
+        }
+
+        if (isBlank)
+        {
+            intptr_t lineFullEnd = lineStart + view->execute(SCI_LINELENGTH, line);
+            view->execute(SCI_DELETERANGE, lineStart, lineFullEnd - lineStart);
+        }
+    }
+
+    view->execute(SCI_ENDUNDOACTION);
+}
+
+void NppCommands::editSortLines(int sortMode) {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view) return;
+
+    size_t fromLine = 0, toLine = 0;
+    bool hasLineSelection = false;
+
+    auto selStart = view->execute(SCI_GETSELECTIONSTART);
+    auto selEnd = view->execute(SCI_GETSELECTIONEND);
+    hasLineSelection = selStart != selEnd;
+
+    if (hasLineSelection)
+    {
+        const std::pair<size_t, size_t> lineRange = view->getSelectionLinesRange();
+        if (lineRange.first == lineRange.second)
+            return;
+        fromLine = lineRange.first;
+        toLine = lineRange.second;
+    }
+    else
+    {
+        fromLine = 0;
+        toLine = view->execute(SCI_GETLINECOUNT) - 1;
+    }
+
+    if (fromLine >= toLine)
+        return;
+
+    bool isDescending = (sortMode == CMD_EDIT_SORTLINES_LEXICO_DESC ||
+                         sortMode == CMD_EDIT_SORTLINES_INTEGER_DESC ||
+                         sortMode == CMD_EDIT_SORTLINES_DECCOMMA_DESC ||
+                         sortMode == CMD_EDIT_SORTLINES_DECDOT_DESC ||
+                         sortMode == CMD_EDIT_SORTLINES_LEXICO_CI_DESC ||
+                         sortMode == CMD_EDIT_SORTLINES_LENGTH_DESC);
+
+    view->execute(SCI_BEGINUNDOACTION);
+
+    std::unique_ptr<ISorter> pSorter;
+
+    if (sortMode == CMD_EDIT_SORTLINES_LEXICO_ASC || sortMode == CMD_EDIT_SORTLINES_LEXICO_DESC)
+        pSorter = std::make_unique<LexicographicSorter>(isDescending, 0, 0);
+    else if (sortMode == CMD_EDIT_SORTLINES_LEXICO_CI_ASC || sortMode == CMD_EDIT_SORTLINES_LEXICO_CI_DESC)
+        pSorter = std::make_unique<LexicographicCaseInsensitiveSorter>(isDescending, 0, 0);
+    else if (sortMode == CMD_EDIT_SORTLINES_INTEGER_ASC || sortMode == CMD_EDIT_SORTLINES_INTEGER_DESC)
+        pSorter = std::make_unique<IntegerSorter>(isDescending, 0, 0);
+    else if (sortMode == CMD_EDIT_SORTLINES_DECCOMMA_ASC || sortMode == CMD_EDIT_SORTLINES_DECCOMMA_DESC)
+        pSorter = std::make_unique<DecimalCommaSorter>(isDescending, 0, 0);
+    else if (sortMode == CMD_EDIT_SORTLINES_DECDOT_ASC || sortMode == CMD_EDIT_SORTLINES_DECDOT_DESC)
+        pSorter = std::make_unique<DecimalDotSorter>(isDescending, 0, 0);
+    else if (sortMode == CMD_EDIT_SORTLINES_LENGTH_ASC || sortMode == CMD_EDIT_SORTLINES_LENGTH_DESC)
+        pSorter = std::make_unique<LineLengthSorter>(isDescending, 0, 0);
+    else if (sortMode == CMD_EDIT_SORTLINES_REVERSE)
+        pSorter = std::make_unique<ReverseSorter>(false, 0, 0);
+    else // RANDOMLY
+        pSorter = std::make_unique<RandomSorter>(false, 0, 0);
+
+    try
+    {
+        view->sortLines(fromLine, toLine, pSorter.get());
+    }
+    catch (size_t&)
+    {
+        // Sorting failed on a line (e.g., non-numeric for integer sort)
+    }
+
+    view->execute(SCI_ENDUNDOACTION);
+
+    if (hasLineSelection)
+    {
+        auto posStart = view->execute(SCI_POSITIONFROMLINE, fromLine);
+        auto posEnd = view->execute(SCI_GETLINEENDPOSITION, toLine);
+        view->execute(SCI_SETSELECTIONSTART, posStart);
+        view->execute(SCI_SETSELECTIONEND, posEnd);
     }
 }
 
@@ -694,7 +1103,7 @@ void NppCommands::editToggleReadOnly() {
     if (_pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
         if (buf) {
-            buf->setUserReadOnly(!buf->getUserReadOnly());
+            buf->setUserReadOnly(!buf->isUserReadOnly());
         }
     }
 }
@@ -1586,8 +1995,8 @@ void NppCommands::formatConvertToWindows() {
     if (view && _pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
         if (buf && !buf->isReadOnly()) {
-            buf->setEolFormat(EolType::windows);
-            view->execute(SCI_CONVERTEOLS, static_cast<WPARAM>(EolType::windows));
+            buf->setEolFormat(Buffer::eolWindows);
+            view->execute(SCI_CONVERTEOLS, SC_EOL_CRLF);
         }
     }
 }
@@ -1597,8 +2006,8 @@ void NppCommands::formatConvertToUnix() {
     if (view && _pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
         if (buf && !buf->isReadOnly()) {
-            buf->setEolFormat(EolType::unix);
-            view->execute(SCI_CONVERTEOLS, static_cast<WPARAM>(EolType::unix));
+            buf->setEolFormat(Buffer::eolUnix);
+            view->execute(SCI_CONVERTEOLS, SC_EOL_LF);
         }
     }
 }
@@ -1608,8 +2017,8 @@ void NppCommands::formatConvertToMac() {
     if (view && _pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
         if (buf && !buf->isReadOnly()) {
-            buf->setEolFormat(EolType::macos);
-            view->execute(SCI_CONVERTEOLS, static_cast<WPARAM>(EolType::macos));
+            buf->setEolFormat(Buffer::eolMac);
+            view->execute(SCI_CONVERTEOLS, SC_EOL_CR);
         }
     }
 }
@@ -1665,3 +2074,4 @@ void NppCommands::settingPreference() {
 } // namespace QtCommands
 
 #endif // NPP_LINUX
+

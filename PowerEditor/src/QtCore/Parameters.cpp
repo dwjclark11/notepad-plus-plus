@@ -2098,6 +2098,94 @@ void NppParameters::writeNeed2SaveUDL()
 
 void NppParameters::writeShortcuts()
 {
+    if (!_isAnyShortcutModified) return;
+
+    if (!_pXmlShortcutDoc)
+    {
+        _pXmlShortcutDoc = new NppXml::NewDocument();
+        NppXml::createNewDeclaration(_pXmlShortcutDoc);
+    }
+
+    NppXml::Element root = NppXml::firstChildElement(_pXmlShortcutDoc, "NotepadPlus");
+    if (!root)
+    {
+        root = NppXml::createChildElement(_pXmlShortcutDoc, "NotepadPlus");
+    }
+
+    // Write macros
+    NppXml::Element macrosRoot = NppXml::firstChildElement(root, "Macros");
+    if (macrosRoot)
+        NppXml::deleteChild(root, macrosRoot);
+
+    macrosRoot = NppXml::createChildElement(root, "Macros");
+
+    for (size_t i = 0; i < _macros.size(); ++i)
+    {
+        const MacroShortcut& macro = _macros[i];
+        const KeyCombo& key = macro.getKeyCombo();
+        NppXml::Element macroNode = NppXml::createChildElement(macrosRoot, "Macro");
+
+        NppXml::setAttribute(macroNode, "name", macro.getName());
+        setBoolAttribute(macroNode, "Ctrl", key._isCtrl);
+        setBoolAttribute(macroNode, "Alt", key._isAlt);
+        setBoolAttribute(macroNode, "Shift", key._isShift);
+        NppXml::setAttribute(macroNode, "Key", key._key);
+
+        const Macro& steps = const_cast<MacroShortcut&>(_macros[i]).getMacro();
+        for (size_t j = 0; j < steps.size(); ++j)
+        {
+            const recordedMacroStep& action = steps[j];
+            NppXml::Element actionNode = NppXml::createChildElement(macroNode, "Action");
+
+            NppXml::setAttribute(actionNode, "type", action._macroType);
+            NppXml::setAttribute(actionNode, "message", action._message);
+            NppXml::setAttribute(actionNode, "wParam", static_cast<int>(action._wParameter));
+            NppXml::setAttribute(actionNode, "lParam", static_cast<int>(action._lParameter));
+            NppXml::setAttribute(actionNode, "sParam", action._sParameter.c_str());
+        }
+    }
+
+    // Save the document
+    NppXml::saveFileShortcut(_pXmlShortcutDoc, _shortcutsPath.c_str());
+}
+
+bool NppParameters::reloadShortcutsFromFile()
+{
+    if (_shortcutsPath.empty())
+        return false;
+
+    // Clear all current shortcut data
+    _shortcuts.clear();
+    _customizedShortcuts.clear();
+    _macros.clear();
+    _userCommands.clear();
+    _scintillaKeyCommands.clear();
+    _scintillaModifiedKeyIndices.clear();
+
+    // Reload the shortcuts XML document
+    if (_pXmlShortcutDoc)
+    {
+        delete _pXmlShortcutDoc;
+        _pXmlShortcutDoc = nullptr;
+    }
+
+    _pXmlShortcutDoc = new NppXml::NewDocument();
+    bool loadOkay = NppXml::loadFileShortcut(_pXmlShortcutDoc, _shortcutsPath.c_str());
+    if (loadOkay)
+    {
+        getShortcutsFromXmlTree();
+        getMacrosFromXmlTree();
+        getUserCmdsFromXmlTree();
+        getPluginCmdsFromXmlTree();
+        getScintKeysFromXmlTree();
+        return true;
+    }
+    else
+    {
+        delete _pXmlShortcutDoc;
+        _pXmlShortcutDoc = nullptr;
+        return false;
+    }
 }
 
 void NppParameters::writeSession(const Session& session, const wchar_t* fileName)

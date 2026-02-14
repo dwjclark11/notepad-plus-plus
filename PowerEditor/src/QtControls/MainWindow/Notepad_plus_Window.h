@@ -40,6 +40,7 @@
 
 #include <vector>
 #include <memory>
+#include <QMap>
 
 // Forward declaration
 class Notepad_plus;
@@ -117,6 +118,7 @@ public:
     ToolBar* getToolBar() const { return _mainToolBar; }
     StatusBar* getStatusBar() const { return _statusBar; }
     DockingManager* getDockingManager() const { return _dockingManager; }
+    QSplitter* getEditorSplitter() const { return _editorSplitter; }
 
     // Panel getters
     FunctionListPanel* getFunctionListPanel() const { return _functionListPanel; }
@@ -216,6 +218,7 @@ private slots:
     void onViewDocumentMap();
     void onViewClipboardHistory();
     void onViewFileBrowser();
+    void onViewMonitoring();
 
     // Encoding menu
     void onEncodingANSI();
@@ -223,6 +226,7 @@ private slots:
     void onEncodingUTF8BOM();
     void onEncodingUTF16BE();
     void onEncodingUTF16LE();
+    void onCharsetSelected(int cmdId);
 
     // Language menu
     void onLanguageSelected(QAction* action);
@@ -247,6 +251,7 @@ private slots:
     // Window menu
     void onWindowNewInstance();
     void onWindowSplit();
+    void onWindowMoveToOtherView();
     void onWindowCloneToOtherView();
     void onWindowList();
 
@@ -308,6 +313,7 @@ private:
     // Update UI state
     void updateTitle();
     void updateDocumentState();
+    void updateEncodingMenu();
 
     // Core components
     Notepad_plus* _pNotepad_plus = nullptr;
@@ -395,9 +401,19 @@ private:
     QAction* _showWhiteSpaceAction = nullptr;
     QAction* _showEOLAction = nullptr;
     QAction* _showIndentGuideAction = nullptr;
+    QAction* _monitoringAction = nullptr;
 
     // Shortcut manager
     ShortcutManager* _shortcutManager = nullptr;
+
+    // Encoding menu actions (for checkmark state)
+    QActionGroup* _encodingActionGroup = nullptr;
+    QAction* _ansiAction = nullptr;
+    QAction* _utf8Action = nullptr;
+    QAction* _utf8BomAction = nullptr;
+    QAction* _utf16beAction = nullptr;
+    QAction* _utf16leAction = nullptr;
+    QMap<int, QAction*> _charsetActions;  // cmdId -> QAction*
 
     // Plugin manager
     PluginsManager _pluginsManager;

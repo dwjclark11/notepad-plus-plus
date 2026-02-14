@@ -530,6 +530,8 @@ ELSEIF(UNIX AND NOT APPLE)
 		./QtCore/Win32_IO_File.cpp
 		./QtCore/NativeLangSpeaker.cpp
 		./QtCore/NppDarkMode.cpp
+		./QtCore/AutoCompletionQt.cpp
+		./QtCore/FunctionCallTipQt.cpp
 	)
 
 	# Main entry point for Linux

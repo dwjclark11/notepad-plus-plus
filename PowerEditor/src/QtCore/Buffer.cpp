@@ -391,11 +391,11 @@ bool Buffer::loadFromFile(const QString& filePath)
     // Detect encoding from BOM
     QString detectedEncoding = detectEncodingFromBOM(content);
     if (!detectedEncoding.isEmpty()) {
-        _encoding = detectedEncoding;
+        _encodingName = detectedEncoding;
         _useBOM = true;
     } else {
         // Default to UTF-8 if no BOM detected
-        _encoding = "UTF-8";
+        _encodingName = "UTF-8";
         _useBOM = false;
     }
 
@@ -618,7 +618,7 @@ void Buffer::setContent(const QByteArray& content)
 QString Buffer::getText() const
 {
     QByteArray content = getContent();
-    auto encoding = QStringDecoder::encodingForName(_encoding.toUtf8().constData())
+    auto encoding = QStringDecoder::encodingForName(_encodingName.toUtf8().constData())
                         .value_or(QStringDecoder::Utf8);
     QStringDecoder decoder(encoding);
     return decoder.decode(content);
@@ -626,7 +626,7 @@ QString Buffer::getText() const
 
 void Buffer::setText(const QString& text)
 {
-    auto encoding = QStringEncoder::encodingForName(_encoding.toUtf8().constData())
+    auto encoding = QStringEncoder::encodingForName(_encodingName.toUtf8().constData())
                         .value_or(QStringEncoder::Utf8);
     QStringEncoder encoder(encoding);
     QByteArray content = encoder.encode(text);
@@ -812,21 +812,34 @@ void Buffer::setFileReadOnly(bool readOnly)
     }
 }
 
-QString Buffer::getEncoding() const
+int Buffer::getEncoding() const
 {
     QMutexLocker locker(&_mutex);
     return _encoding;
 }
 
-void Buffer::setEncoding(const QString& encoding)
+void Buffer::setEncoding(int encoding)
+{
+    if (_encoding != encoding) {
+        _encoding = encoding;
+        emit encodingChanged(QString::number(encoding));
+    }
+}
+
+QString Buffer::getEncodingName() const
+{
+    QMutexLocker locker(&_mutex);
+    return _encodingName;
+}
+
+void Buffer::setEncodingName(const QString& encoding)
 {
     QMutexLocker locker(&_mutex);
 
-    if (_encoding != encoding) {
-        // Validate encoding using QStringDecoder::encodingForName
+    if (_encodingName != encoding) {
         auto encodingOpt = QStringDecoder::encodingForName(encoding.toUtf8().constData());
         if (encodingOpt.has_value()) {
-            _encoding = encoding;
+            _encodingName = encoding;
             emit encodingChanged(encoding);
         }
     }
@@ -2083,11 +2096,10 @@ Position Buffer::getPosition(void* identifier) const
 int Buffer::getEncodingNumber() const
 {
     QMutexLocker locker(&_mutex);
-    // Convert QString encoding to int
-    // This is a simplified mapping - full implementation would map all encodings
-    if (_encoding == "UTF-8") return 65001;
-    if (_encoding == "UTF-16 LE") return 1200;
-    if (_encoding == "UTF-16 BE") return 1201;
+    // Convert encoding name to Windows codepage number
+    if (_encodingName == "UTF-8") return 65001;
+    if (_encodingName == "UTF-16 LE") return 1200;
+    if (_encodingName == "UTF-16 BE") return 1201;
     // Return -1 for unknown (use default)
     return -1;
 }
@@ -2095,19 +2107,19 @@ int Buffer::getEncodingNumber() const
 void Buffer::setEncodingNumber(int encoding)
 {
     QMutexLocker locker(&_mutex);
-    // Convert int encoding to QString
+    // Convert Windows codepage to Qt encoding name
     switch (encoding) {
         case 65001:
-            _encoding = "UTF-8";
+            _encodingName = "UTF-8";
             break;
         case 1200:
-            _encoding = "UTF-16 LE";
+            _encodingName = "UTF-16 LE";
             break;
         case 1201:
-            _encoding = "UTF-16 BE";
+            _encodingName = "UTF-16 BE";
             break;
         default:
-            _encoding = "UTF-8";
+            _encodingName = "UTF-8";
             break;
     }
 }
@@ -3310,14 +3322,6 @@ void Buffer::setDeferredReload()
     _needReloading = true;
     // In the original implementation, this would trigger a deferred reload
     // For the Qt port, we can emit a signal or set a flag for later processing
-}
-
-void Buffer::setEncoding(int encoding)
-{
-    if (_encoding != encoding) {
-        _encoding = encoding;
-        doNotify(BufferChangeUnicode);
-    }
 }
 
 void Buffer::doNotify(int mask)

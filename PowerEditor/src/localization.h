@@ -29,6 +29,15 @@
 
 #include "NppXml.h"
 
+#ifdef NPP_LINUX
+#include <QMap>
+#include <QString>
+class QMenuBar;
+class QMenu;
+class QDialog;
+class QWidget;
+#endif
+
 // Forward declare dialog classes to avoid header dependencies
 #ifndef NPP_LINUX
 class FindReplaceDlg;
@@ -120,6 +129,14 @@ public:
 	}
 
 	int messageBox(const char* msgBoxTagName, HWND hWnd, const wchar_t* defaultMessage, const wchar_t* defaultTitle, int msgBoxType, int intInfo = 0, const wchar_t* strInfo = nullptr);
+
+#ifdef NPP_LINUX
+	// Qt-specific localization methods
+	void changeMenuLangQt(QMenuBar* menuBar) const;
+	bool changeDlgLangQt(QDialog* dialog, const char* dlgTagName) const;
+	QString getLocalizedStrQt(const char* strID, const QString& defaultString) const;
+#endif
+
 private:
 	NppXml::Node _nativeLang{};
 	static constexpr int _nativeLangEncoding = CP_UTF8; // all Notepad++ xml files should be UTF8
@@ -129,4 +146,9 @@ private:
 	std::map<std::string, std::wstring> _shortcutMenuEntryNameMap;
 
 	static void resizeCheckboxRadioBtn(HWND hWnd);
+
+#ifdef NPP_LINUX
+	void translateMenuActions(QMenu* menu, const QMap<int, QString>& translations) const;
+	void setWidgetText(QWidget* widget, const QString& text) const;
+#endif
 };

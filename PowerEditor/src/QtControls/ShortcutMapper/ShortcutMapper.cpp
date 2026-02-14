@@ -30,6 +30,7 @@
 
 #include "../../MISC/Common/Common.h"
 #include "../../Parameters.h"
+#include "../../NppXml.h"
 #include "../ShortcutManager/ShortcutManager.h"
 
 namespace QtControls {
@@ -152,7 +153,27 @@ void ShortcutMapper::loadShortcutsFromParameters() {
         _pluginShortcuts.push_back(data);
     }
 
-    // TODO: Load Scintilla shortcuts when ScintillaKeyMap is fully implemented
+    // Load Scintilla shortcuts
+    std::vector<ScintillaKeyMap>& scintillaKeys = nppParams.getScintillaKeyList();
+    for (size_t i = 0; i < scintillaKeys.size(); ++i)
+    {
+        const ScintillaKeyMap& skm = scintillaKeys[i];
+        ShortcutData data;
+        data.name = QString::fromUtf8(skm.getName());
+        // Use the first key combo for display
+        if (skm.getSize() > 0)
+        {
+            data.keyCombo = skm.getKeyComboByIndex(0);
+        }
+        else
+        {
+            data.keyCombo = skm.getKeyCombo();
+        }
+        data.shortcut = keyComboToString(data.keyCombo);
+        data.isEnabled = (data.keyCombo._key != 0);
+        data.originalIndex = i;
+        _scintillaShortcuts.push_back(data);
+    }
 }
 
 int ShortcutMapper::getCommandIdForShortcut(size_t index) const {
@@ -188,8 +209,13 @@ int ShortcutMapper::getCommandIdForShortcut(size_t index) const {
             break;
         }
         case GridState::STATE_SCINTILLA:
-            // TODO: Implement when ScintillaKeyMap is fully implemented
+        {
+            std::vector<ScintillaKeyMap>& scintKeys = nppParams.getScintillaKeyList();
+            if (index < scintKeys.size()) {
+                return scintKeys[index].getMenuCmdID();
+            }
             break;
+        }
     }
 
     return -1;
@@ -475,22 +501,40 @@ void ShortcutMapper::onDeleteClicked() {
         return;
     }
 
+    size_t originalIndex = _shortcutIndex[currentRow];
+
     int result = QMessageBox::question(getDialog(), tr("Confirm Delete"),
-        tr("Are you sure you want to delete this shortcut?"),
+        tr("Are you sure you want to delete this item?"),
         QMessageBox::Yes | QMessageBox::No);
 
     if (result != QMessageBox::Yes) {
         return;
     }
 
-    // TODO: Delete the macro or user command
-    // This requires integration with NppParameters
+    NppParameters& nppParams = NppParameters::getInstance();
 
-    QMessageBox::information(getDialog(), tr("Not Implemented"),
-        tr("Delete functionality requires NppParameters integration."));
+    if (_currentState == GridState::STATE_MACRO)
+    {
+        std::vector<MacroShortcut>& macros = nppParams.getMacroList();
+        if (originalIndex < macros.size())
+        {
+            macros.erase(macros.begin() + originalIndex);
+            nppParams.setShortcutDirty();
+        }
+    }
+    else if (_currentState == GridState::STATE_USER)
+    {
+        std::vector<UserCommand>& userCmds = nppParams.getUserCommandList();
+        if (originalIndex < userCmds.size())
+        {
+            userCmds.erase(userCmds.begin() + originalIndex);
+            nppParams.setShortcutDirty();
+        }
+    }
 
-    // After deletion, refresh the grid
-    // fillGrid();
+    // Refresh the grid
+    loadShortcutsFromParameters();
+    fillGrid();
 }
 
 void ShortcutMapper::onClearClicked() {
@@ -576,24 +620,211 @@ void ShortcutMapper::onImportClicked() {
         return;
     }
 
-    // TODO: Import shortcuts from file
-    QMessageBox::information(getDialog(), tr("Not Implemented"),
-        tr("Import functionality requires NppParameters integration."));
+    // Load the XML file
+    NppXml::NewDocument doc;
+    std::wstring wFileName = fileName.toStdWString();
+    if (!NppXml::loadFileShortcut(&doc, wFileName.c_str()))
+    {
+        QMessageBox::warning(getDialog(), tr("Import Error"),
+            tr("Failed to load shortcuts file:\n%1").arg(fileName));
+        return;
+    }
+
+    // Find the root NotepadPlus element
+    NppXml::Element root = NppXml::firstChildElement(&doc, "NotepadPlus");
+    if (!root)
+    {
+        QMessageBox::warning(getDialog(), tr("Import Error"),
+            tr("Invalid shortcuts file format."));
+        return;
+    }
+
+    NppParameters& nppParams = NppParameters::getInstance();
+
+    // Helper: parse a shortcut element into a KeyCombo and name
+    auto parseShortcutElement = [](const NppXml::Element& elem, KeyCombo& combo, std::string& name) -> bool
+    {
+        const char* nameAttr = NppXml::attribute(elem, "name", "");
+        name = nameAttr;
+
+        const char* ctrlAttr = NppXml::attribute(elem, "Ctrl", "no");
+        const char* altAttr = NppXml::attribute(elem, "Alt", "no");
+        const char* shiftAttr = NppXml::attribute(elem, "Shift", "no");
+        int key = NppXml::intAttribute(elem, "Key", -1);
+        if (key == -1) return false;
+
+        combo._isCtrl = (strcmp(ctrlAttr, "yes") == 0);
+        combo._isAlt = (strcmp(altAttr, "yes") == 0);
+        combo._isShift = (strcmp(shiftAttr, "yes") == 0);
+        combo._key = static_cast<unsigned char>(key);
+        return true;
+    };
+
+    // Import main menu shortcut customizations
+    NppXml::Element internalCmdsRoot = NppXml::firstChildElement(root, "InternalCommands");
+    if (internalCmdsRoot)
+    {
+        std::vector<CommandShortcut>& shortcuts = nppParams.getUserShortcuts();
+        for (NppXml::Element childNode = NppXml::firstChildElement(internalCmdsRoot, "Shortcut");
+            childNode;
+            childNode = NppXml::nextSiblingElement(childNode, "Shortcut"))
+        {
+            int cmdId = NppXml::intAttribute(childNode, "id", -1);
+            if (cmdId < 0) continue;
+
+            KeyCombo combo;
+            std::string name;
+            if (!parseShortcutElement(childNode, combo, name)) continue;
+
+            for (size_t i = 0; i < shortcuts.size(); ++i)
+            {
+                if (shortcuts[i].getID() == cmdId)
+                {
+                    shortcuts[i].setKeyCombo(combo);
+                    nppParams.addUserModifiedIndex(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Import macro shortcuts
+    NppXml::Element macrosRoot = NppXml::firstChildElement(root, "Macros");
+    if (macrosRoot)
+    {
+        std::vector<MacroShortcut>& macros = nppParams.getMacroList();
+        for (NppXml::Element childNode = NppXml::firstChildElement(macrosRoot, "Macro");
+            childNode;
+            childNode = NppXml::nextSiblingElement(childNode, "Macro"))
+        {
+            KeyCombo combo;
+            std::string name;
+            if (!parseShortcutElement(childNode, combo, name)) continue;
+
+            for (auto& macro : macros)
+            {
+                if (name == macro.getName())
+                {
+                    macro.setKeyCombo(combo);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Import user command shortcuts
+    NppXml::Element userCmdsRoot = NppXml::firstChildElement(root, "UserDefinedCommands");
+    if (userCmdsRoot)
+    {
+        std::vector<UserCommand>& userCmds = nppParams.getUserCommandList();
+        for (NppXml::Element childNode = NppXml::firstChildElement(userCmdsRoot, "Command");
+            childNode;
+            childNode = NppXml::nextSiblingElement(childNode, "Command"))
+        {
+            KeyCombo combo;
+            std::string name;
+            if (!parseShortcutElement(childNode, combo, name)) continue;
+
+            for (auto& cmd : userCmds)
+            {
+                if (name == cmd.getName())
+                {
+                    cmd.setKeyCombo(combo);
+                    break;
+                }
+            }
+        }
+    }
+
+    nppParams.setShortcutDirty();
+
+    // Refresh the grid
+    loadShortcutsFromParameters();
+    fillGrid();
+
+    QMessageBox::information(getDialog(), tr("Import Complete"),
+        tr("Shortcuts have been imported successfully."));
 }
 
 void ShortcutMapper::onExportClicked() {
     QString fileName = QFileDialog::getSaveFileName(getDialog(),
         tr("Export Shortcuts"),
-        QString(),
+        QStringLiteral("shortcuts.xml"),
         tr("XML Files (*.xml);;All Files (*)"));
 
     if (fileName.isEmpty()) {
         return;
     }
 
-    // TODO: Export shortcuts to file
-    QMessageBox::information(getDialog(), tr("Not Implemented"),
-        tr("Export functionality requires NppParameters integration."));
+    NppParameters& nppParams = NppParameters::getInstance();
+
+    // Build an XML document
+    NppXml::NewDocument docStorage;
+    NppXml::Document doc = &docStorage;
+    NppXml::createNewDeclaration(doc);
+    NppXml::Element root = NppXml::createChildElement(doc, "NotepadPlus");
+
+    auto writeShortcutAttribs = [](NppXml::Element& elem, const Shortcut& sc)
+    {
+        NppXml::setAttribute(elem, "name", sc.getName());
+        NppXml::setAttribute(elem, "Ctrl", sc.getKeyCombo()._isCtrl ? "yes" : "no");
+        NppXml::setAttribute(elem, "Alt", sc.getKeyCombo()._isAlt ? "yes" : "no");
+        NppXml::setAttribute(elem, "Shift", sc.getKeyCombo()._isShift ? "yes" : "no");
+        NppXml::setAttribute(elem, "Key", static_cast<int>(sc.getKeyCombo()._key));
+    };
+
+    // Export main menu shortcuts (only modified ones)
+    NppXml::Element internalCmdsNode = NppXml::createChildElement(root, "InternalCommands");
+    std::vector<CommandShortcut>& shortcuts = nppParams.getUserShortcuts();
+    for (size_t i = 0; i < shortcuts.size(); ++i)
+    {
+        NppXml::Element scNode = NppXml::createChildElement(internalCmdsNode, "Shortcut");
+        NppXml::setAttribute(scNode, "id", shortcuts[i].getID());
+        writeShortcutAttribs(scNode, shortcuts[i]);
+    }
+
+    // Export macro shortcuts
+    NppXml::Element macrosNode = NppXml::createChildElement(root, "Macros");
+    std::vector<MacroShortcut>& macros = nppParams.getMacroList();
+    for (auto& macro : macros)
+    {
+        NppXml::Element macroNode = NppXml::createChildElement(macrosNode, "Macro");
+        writeShortcutAttribs(macroNode, macro);
+    }
+
+    // Export user command shortcuts
+    NppXml::Element userCmdsNode = NppXml::createChildElement(root, "UserDefinedCommands");
+    std::vector<UserCommand>& userCmds = nppParams.getUserCommandList();
+    for (auto& cmd : userCmds)
+    {
+        NppXml::Element cmdNode = NppXml::createChildElement(userCmdsNode, "Command");
+        writeShortcutAttribs(cmdNode, cmd);
+        NppXml::createChildText(cmdNode, cmd.getCmd());
+    }
+
+    // Export plugin command shortcuts
+    NppXml::Element pluginCmdsNode = NppXml::createChildElement(root, "PluginCommands");
+    std::vector<PluginCmdShortcut>& pluginCmds = nppParams.getPluginCommandList();
+    for (auto& pc : pluginCmds)
+    {
+        NppXml::Element pcNode = NppXml::createChildElement(pluginCmdsNode, "PluginCommand");
+        writeShortcutAttribs(pcNode, pc);
+        NppXml::setAttribute(pcNode, "moduleName", pc.getModuleName());
+        NppXml::setAttribute(pcNode, "internalID", static_cast<int>(pc.getInternalID()));
+    }
+
+    // Save the file
+    std::wstring wFileName = fileName.toStdWString();
+    if (NppXml::saveFileShortcut(doc, wFileName.c_str()))
+    {
+        QMessageBox::information(getDialog(), tr("Export Complete"),
+            tr("Shortcuts have been exported to:\n%1").arg(fileName));
+    }
+    else
+    {
+        QMessageBox::warning(getDialog(), tr("Export Error"),
+            tr("Failed to save shortcuts file:\n%1").arg(fileName));
+    }
 }
 
 void ShortcutMapper::onResetAllClicked() {
@@ -606,11 +837,30 @@ void ShortcutMapper::onResetAllClicked() {
         return;
     }
 
-    // TODO: Reset all shortcuts to defaults
-    QMessageBox::information(getDialog(), tr("Not Implemented"),
-        tr("Reset all functionality requires NppParameters integration."));
+    NppParameters& nppParams = NppParameters::getInstance();
 
-    // fillGrid();
+    // Reload shortcuts from the shortcuts.xml file on disk
+    // This discards all in-memory changes and reloads defaults
+    if (nppParams.reloadShortcutsFromFile())
+    {
+        nppParams.setShortcutDirty();
+
+        // Refresh the grid
+        loadShortcutsFromParameters();
+        fillGrid();
+
+        // Apply the reset shortcuts
+        ShortcutManager* manager = ShortcutManager::getInstance();
+        manager->updateShortcutsFromParameters();
+
+        QMessageBox::information(getDialog(), tr("Reset Complete"),
+            tr("All shortcuts have been reset to their default values."));
+    }
+    else
+    {
+        QMessageBox::warning(getDialog(), tr("Reset Failed"),
+            tr("Failed to reload shortcuts from configuration file."));
+    }
 }
 
 void ShortcutMapper::onOkClicked() {

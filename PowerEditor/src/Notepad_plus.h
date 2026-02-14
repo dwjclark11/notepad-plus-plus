@@ -305,7 +305,9 @@ public:
 	bool undoStreamComment(bool tryBlockComment = true);
 
 	bool addCurrentMacro();
+#ifndef NPP_LINUX
 	void macroPlayback(Macro macro, std::vector<Document>* pDocs4EndUAIn = nullptr);
+#endif
 
     void loadLastSession();
 	bool loadSession(Session & session, bool isSnapshotMode = false, const wchar_t* userCreatedSessionName = nullptr);
@@ -350,6 +352,14 @@ public:
 
 	ScintillaEditView* getSubEditView()	{
 		return &_subEditView;
+	}
+
+	AutoCompletion* getAutoCompleteMain() {
+		return &_autoCompleteMain;
+	}
+
+	AutoCompletion* getAutoCompleteSub() {
+		return &_autoCompleteSub;
 	}
 
 	void launchDocumentBackupTask();
@@ -409,8 +419,10 @@ public:
 	void startMacroRecording();
 	void stopMacroRecording();
 	void macroPlayback();
+	void macroPlayback(const Macro& macro);
 	void showRunMacroDlg();
 	void saveCurrentMacro();
+	void runMacroFromDlg();
 	void setEncoding(int encoding);
 	void showUserDefineDlg();
 	void showPreferenceDlg();
@@ -446,6 +458,8 @@ public:
 	int switchEditViewTo(int gid);
 	void activateDoc(size_t pos);
 	void activateNextDoc(bool direction);
+	void docGotoAnotherEditView(FileTransferMode mode);
+	void monitoringStartOrStopAndUpdateUI(Buffer* pBuf, bool isStarting);
 
 	// Search commands for Qt implementation
 	void cutMarkedLines();
@@ -642,7 +656,9 @@ private:
 
 	bool isEmpty(); // true if we have 1 view with 1 clean, untitled doc
 
+#ifndef NPP_LINUX
 	void docGotoAnotherEditView(FileTransferMode mode);	//TransferMode
+#endif
 	void docOpenInNewInstance(FileTransferMode mode, int x = 0, int y = 0);
 
 	void loadBufferIntoView(BufferID id, int whichOne, bool dontClose = false);		//Doesn't _activate_ the buffer
@@ -820,7 +836,9 @@ private:
 		HWND _nppHandle = nullptr;
 	};
 
+#ifndef NPP_LINUX
 	void monitoringStartOrStopAndUpdateUI(Buffer* pBuf, bool isStarting);
+#endif
 	void createMonitoringThread(Buffer* pBuf);
 	void updateCommandShortcuts();
 

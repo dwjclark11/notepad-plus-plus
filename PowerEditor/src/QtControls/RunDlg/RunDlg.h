@@ -17,6 +17,7 @@ class QLineEdit;
 class QTextEdit;
 class QPushButton;
 class QLabel;
+class Notepad_plus;
 
 namespace QtControls {
 
@@ -51,6 +52,9 @@ public:
     // Get the command history
     std::vector<QString> getHistory() const;
 
+    // Set the Notepad_plus instance for accessing buffers and editor views
+    void setNotepadPlus(Notepad_plus* pNotepad) { _pNotepad = pNotepad; }
+
 protected:
     void setupUI() override;
     void connectSignals() override;
@@ -77,6 +81,7 @@ private:
     // State
     std::vector<QString> _commandHistory;
     QString _currentCommand;
+    Notepad_plus* _pNotepad = nullptr;
 
     // Helper methods
     void addCommandToHistory(const QString& command);

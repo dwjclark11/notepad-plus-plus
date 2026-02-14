@@ -32,14 +32,19 @@
 #include "ScintillaEditView.h"
 #include "Parameters.h"
 #include "Common.h"
+#include "NppDarkMode.h"
 #include "ScintillaEditBase.h"
+
+#include "MISC/Common/Sorters.h"
 
 #include <algorithm>
 #include <vector>
 #include <string>
+#include <memory>
 #include <unordered_set>
 #include <iostream>
 #include <cctype>
+#include <cstring>
 #include <cwctype>
 
 using namespace std;
@@ -311,6 +316,39 @@ void ScintillaEditView::removeAnyDuplicateLines()
         {
             replaceTarget(joined.c_str(), startPos, endPos);
         }
+    }
+}
+
+void ScintillaEditView::sortLines(size_t fromLine, size_t toLine, ISorter* pSort)
+{
+    if (fromLine >= toLine)
+        return;
+
+    const auto startPos = execute(SCI_POSITIONFROMLINE, fromLine);
+    const auto endPos = execute(SCI_POSITIONFROMLINE, toLine) + execute(SCI_LINELENGTH, toLine);
+    const std::wstring text = getGenericTextAsString(startPos, endPos);
+    std::vector<std::wstring> splitText;
+    stringSplit(text, getEOLString(), splitText);
+    const size_t lineCount = execute(SCI_GETLINECOUNT);
+    const bool sortEntireDocument = toLine == lineCount - 1;
+    if (!sortEntireDocument)
+    {
+        if (splitText.rbegin()->empty())
+        {
+            splitText.pop_back();
+        }
+    }
+    pSort->sort(splitText);
+    std::wstring joined;
+    stringJoin(splitText, getEOLString(), joined);
+
+    if (!sortEntireDocument)
+    {
+        joined += getEOLString();
+    }
+    if (text != joined)
+    {
+        replaceTarget(joined.c_str(), startPos, endPos);
     }
 }
 
@@ -852,6 +890,46 @@ wstring ScintillaEditView::getGenericTextAsString(size_t start, size_t end) cons
 }
 
 // ============================================================================
+// Line Retrieval
+// ============================================================================
+
+wstring ScintillaEditView::getLine(size_t lineNumber) const
+{
+    size_t lineLen = execute(SCI_LINELENGTH, lineNumber);
+    if (lineLen == 0)
+        return L"";
+    const size_t bufSize = lineLen + 1;
+    std::unique_ptr<wchar_t[]> buf = std::make_unique<wchar_t[]>(bufSize);
+    getLine(lineNumber, buf.get(), bufSize);
+    return buf.get();
+}
+
+void ScintillaEditView::getLine(size_t lineNumber, wchar_t* line, size_t lineBufferLen) const
+{
+    size_t lineLen = execute(SCI_LINELENGTH, lineNumber);
+    if (lineLen >= lineBufferLen)
+        return;
+
+    WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+    size_t cp = execute(SCI_GETCODEPAGE);
+    char* lineA = new char[lineBufferLen];
+    memset(lineA, 0x0, sizeof(char) * lineBufferLen);
+    execute(SCI_GETLINE, lineNumber, reinterpret_cast<LPARAM>(lineA));
+    const wchar_t* lineW = wmc.char2wchar(lineA, cp);
+    wcscpy_s(line, lineBufferLen, lineW);
+    delete[] lineA;
+}
+
+void ScintillaEditView::getLine(size_t lineNumber, char* line, size_t lineBufferLen) const
+{
+    const size_t lineLen = execute(SCI_LINELENGTH, lineNumber);
+    if (lineLen >= lineBufferLen)
+        return;
+
+    execute(SCI_GETLINE, lineNumber, reinterpret_cast<LPARAM>(line));
+}
+
+// ============================================================================
 // Text Case Conversion
 // ============================================================================
 
@@ -995,6 +1073,21 @@ void ScintillaEditView::getText(char* dest, size_t start, size_t end) const
     tr.chrg.cpMax = static_cast<Sci_Position>(end);
     tr.lpstrText = dest;
     execute(SCI_GETTEXTRANGEFULL, 0, reinterpret_cast<LPARAM>(&tr));
+}
+
+// ============================================================================
+// Auto-Completion Support
+// ============================================================================
+
+void ScintillaEditView::showAutoCompletion(size_t lenEntered, const std::string& list) const
+{
+	execute(SCI_AUTOCSHOW, lenEntered, reinterpret_cast<LPARAM>(list.c_str()));
+	NppDarkMode::setDarkAutoCompletion();
+}
+
+void ScintillaEditView::showCallTip(size_t startPos, const std::string& def) const
+{
+	execute(SCI_CALLTIPSHOW, startPos, reinterpret_cast<LPARAM>(def.c_str()));
 }
 
 // ============================================================================
@@ -3412,6 +3505,33 @@ void ScintillaEditView::initScratchEditor(QWidget* /*parent*/)
         }
         std::cout << "[ScintillaEditView::initScratchEditor] Scratch editor initialized (hidden)" << std::endl;
     }
+}
+
+char* ScintillaEditView::getWordFromRange(char* txt, size_t size, size_t pos1, size_t pos2)
+{
+	if (!size)
+		return NULL;
+	if (pos1 > pos2)
+	{
+		size_t tmp = pos1;
+		pos1 = pos2;
+		pos2 = tmp;
+	}
+
+	if (size < pos2 - pos1)
+		return NULL;
+
+	getText(txt, pos1, pos2);
+	return txt;
+}
+
+char* ScintillaEditView::getWordOnCaretPos(char* txt, size_t size)
+{
+	if (!size)
+		return NULL;
+
+	pair<size_t, size_t> range = getWordRange();
+	return getWordFromRange(txt, size, range.first, range.second);
 }
 
 #endif // NPP_LINUX

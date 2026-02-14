@@ -40,6 +40,12 @@ public:
     int getTimes() const { return _times; }
     int getMacro2Exec() const;
 
+    // Set whether there is a currently recorded macro available
+    void setHasRecordedMacro(bool has) { _hasRecordedMacro = has; }
+
+signals:
+    void runMacroRequested();
+
 protected:
     void setupUI() override;
     void connectSignals() override;
@@ -71,6 +77,8 @@ private:
     int _times = 1;
     int _macroIndex = 0;
     bool _runUntilEOF = false;
+    bool _hasRecordedMacro = false;
+    bool _hasCurrentMacro = false;
 };
 
 } // namespace QtControls

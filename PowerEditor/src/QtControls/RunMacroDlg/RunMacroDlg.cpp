@@ -7,6 +7,7 @@
 // at your option any later version.
 
 #include "RunMacroDlg.h"
+#include "Parameters.h"
 
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
@@ -133,16 +134,20 @@ void RunMacroDlg::initMacroList()
     QString currentSelection = _macroCombo->currentText();
     _macroCombo->clear();
 
-    // Add "Current recorded macro" if recording is stopped
-    // TODO: Check macro recording status from Notepad++ core
-    _macroCombo->addItem(tr("Current recorded macro"));
+    _hasCurrentMacro = _hasRecordedMacro;
+    if (_hasCurrentMacro)
+    {
+        _macroCombo->addItem(tr("Current recorded macro"));
+    }
 
-    // Add saved macros from the macro list
-    // TODO: Get actual macro list from NppParameters
-    // For now, add placeholder items
-    _macroCombo->addItem(tr("Macro 1"));
-    _macroCombo->addItem(tr("Macro 2"));
-    _macroCombo->addItem(tr("Macro 3"));
+    // Add saved macros from NppParameters
+    NppParameters& nppParams = NppParameters::getInstance();
+    std::vector<MacroShortcut>& macros = nppParams.getMacroList();
+    for (size_t i = 0; i < macros.size(); ++i)
+    {
+        QString name = QString::fromUtf8(macros[i].getName());
+        _macroCombo->addItem(name);
+    }
 
     // Restore selection if possible
     int index = _macroCombo->findText(currentSelection);
@@ -162,15 +167,14 @@ int RunMacroDlg::isMulti() const
 
 int RunMacroDlg::getMacro2Exec() const
 {
-    // If current recorded macro is present (index 0), adjust index
-    // TODO: Check if current recorded macro is present
-    bool isCurMacroPresent = false;  // Should check NPPM_GETCURRENTMACROSTATUS
-    return isCurMacroPresent ? (_macroIndex - 1) : _macroIndex;
+    // Index 0 is "Current recorded macro" when present, which maps to -1
+    if (_hasCurrentMacro)
+        return _macroIndex - 1;
+    return _macroIndex;
 }
 
 bool RunMacroDlg::run_dlgProc(QEvent* /*event*/)
 {
-    // Handle any custom event processing here
     return false;
 }
 
@@ -184,8 +188,8 @@ void RunMacroDlg::onOKClicked()
     }
     _times = times;
 
-    // TODO: Send message to parent to run the macro
-    // ::SendMessage(_hParent, WM_MACRODLGRUNMACRO, 0, 0);
+    // Signal the parent Notepad_plus to run the macro
+    emit runMacroRequested();
 
     display(false);
 }

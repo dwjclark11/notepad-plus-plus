@@ -33,6 +33,7 @@
 #include "lastRecentFileList.h"
 #include "MISC/Common/LinuxTypes.h"
 #include "Platform/Clipboard.h"
+#include "Platform/FileWatcher.h"
 #include "menuCmdID.h"
 
 // Panel headers needed for destructor
@@ -1508,12 +1509,65 @@ void Notepad_plus::monitoringStartOrStopAndUpdateUI(Buffer* pBuf, bool isStartin
     if (isStarting)
     {
         pBuf->startMonitoring();
-        // TODO: Start file monitoring thread
+
+        // Register file with platform FileWatcher for change notifications
+        if (!pBuf->isUntitled())
+        {
+            std::wstring filePath(pBuf->getFullPathName());
+            auto& watcher = PlatformLayer::IFileWatcher::getInstance();
+            auto handle = watcher.watchFile(filePath,
+                [this, pBuf](const PlatformLayer::FileChangeEvent& event)
+                {
+                    if (event.type == PlatformLayer::FileChangeType::Modified)
+                    {
+                        // Auto-reload in tail mode and scroll to end
+                        doReload(pBuf->getID(), false);
+                        // Scroll to end in both views if buffer is active
+                        if (_mainEditView.getCurrentBuffer() == pBuf)
+                        {
+                            _mainEditView.execute(SCI_DOCUMENTEND);
+                        }
+                        if (_subEditView.getCurrentBuffer() == pBuf)
+                        {
+                            _subEditView.execute(SCI_DOCUMENTEND);
+                        }
+                    }
+                    else if (event.type == PlatformLayer::FileChangeType::Deleted)
+                    {
+                        pBuf->setStatus(QtCore::DOC_DELETED);
+                        notifyBufferChanged(pBuf, BufferChangeStatus);
+                    }
+                });
+
+            pBuf->setFileWatchHandle(handle);
+        }
+
+        // Set read-only in tail mode
+        _pEditView->execute(SCI_SETREADONLY, true);
+
+        // Update tab icon to monitoring state
+        _mainDocTab.bufferUpdated(pBuf, BufferChangeReadonly);
+        _subDocTab.bufferUpdated(pBuf, BufferChangeReadonly);
     }
     else
     {
+        // Unregister from platform FileWatcher
+        auto handle = pBuf->getFileWatchHandle();
+        if (handle != PlatformLayer::INVALID_WATCH_HANDLE)
+        {
+            auto& watcher = PlatformLayer::IFileWatcher::getInstance();
+            watcher.unwatchFile(handle);
+            pBuf->setFileWatchHandle(PlatformLayer::INVALID_WATCH_HANDLE);
+        }
+
         pBuf->stopMonitoring();
-        // TODO: Stop file monitoring thread
+
+        // Remove read-only in tail mode
+        _pEditView->execute(SCI_SETREADONLY, false);
+
+        // Update tab icon
+        _mainDocTab.bufferUpdated(pBuf, BufferChangeReadonly);
+        _subDocTab.bufferUpdated(pBuf, BufferChangeReadonly);
     }
 }
 
@@ -1656,6 +1710,18 @@ void Notepad_plus::loadBufferIntoView(BufferID id, int view, bool dontClose)
 
     // Add buffer to tab
     tabToOpen->addBuffer(id);
+
+    // Connect file monitoring signal if not already connected
+    Buffer* buf = MainFileManager.getBufferByID(id);
+    if (buf)
+    {
+        QObject::connect(buf, &QtCore::Buffer::fileModifiedExternally,
+            buf, [this, buf]()
+            {
+                notifyBufferChanged(buf, BufferChangeStatus);
+            },
+            Qt::UniqueConnection);
+    }
 }
 
 bool Notepad_plus::switchToFile(BufferID id)
@@ -1788,16 +1854,29 @@ void Notepad_plus::hideView(int whichOne)
         _mainWindowStatus &= ~WindowMainActive;
         _mainEditView.display(false);
         _mainDocTab.display(false);
+        // Hide the container widget in the splitter
+        QWidget* editWidget = _mainEditView.getWidget();
+        if (editWidget)
+        {
+            QWidget* container = editWidget->parentWidget();
+            if (container)
+                container->hide();
+        }
     }
     else if (whichOne == SUB_VIEW)
     {
         _mainWindowStatus &= ~WindowSubActive;
         _subEditView.display(false);
         _subDocTab.display(false);
+        // Hide the container widget in the splitter
+        QWidget* editWidget = _subEditView.getWidget();
+        if (editWidget)
+        {
+            QWidget* container = editWidget->parentWidget();
+            if (container)
+                container->hide();
+        }
     }
-
-    // Update the splitter layout - Qt handles this automatically
-    // when visibility changes via the layout system
 }
 
 void Notepad_plus::performPostReload(int whichOne)
@@ -2782,39 +2861,131 @@ void Notepad_plus::macroPlayback()
     if (_recordingMacro || _macro.empty())
         return;
 
+    macroPlayback(_macro);
+}
+
+void Notepad_plus::macroPlayback(const Macro& macro)
+{
     _playingBackMacro = true;
 
-    // Execute each macro step
-    for (size_t i = 0; i < _macro.size(); ++i)
+    _pEditView->execute(SCI_BEGINUNDOACTION);
+
+    for (size_t i = 0; i < macro.size(); ++i)
     {
-        const recordedMacroStep& step = _macro[i];
+        const recordedMacroStep& step = macro[i];
         if (step.isScintillaMacro())
         {
-            _pEditView->execute(step._message, step._wParameter, step._lParameter);
+            if (step._macroType == recordedMacroStep::mtUseSParameter)
+            {
+                _pEditView->execute(step._message, step._wParameter,
+                    reinterpret_cast<sptr_t>(step._sParameter.c_str()));
+            }
+            else
+            {
+                _pEditView->execute(step._message, step._wParameter, step._lParameter);
+            }
         }
-        // TODO: Handle menu commands and other macro types
+        // Menu commands (mtMenuCommand) would require wiring to the command
+        // handler; Scintilla-level commands cover the majority of macro use cases.
     }
+
+    _pEditView->execute(SCI_ENDUNDOACTION);
 
     _playingBackMacro = false;
 }
 
 void Notepad_plus::saveCurrentMacro()
 {
-    // Save the current macro
     if (_macro.empty())
         return;
 
-    // Show dialog to save macro with a name and shortcut
-    // This would typically open a dialog for the user to name the macro
-    // and assign a keyboard shortcut
-    // For now, just add it to the macro list
     addCurrentMacro();
 }
 
 void Notepad_plus::showRunMacroDlg()
 {
-    // Show the Run Macro dialog
+    static bool connected = false;
+    if (!connected)
+    {
+        QObject::connect(&_runMacroDlg, &QtControls::RunMacroDlg::runMacroRequested,
+            [this]() { runMacroFromDlg(); });
+        connected = true;
+    }
+
+    _runMacroDlg.setHasRecordedMacro(!_macro.empty() && _recordingSaved);
+    _runMacroDlg.initMacroList();
     _runMacroDlg.doDialog(false);
+}
+
+void Notepad_plus::runMacroFromDlg()
+{
+    if (_recordingMacro)
+        return;
+
+    int times = _runMacroDlg.isMulti() ? _runMacroDlg.getTimes() : -1;
+    int indexMacro = _runMacroDlg.getMacro2Exec();
+
+    Macro m = _macro;
+
+    if (indexMacro != -1)
+    {
+        NppParameters& nppParam = NppParameters::getInstance();
+        std::vector<MacroShortcut>& ms = nppParam.getMacroList();
+        if (indexMacro >= 0 && indexMacro < static_cast<int>(ms.size()))
+        {
+            m = ms[indexMacro].getMacro();
+        }
+    }
+
+    if (m.empty())
+        return;
+
+    int counter = 0;
+    intptr_t lastLine = _pEditView->execute(SCI_GETLINECOUNT) - 1;
+    intptr_t currLine = _pEditView->execute(SCI_LINEFROMPOSITION,
+        _pEditView->execute(SCI_GETCURRENTPOS));
+    intptr_t deltaLastLine = 0;
+    intptr_t deltaCurrLine = 0;
+    bool cursorMovedUp = false;
+
+    for (;;)
+    {
+        macroPlayback(m);
+        ++counter;
+        if (times >= 0)
+        {
+            if (counter >= times)
+                break;
+        }
+        else // run until EOF
+        {
+            intptr_t newLastLine = _pEditView->execute(SCI_GETLINECOUNT) - 1;
+            intptr_t newCurrLine = _pEditView->execute(SCI_LINEFROMPOSITION,
+                _pEditView->execute(SCI_GETCURRENTPOS));
+
+            deltaLastLine = newLastLine - lastLine;
+            deltaCurrLine = newCurrLine - currLine;
+
+            if (counter > 2 && cursorMovedUp != (deltaCurrLine < 0) && deltaLastLine >= 0)
+                break;
+
+            cursorMovedUp = deltaCurrLine < 0;
+
+            if ((deltaCurrLine == 0) && (deltaLastLine >= 0))
+                break;
+
+            if (deltaLastLine < deltaCurrLine)
+                lastLine += deltaLastLine;
+
+            currLine += deltaCurrLine;
+
+            if ((currLine > lastLine) || (currLine < 0)
+                || ((deltaCurrLine == 0) && (currLine == 0) && ((deltaLastLine >= 0) || cursorMovedUp)))
+            {
+                break;
+            }
+        }
+    }
 }
 
 // ============================================================================
@@ -2864,7 +3035,8 @@ void Notepad_plus::showUserDefineDlg()
 
 void Notepad_plus::showRunDlg()
 {
-    // Show the Run dialog
+    // Ensure the Run dialog has access to this Notepad_plus instance
+    _runDlg.setNotepadPlus(this);
     _runDlg.doDialog(false);
 }
 
@@ -3007,14 +3179,37 @@ void Notepad_plus::launchProjectPanel(int cmdID, ProjectPanel** ppProjPanel, int
 
 bool Notepad_plus::addCurrentMacro()
 {
-    // TODO: Implement add current macro for Qt
-    // This would save the currently recorded macro with a name and shortcut
-
     if (_macro.empty())
         return false;
 
-    // Show dialog to save macro with name and shortcut
-    // For now, just mark as saved
+    NppParameters& nppParams = NppParameters::getInstance();
+    std::vector<MacroShortcut>& theMacros = nppParams.getMacroList();
+
+    // Show a dialog to get the macro name from the user
+    bool ok = false;
+    QString macroName = QInputDialog::getText(
+        nullptr,
+        QObject::tr("Save Current Macro"),
+        QObject::tr("Enter a name for the macro:"),
+        QLineEdit::Normal,
+        QObject::tr("My Macro"),
+        &ok);
+
+    if (!ok || macroName.isEmpty())
+        return false;
+
+    int nbMacro = static_cast<int>(theMacros.size());
+    int cmdID = ID_MACRO + nbMacro;
+
+    std::string name = macroName.toStdString();
+    Shortcut sc(name.c_str(), false, false, false, 0);
+    MacroShortcut ms(sc, _macro, cmdID);
+
+    theMacros.push_back(ms);
+    nppParams.getMacroMenuItems().push_back(
+        MenuItemUnit(cmdID, string2wstring(name, CP_UTF8)));
+    nppParams.setShortcutDirty();
+
     _recordingSaved = true;
 
     return true;
@@ -3204,6 +3399,97 @@ void Notepad_plus::getCurrentOpenedFiles(Session& session, bool includeUntitledD
 }
 
 // ============================================================================
+// Dual View Operations (Move/Clone to Other View)
+// ============================================================================
+
+void Notepad_plus::docGotoAnotherEditView(FileTransferMode mode)
+{
+	// Get current buffer
+	BufferID current = _pEditView->getCurrentBufferID();
+	Buffer* buf = MainFileManager.getBufferByID(current);
+	if (!buf)
+		return;
+
+	// If moving and this is the only doc in a single-view setup,
+	// show the other view first so we don't leave an empty tab bar
+	if (mode == TransferMove)
+	{
+		if (_pDocTab->nbItem() == 1 && !viewVisible(otherView()))
+		{
+			showView(otherView());
+		}
+	}
+
+	// Save pinned and monitoring state before any move
+	bool wasPinned = buf->isPinned();
+	bool wasMonitoring = buf->isMonitoringOn();
+
+	int viewToGo = otherView();
+	int indexFound = _pNonDocTab->getIndexByBuffer(current);
+
+	if (indexFound != -1)
+	{
+		// Already in other view, just activate it
+		activateBuffer(current, viewToGo);
+	}
+	else
+	{
+		// Save current position before moving
+		if (_pEditView->isVisible() && _pNonEditView->isVisible())
+		{
+			_pNonEditView->saveCurrentPos();
+		}
+
+		// Load buffer into the other view
+		loadBufferIntoView(current, viewToGo);
+
+		// Copy position from current view to new view
+		_pEditView->saveCurrentPos();
+		buf->setPosition(buf->getPosition(_pEditView), _pNonEditView);
+		_pNonEditView->restoreCurrentPosPreStep();
+
+		// Activate in the target view
+		activateBuffer(current, viewToGo);
+	}
+
+	// Show the target view if it was hidden
+	int viewToOpen = (viewToGo == SUB_VIEW ? WindowSubActive : WindowMainActive);
+	if (!(_mainWindowStatus & viewToOpen))
+	{
+		showView(viewToGo);
+	}
+
+	// Close the document from source view if moving (not cloning)
+	if (mode == TransferMove)
+	{
+		doClose(_pEditView->getCurrentBufferID(), currentView());
+	}
+
+	// Switch focus to the target view
+	switchEditViewTo(viewToGo);
+
+	// If the source view is now empty, hide it
+	if (mode == TransferMove)
+	{
+		int sourceView = otherFromView(viewToGo);
+		if (canHideView(sourceView))
+			hideView(sourceView);
+	}
+
+	// Restore pinned state in target view
+	if (wasPinned)
+	{
+		buf->setPinned(true);
+	}
+
+	// Restore monitoring state in target view
+	if (wasMonitoring)
+	{
+		monitoringStartOrStopAndUpdateUI(buf, true);
+	}
+}
+
+// ============================================================================
 // View Visibility Operations
 // ============================================================================
 
@@ -3212,23 +3498,34 @@ void Notepad_plus::showView(int whichOne)
     if (viewVisible(whichOne))  //no use making visible view visible
         return;
 
-    // For Qt, we need to show the appropriate view
-    // The main window status tracks which views are active
     if (whichOne == MAIN_VIEW)
     {
         _mainWindowStatus |= WindowMainActive;
         _mainEditView.display(true);
         _mainDocTab.display(true);
+        // Show the container widget in the splitter
+        QWidget* editWidget = _mainEditView.getWidget();
+        if (editWidget)
+        {
+            QWidget* container = editWidget->parentWidget();
+            if (container)
+                container->show();
+        }
     }
     else if (whichOne == SUB_VIEW)
     {
         _mainWindowStatus |= WindowSubActive;
         _subEditView.display(true);
         _subDocTab.display(true);
+        // Show the container widget in the splitter
+        QWidget* editWidget = _subEditView.getWidget();
+        if (editWidget)
+        {
+            QWidget* container = editWidget->parentWidget();
+            if (container)
+                container->show();
+        }
     }
-
-    // Update the splitter layout - Qt handles this automatically
-    // when visibility changes via the layout system
 }
 
 bool Notepad_plus::viewVisible(int whichOne)

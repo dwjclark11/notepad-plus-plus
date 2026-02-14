@@ -12,6 +12,7 @@
 #include "../../resource.h"
 #include "../../Notepad_plus.h"
 #include "../../Parameters.h"
+#include "../../localization.h"
 #include "../../MISC/PluginsManager/Notepad_plus_msgs.h"
 
 // Dialog includes
@@ -29,7 +30,11 @@
 #include "../ScintillaComponent/ScintillaEditView.h"
 #include "../ShortcutManager/ShortcutManager.h"
 #include "../../WinControls/PluginsAdmin/pluginsAdminRes.h"
+#include "../../EncodingMapper.h"
+#include "../../QtCore/Buffer.h"
 #include "../DocTabView/DocTabView.h"
+#include "../../ScintillaComponent/AutoCompletion.h"
+#include "ScintillaEditBase.h"
 
 #include <QApplication>
 #include <QStyle>
@@ -52,6 +57,60 @@
 #include <QClipboard>
 
 namespace QtControls {
+
+// Maps a Windows codepage number to a display name for the status bar
+static QString charsetEncodingName(int codepage)
+{
+    switch (codepage) {
+        case 1250: return "Windows-1250";
+        case 1251: return "Windows-1251";
+        case 1252: return "Windows-1252";
+        case 1253: return "Windows-1253";
+        case 1254: return "Windows-1254";
+        case 1255: return "Windows-1255";
+        case 1256: return "Windows-1256";
+        case 1257: return "Windows-1257";
+        case 1258: return "Windows-1258";
+        case 28591: return "ISO 8859-1";
+        case 28592: return "ISO 8859-2";
+        case 28593: return "ISO 8859-3";
+        case 28594: return "ISO 8859-4";
+        case 28595: return "ISO 8859-5";
+        case 28596: return "ISO 8859-6";
+        case 28597: return "ISO 8859-7";
+        case 28598: return "ISO 8859-8";
+        case 28599: return "ISO 8859-9";
+        case 28603: return "ISO 8859-13";
+        case 28604: return "ISO 8859-14";
+        case 28605: return "ISO 8859-15";
+        case 437: return "OEM 437";
+        case 720: return "OEM 720";
+        case 737: return "OEM 737";
+        case 775: return "OEM 775";
+        case 850: return "OEM 850";
+        case 852: return "OEM 852";
+        case 855: return "OEM 855";
+        case 857: return "OEM 857";
+        case 858: return "OEM 858";
+        case 860: return "OEM 860";
+        case 861: return "OEM 861";
+        case 862: return "OEM 862";
+        case 863: return "OEM 863";
+        case 865: return "OEM 865";
+        case 866: return "OEM 866";
+        case 869: return "OEM 869";
+        case 950: return "Big5";
+        case 936: return "GB2312";
+        case 932: return "Shift-JIS";
+        case 949: return "Windows-949";
+        case 51949: return "EUC-KR";
+        case 874: return "TIS-620";
+        case 10007: return "Mac Cyrillic";
+        case 21866: return "KOI8-U";
+        case 20866: return "KOI8-R";
+        default: return QString("CP %1").arg(codepage);
+    }
+}
 
 namespace MainWindow {
 
@@ -320,6 +379,15 @@ void MainWindow::setupUI()
     initMenuBar();
     std::cout << "[MainWindow::setupUI] Menu bar done." << std::endl;
 
+    // Apply localization to menus
+    NppParameters& nppParam = NppParameters::getInstance();
+    NativeLangSpeaker* pNativeLangSpeaker = nppParam.getNativeLangSpeaker();
+    if (pNativeLangSpeaker)
+    {
+        pNativeLangSpeaker->changeMenuLangQt(menuBar());
+    }
+    std::cout << "[MainWindow::setupUI] Menu localization done." << std::endl;
+
     // Add more debugging for widget hierarchy
     std::cout << "[MainWindow::setupUI] mainContainer parent: " << mainContainer->parentWidget() << std::endl;
     std::cout << "[MainWindow::setupUI] mainEditWidget parent: " << mainEditWidget->parentWidget() << std::endl;
@@ -368,6 +436,38 @@ void MainWindow::connectSignals()
         // Connect tab change signal to activate buffer
         connect(_subDocTab, &DocTabView::currentChanged,
                 this, &MainWindow::onSubTabChanged);
+    }
+
+    // Connect Scintilla charAdded signal to auto-completion engine
+    if (_pNotepad_plus) {
+        ScintillaEditView* mainEditView = _pNotepad_plus->getMainEditView();
+        ScintillaEditView* subEditView = _pNotepad_plus->getSubEditView();
+
+        if (mainEditView && mainEditView->getWidget()) {
+            auto* mainSciWidget = qobject_cast<ScintillaEditBase*>(mainEditView->getWidget());
+            if (mainSciWidget) {
+                connect(mainSciWidget, &ScintillaEditBase::charAdded, this, [this](int ch) {
+                    if (!_pNotepad_plus) return;
+                    AutoCompletion* autoC = _pNotepad_plus->getAutoCompleteMain();
+                    if (autoC) {
+                        autoC->update(ch);
+                    }
+                });
+            }
+        }
+
+        if (subEditView && subEditView->getWidget()) {
+            auto* subSciWidget = qobject_cast<ScintillaEditBase*>(subEditView->getWidget());
+            if (subSciWidget) {
+                connect(subSciWidget, &ScintillaEditBase::charAdded, this, [this](int ch) {
+                    if (!_pNotepad_plus) return;
+                    AutoCompletion* autoC = _pNotepad_plus->getAutoCompleteSub();
+                    if (autoC) {
+                        autoC->update(ch);
+                    }
+                });
+            }
+        }
     }
 }
 
@@ -741,6 +841,12 @@ void MainWindow::createViewMenu()
     auto* fileBrowserAction = panelsMenu->addAction(tr("Folder as &Workspace"), this, &MainWindow::onViewFileBrowser);
     fileBrowserAction->setCheckable(true);
 
+    // Monitoring (tail -f)
+    _viewMenu->addSeparator();
+    _monitoringAction = _viewMenu->addAction(tr("Monitoring (tail -f)"), this, &MainWindow::onViewMonitoring);
+    _monitoringAction->setCheckable(true);
+    _monitoringAction->setChecked(false);
+
     // Tab Bar
     _viewMenu->addSeparator();
     auto* tabBarAction = _viewMenu->addAction(tr("Tab Bar"));
@@ -757,22 +863,146 @@ void MainWindow::createEncodingMenu()
 {
     _encodingMenu = _menuBar->addMenu(tr("&Encoding"));
 
-    // ANSI
-    _encodingMenu->addAction(tr("Encode in &ANSI"), this, &MainWindow::onEncodingANSI);
+    // Action group for exclusive checkmarks
+    _encodingActionGroup = new QActionGroup(this);
+    _encodingActionGroup->setExclusive(true);
+
+    // Helper lambda to add a checkable encoding action
+    auto addEncodingAction = [this](QMenu* menu, const QString& text, int cmdId) -> QAction*
+    {
+        QAction* action = menu->addAction(text);
+        action->setCheckable(true);
+        action->setData(cmdId);
+        _encodingActionGroup->addAction(action);
+        if (cmdId >= IDM_FORMAT_ENCODE && cmdId <= IDM_FORMAT_ENCODE_END) {
+            _charsetActions[cmdId] = action;
+            connect(action, &QAction::triggered, this, [this, cmdId]() {
+                onCharsetSelected(cmdId);
+            });
+        }
+        return action;
+    };
+
+    // Basic encodings
+    _ansiAction = addEncodingAction(_encodingMenu, tr("Encode in &ANSI"), IDM_FORMAT_ANSI);
+    connect(_ansiAction, &QAction::triggered, this, &MainWindow::onEncodingANSI);
 
     _encodingMenu->addSeparator();
 
-    // UTF-8
-    _encodingMenu->addAction(tr("Encode in &UTF-8"), this, &MainWindow::onEncodingUTF8);
+    _utf8Action = addEncodingAction(_encodingMenu, tr("Encode in &UTF-8"), IDM_FORMAT_UTF_8);
+    connect(_utf8Action, &QAction::triggered, this, &MainWindow::onEncodingUTF8);
 
-    // UTF-8 BOM
-    _encodingMenu->addAction(tr("Encode in UTF-8-&BOM"), this, &MainWindow::onEncodingUTF8BOM);
+    _utf8BomAction = addEncodingAction(_encodingMenu, tr("Encode in UTF-8-&BOM"), IDM_FORMAT_AS_UTF_8);
+    connect(_utf8BomAction, &QAction::triggered, this, &MainWindow::onEncodingUTF8BOM);
 
     _encodingMenu->addSeparator();
 
-    // UTF-16
-    _encodingMenu->addAction(tr("Encode in &UTF-16 BE"), this, &MainWindow::onEncodingUTF16BE);
-    _encodingMenu->addAction(tr("Encode in UTF-16 &LE"), this, &MainWindow::onEncodingUTF16LE);
+    _utf16beAction = addEncodingAction(_encodingMenu, tr("Encode in &UTF-16 BE BOM"), IDM_FORMAT_UTF_16BE);
+    connect(_utf16beAction, &QAction::triggered, this, &MainWindow::onEncodingUTF16BE);
+
+    _utf16leAction = addEncodingAction(_encodingMenu, tr("Encode in UTF-16 &LE BOM"), IDM_FORMAT_UTF_16LE);
+    connect(_utf16leAction, &QAction::triggered, this, &MainWindow::onEncodingUTF16LE);
+
+    _encodingMenu->addSeparator();
+
+    // ========================================================================
+    // Character Sets submenu
+    // ========================================================================
+    QMenu* charsetMenu = _encodingMenu->addMenu(tr("Character Sets"));
+
+    // --- Arabic ---
+    QMenu* arabicMenu = charsetMenu->addMenu(tr("Arabic"));
+    addEncodingAction(arabicMenu, tr("ISO 8859-6"), IDM_FORMAT_ISO_8859_6);
+    addEncodingAction(arabicMenu, tr("OEM 720"), IDM_FORMAT_DOS_720);
+    addEncodingAction(arabicMenu, tr("Windows-1256"), IDM_FORMAT_WIN_1256);
+
+    // --- Baltic ---
+    QMenu* balticMenu = charsetMenu->addMenu(tr("Baltic"));
+    addEncodingAction(balticMenu, tr("ISO 8859-4"), IDM_FORMAT_ISO_8859_4);
+    addEncodingAction(balticMenu, tr("ISO 8859-13"), IDM_FORMAT_ISO_8859_13);
+    addEncodingAction(balticMenu, tr("OEM 775"), IDM_FORMAT_DOS_775);
+    addEncodingAction(balticMenu, tr("Windows-1257"), IDM_FORMAT_WIN_1257);
+
+    // --- Celtic ---
+    QMenu* celticMenu = charsetMenu->addMenu(tr("Celtic"));
+    addEncodingAction(celticMenu, tr("ISO 8859-14"), IDM_FORMAT_ISO_8859_14);
+
+    // --- Central European ---
+    QMenu* centralEuMenu = charsetMenu->addMenu(tr("Central European"));
+    addEncodingAction(centralEuMenu, tr("ISO 8859-2"), IDM_FORMAT_ISO_8859_2);
+    addEncodingAction(centralEuMenu, tr("OEM 852"), IDM_FORMAT_DOS_852);
+    addEncodingAction(centralEuMenu, tr("Windows-1250"), IDM_FORMAT_WIN_1250);
+
+    // --- Chinese ---
+    QMenu* chineseMenu = charsetMenu->addMenu(tr("Chinese"));
+    addEncodingAction(chineseMenu, tr("Big5"), IDM_FORMAT_BIG5);
+    addEncodingAction(chineseMenu, tr("GB2312"), IDM_FORMAT_GB2312);
+
+    // --- Cyrillic ---
+    QMenu* cyrillicMenu = charsetMenu->addMenu(tr("Cyrillic"));
+    addEncodingAction(cyrillicMenu, tr("ISO 8859-5"), IDM_FORMAT_ISO_8859_5);
+    addEncodingAction(cyrillicMenu, tr("KOI8-R"), IDM_FORMAT_KOI8R_CYRILLIC);
+    addEncodingAction(cyrillicMenu, tr("KOI8-U"), IDM_FORMAT_KOI8U_CYRILLIC);
+    addEncodingAction(cyrillicMenu, tr("Mac Cyrillic"), IDM_FORMAT_MAC_CYRILLIC);
+    addEncodingAction(cyrillicMenu, tr("OEM 855"), IDM_FORMAT_DOS_855);
+    addEncodingAction(cyrillicMenu, tr("OEM 866"), IDM_FORMAT_DOS_866);
+    addEncodingAction(cyrillicMenu, tr("Windows-1251"), IDM_FORMAT_WIN_1251);
+
+    // --- Greek ---
+    QMenu* greekMenu = charsetMenu->addMenu(tr("Greek"));
+    addEncodingAction(greekMenu, tr("ISO 8859-7"), IDM_FORMAT_ISO_8859_7);
+    addEncodingAction(greekMenu, tr("OEM 737"), IDM_FORMAT_DOS_737);
+    addEncodingAction(greekMenu, tr("OEM 869"), IDM_FORMAT_DOS_869);
+    addEncodingAction(greekMenu, tr("Windows-1253"), IDM_FORMAT_WIN_1253);
+
+    // --- Hebrew ---
+    QMenu* hebrewMenu = charsetMenu->addMenu(tr("Hebrew"));
+    addEncodingAction(hebrewMenu, tr("ISO 8859-8"), IDM_FORMAT_ISO_8859_8);
+    addEncodingAction(hebrewMenu, tr("OEM 862"), IDM_FORMAT_DOS_862);
+    addEncodingAction(hebrewMenu, tr("Windows-1255"), IDM_FORMAT_WIN_1255);
+
+    // --- Japanese ---
+    QMenu* japaneseMenu = charsetMenu->addMenu(tr("Japanese"));
+    addEncodingAction(japaneseMenu, tr("Shift-JIS"), IDM_FORMAT_SHIFT_JIS);
+
+    // --- Korean ---
+    QMenu* koreanMenu = charsetMenu->addMenu(tr("Korean"));
+    addEncodingAction(koreanMenu, tr("EUC-KR"), IDM_FORMAT_EUC_KR);
+    addEncodingAction(koreanMenu, tr("Windows-949"), IDM_FORMAT_KOREAN_WIN);
+
+    // --- North European ---
+    QMenu* northEuMenu = charsetMenu->addMenu(tr("North European"));
+    addEncodingAction(northEuMenu, tr("OEM 861 (Icelandic)"), IDM_FORMAT_DOS_861);
+    addEncodingAction(northEuMenu, tr("OEM 865 (Nordic)"), IDM_FORMAT_DOS_865);
+
+    // --- Thai ---
+    QMenu* thaiMenu = charsetMenu->addMenu(tr("Thai"));
+    addEncodingAction(thaiMenu, tr("TIS-620"), IDM_FORMAT_TIS_620);
+
+    // --- Turkish ---
+    QMenu* turkishMenu = charsetMenu->addMenu(tr("Turkish"));
+    addEncodingAction(turkishMenu, tr("ISO 8859-3"), IDM_FORMAT_ISO_8859_3);
+    addEncodingAction(turkishMenu, tr("ISO 8859-9"), IDM_FORMAT_ISO_8859_9);
+    addEncodingAction(turkishMenu, tr("OEM 857"), IDM_FORMAT_DOS_857);
+    addEncodingAction(turkishMenu, tr("Windows-1254"), IDM_FORMAT_WIN_1254);
+
+    // --- Vietnamese ---
+    QMenu* vietnameseMenu = charsetMenu->addMenu(tr("Vietnamese"));
+    addEncodingAction(vietnameseMenu, tr("Windows-1258"), IDM_FORMAT_WIN_1258);
+
+    // --- Western European ---
+    QMenu* westernEuMenu = charsetMenu->addMenu(tr("Western European"));
+    addEncodingAction(westernEuMenu, tr("ISO 8859-1"), IDM_FORMAT_ISO_8859_1);
+    addEncodingAction(westernEuMenu, tr("ISO 8859-15"), IDM_FORMAT_ISO_8859_15);
+    addEncodingAction(westernEuMenu, tr("OEM 437 (US)"), IDM_FORMAT_DOS_437);
+    addEncodingAction(westernEuMenu, tr("OEM 850 (Western European)"), IDM_FORMAT_DOS_850);
+    addEncodingAction(westernEuMenu, tr("OEM 858 (Multilingual Latin I + Euro)"), IDM_FORMAT_DOS_858);
+    addEncodingAction(westernEuMenu, tr("OEM 860 (Portuguese)"), IDM_FORMAT_DOS_860);
+    addEncodingAction(westernEuMenu, tr("OEM 863 (French Canadian)"), IDM_FORMAT_DOS_863);
+    addEncodingAction(westernEuMenu, tr("Windows-1252"), IDM_FORMAT_WIN_1252);
+
+    // Default: check UTF-8
+    _utf8Action->setChecked(true);
 }
 
 void MainWindow::createLanguageMenu()
@@ -950,8 +1180,8 @@ void MainWindow::createWindowMenu()
 
     _windowMenu->addSeparator();
 
-    // Split/Unsplit
-    _windowMenu->addAction(tr("&Split"), this, &MainWindow::onWindowSplit);
+    // Move to Other View
+    _windowMenu->addAction(tr("&Move to Other View"), this, &MainWindow::onWindowMoveToOtherView);
 
     // Clone to Other View
     _windowMenu->addAction(tr("&Clone to Other View"), this, &MainWindow::onWindowCloneToOtherView);
@@ -1030,6 +1260,9 @@ void MainWindow::updateMenuState()
     }
     if (_showIndentGuideAction) {
         _showIndentGuideAction->setChecked(view->isShownIndentGuide());
+    }
+    if (_monitoringAction) {
+        _monitoringAction->setChecked(buffer->isMonitoringOn());
     }
 
     // Update panel visibility check states in View menu
@@ -1112,6 +1345,9 @@ void MainWindow::updateMenuState()
             }
         }
     }
+
+    // Update Encoding menu check state
+    updateEncodingMenu();
 }
 
 // ============================================================================
@@ -1259,17 +1495,23 @@ void MainWindow::updateStatusBar()
         _statusBar->setText(langName, 3);
 
         // Encoding
-        UniMode encoding = buffer->getUnicodeMode();
         QString encodingStr;
-        switch (encoding) {
-            case uniUTF8: encodingStr = "UTF-8 BOM"; break;
-            case uniUTF8_NoBOM: encodingStr = "UTF-8"; break;
-            case uni16BE: encodingStr = "UTF-16 BE"; break;
-            case uni16LE: encodingStr = "UTF-16 LE"; break;
-            case uni16BE_NoBOM: encodingStr = "UTF-16 BE"; break;
-            case uni16LE_NoBOM: encodingStr = "UTF-16 LE"; break;
-            case uni7Bit: encodingStr = "UTF-8"; break;
-            default: encodingStr = "ANSI"; break;
+        int charsetEncoding = buffer->getEncoding();
+        if (charsetEncoding != -1) {
+            // A charset encoding is active - show the charset name
+            encodingStr = charsetEncodingName(charsetEncoding);
+        } else {
+            UniMode uniMode = buffer->getUnicodeMode();
+            switch (uniMode) {
+                case uniUTF8: encodingStr = "UTF-8 BOM"; break;
+                case uniUTF8_NoBOM: encodingStr = "UTF-8"; break;
+                case uni16BE: encodingStr = "UTF-16 BE BOM"; break;
+                case uni16LE: encodingStr = "UTF-16 LE BOM"; break;
+                case uni16BE_NoBOM: encodingStr = "UTF-16 BE"; break;
+                case uni16LE_NoBOM: encodingStr = "UTF-16 LE"; break;
+                case uni7Bit: encodingStr = "UTF-8"; break;
+                default: encodingStr = "ANSI"; break;
+            }
         }
         _statusBar->setText(encodingStr, 2);
 
@@ -2276,6 +2518,25 @@ void MainWindow::onViewFileBrowser()
     }
 }
 
+void MainWindow::onViewMonitoring()
+{
+    if (!_pNotepad_plus)
+        return;
+
+    Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+    if (!buf)
+        return;
+
+    bool isMonitoring = buf->isMonitoringOn();
+    _pNotepad_plus->monitoringStartOrStopAndUpdateUI(buf, !isMonitoring);
+
+    // Update the menu check state
+    if (_monitoringAction)
+        _monitoringAction->setChecked(!isMonitoring);
+
+    updateStatusBar();
+}
+
 // ============================================================================
 // Slot Implementations - Encoding Menu
 // ============================================================================
@@ -2283,35 +2544,166 @@ void MainWindow::onViewFileBrowser()
 void MainWindow::onEncodingANSI()
 {
     if (_pNotepad_plus) {
-        _pNotepad_plus->setEncoding(IDM_FORMAT_AS_UTF_8);
+        Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+        if (buf) {
+            buf->setEncoding(-1);
+            buf->setUnicodeMode(uni8Bit);
+            updateStatusBar();
+            updateEncodingMenu();
+        }
     }
 }
 
 void MainWindow::onEncodingUTF8()
 {
     if (_pNotepad_plus) {
-        _pNotepad_plus->setEncoding(IDM_FORMAT_UTF_8);
+        Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+        if (buf) {
+            buf->setEncoding(-1);
+            buf->setUnicodeMode(uniUTF8_NoBOM);
+            updateStatusBar();
+            updateEncodingMenu();
+        }
     }
 }
 
 void MainWindow::onEncodingUTF8BOM()
 {
     if (_pNotepad_plus) {
-        _pNotepad_plus->setEncoding(IDM_FORMAT_AS_UTF_8);
+        Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+        if (buf) {
+            buf->setEncoding(-1);
+            buf->setUnicodeMode(uniUTF8);
+            updateStatusBar();
+            updateEncodingMenu();
+        }
     }
 }
 
 void MainWindow::onEncodingUTF16BE()
 {
     if (_pNotepad_plus) {
-        _pNotepad_plus->setEncoding(IDM_FORMAT_UTF_16BE);
+        Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+        if (buf) {
+            buf->setEncoding(-1);
+            buf->setUnicodeMode(uni16BE);
+            updateStatusBar();
+            updateEncodingMenu();
+        }
     }
 }
 
 void MainWindow::onEncodingUTF16LE()
 {
     if (_pNotepad_plus) {
-        _pNotepad_plus->setEncoding(IDM_FORMAT_UTF_16LE);
+        Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+        if (buf) {
+            buf->setEncoding(-1);
+            buf->setUnicodeMode(uni16LE);
+            updateStatusBar();
+            updateEncodingMenu();
+        }
+    }
+}
+
+void MainWindow::onCharsetSelected(int cmdId)
+{
+    if (!_pNotepad_plus)
+        return;
+
+    Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+    if (!buf)
+        return;
+
+    // Get codepage from the command ID using EncodingMapper
+    int index = cmdId - IDM_FORMAT_ENCODE;
+    const EncodingMapper& em = EncodingMapper::getInstance();
+    int codepage = em.getEncodingFromIndex(index);
+    if (codepage == -1)
+        return;
+
+    // Warn about unsaved changes
+    if (buf->isDirty()) {
+        int answer = QMessageBox::question(
+            this,
+            tr("Save Current Modification"),
+            tr("You should save the current modification.\n"
+               "All the saved modifications cannot be undone.\n\n"
+               "Continue?"),
+            QMessageBox::Yes | QMessageBox::No);
+        if (answer != QMessageBox::Yes)
+            return;
+    }
+
+    // Set the encoding and reload
+    buf->setEncoding(codepage);
+    buf->setUnicodeMode(uniUTF8_NoBOM);
+
+    // Reload the file with the new encoding
+    MainFileManager.reloadBuffer(buf->getID());
+
+    updateStatusBar();
+    updateEncodingMenu();
+}
+
+void MainWindow::updateEncodingMenu()
+{
+    if (!_pNotepad_plus)
+        return;
+
+    Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+    if (!buf)
+        return;
+
+    // Uncheck all first
+    if (_encodingActionGroup) {
+        QAction* checked = _encodingActionGroup->checkedAction();
+        if (checked) {
+            // QActionGroup with exclusive mode handles this, but we need to
+            // programmatically set the right one
+            checked->setChecked(false);
+        }
+    }
+
+    int encoding = buf->getEncoding();
+    if (encoding != -1) {
+        // A charset encoding is active - find the matching action
+        const EncodingMapper& em = EncodingMapper::getInstance();
+        int index = em.getIndexFromEncoding(encoding);
+        if (index >= 0) {
+            int cmdId = IDM_FORMAT_ENCODE + index;
+            auto it = _charsetActions.find(cmdId);
+            if (it != _charsetActions.end()) {
+                it.value()->setChecked(true);
+                return;
+            }
+        }
+    }
+
+    // No charset encoding - check based on UniMode
+    UniMode mode = buf->getUnicodeMode();
+    switch (mode) {
+        case uni8Bit:
+            if (_ansiAction) _ansiAction->setChecked(true);
+            break;
+        case uniUTF8_NoBOM:
+        case uni7Bit:
+            if (_utf8Action) _utf8Action->setChecked(true);
+            break;
+        case uniUTF8:
+            if (_utf8BomAction) _utf8BomAction->setChecked(true);
+            break;
+        case uni16BE:
+        case uni16BE_NoBOM:
+            if (_utf16beAction) _utf16beAction->setChecked(true);
+            break;
+        case uni16LE:
+        case uni16LE_NoBOM:
+            if (_utf16leAction) _utf16leAction->setChecked(true);
+            break;
+        default:
+            if (_utf8Action) _utf8Action->setChecked(true);
+            break;
     }
 }
 
@@ -2635,15 +3027,21 @@ void MainWindow::onWindowNewInstance()
 void MainWindow::onWindowSplit()
 {
     if (_pNotepad_plus) {
-        _pNotepad_plus->otherView();
+        _pNotepad_plus->docGotoAnotherEditView(TransferMove);
+    }
+}
+
+void MainWindow::onWindowMoveToOtherView()
+{
+    if (_pNotepad_plus) {
+        _pNotepad_plus->docGotoAnotherEditView(TransferMove);
     }
 }
 
 void MainWindow::onWindowCloneToOtherView()
 {
     if (_pNotepad_plus) {
-        // Clone current document to other view
-        _pNotepad_plus->otherView();
+        _pNotepad_plus->docGotoAnotherEditView(TransferClone);
     }
 }
 
