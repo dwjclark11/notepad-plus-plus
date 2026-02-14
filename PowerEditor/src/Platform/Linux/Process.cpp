@@ -432,7 +432,12 @@ public:
 // ============================================================================
 // Singleton Accessor
 // ============================================================================
+IProcess* IProcess::_testInstance = nullptr;
+
 IProcess& IProcess::getInstance() {
+    if (_testInstance) {
+        return *_testInstance;
+    }
     static ProcessLinux instance;
     return instance;
 }

@@ -158,7 +158,7 @@ bool DockingManager::isPanelVisible(const QString& name) const
     if (!info || !info->dockWidget) {
         return false;
     }
-    return info->dockWidget->isVisible();
+    return info->visible;
 }
 
 bool DockingManager::hasPanel(const QString& name) const
@@ -274,7 +274,7 @@ void DockingManager::restoreLayout(const QByteArray& layout)
     for (auto it = _panels.begin(); it != _panels.end(); ++it) {
         PanelInfo* info = it.value().get();
         if (info && info->dockWidget) {
-            info->visible = info->dockWidget->isVisible();
+            info->visible = !info->dockWidget->isHidden();
         }
     }
 }

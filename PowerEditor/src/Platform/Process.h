@@ -66,6 +66,10 @@ public:
     // Singleton accessor
     static IProcess& getInstance();
 
+    // Test injection support
+    static void setTestInstance(IProcess* instance) { _testInstance = instance; }
+    static void resetTestInstance() { _testInstance = nullptr; }
+
     // ------------------------------------------------------------------------
     // Basic Process Execution
     // ------------------------------------------------------------------------
@@ -153,6 +157,9 @@ public:
 
     // Find an executable in PATH
     static std::wstring findExecutable(const std::wstring& name);
+
+private:
+    static IProcess* _testInstance;
 };
 
 // ============================================================================

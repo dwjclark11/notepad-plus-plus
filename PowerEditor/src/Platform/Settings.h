@@ -30,6 +30,10 @@ public:
     // Singleton accessor
     static ISettings& getInstance();
 
+    // Test injection support
+    static void setTestInstance(ISettings* instance) { _testInstance = instance; }
+    static void resetTestInstance() { _testInstance = nullptr; }
+
     // ------------------------------------------------------------------------
     // Initialization and Paths
     // ------------------------------------------------------------------------
@@ -91,6 +95,9 @@ public:
     // ------------------------------------------------------------------------
     virtual bool writePluginSetting(const std::wstring& pluginName, const std::wstring& key, const std::wstring& value) = 0;
     virtual std::wstring readPluginSetting(const std::wstring& pluginName, const std::wstring& key, const std::wstring& defaultValue = L"") = 0;
+
+private:
+    static ISettings* _testInstance;
 };
 
 // ============================================================================

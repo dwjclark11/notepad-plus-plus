@@ -400,7 +400,12 @@ private:
 // ============================================================================
 // Singleton Accessor
 // ============================================================================
+IDialogs* IDialogs::_testInstance = nullptr;
+
 IDialogs& IDialogs::getInstance() {
+    if (_testInstance) {
+        return *_testInstance;
+    }
 #ifdef NPP_KDE_AVAILABLE
     // Check if KDE is available at runtime and use it if so
     if (KDE::KDEDialogs::isKDEAvailable()) {

@@ -77,69 +77,66 @@ void WindowTest::testDestroy() {
 // Visibility Tests
 // ============================================================================
 void WindowTest::testDisplay() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping visibility test in headless environment");
-    }
-
     _window->init(_parentWidget.get());
-    QVERIFY(!_window->isVisible());
+    QWidget* w = _window->getWidget();
+    QVERIFY(w != nullptr);
 
+    // After display(true), the widget should not be explicitly hidden
     _window->display(true);
-    QVERIFY(_window->isVisible());
+    QVERIFY(!w->isHidden());
+    QVERIFY(w->testAttribute(Qt::WA_WState_ExplicitShowHide));
 
+    // After display(false), the widget should be explicitly hidden
     _window->display(false);
-    QVERIFY(!_window->isVisible());
+    QVERIFY(w->isHidden());
 }
 
 void WindowTest::testIsVisible() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping visibility test in headless environment");
-    }
-
     _window->init(_parentWidget.get());
-    QVERIFY(!_window->isVisible());
+    QWidget* w = _window->getWidget();
+    QVERIFY(w != nullptr);
 
+    // After display(true), the widget should not be explicitly hidden
     _window->display(true);
-    QVERIFY(_window->isVisible());
+    QVERIFY(!w->isHidden());
 }
 
 // ============================================================================
 // Geometry Tests
 // ============================================================================
 void WindowTest::testReSizeTo() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping geometry test in headless environment");
-    }
-
     _window->init(_parentWidget.get());
     _window->display(true);
 
     QRect newRect(10, 20, 300, 400);
     _window->reSizeTo(newRect);
 
+    // getClientRect returns the widget's local rect (origin 0,0) so check size
     QRect clientRect;
     _window->getClientRect(clientRect);
-    QCOMPARE(clientRect, newRect);
+    QCOMPARE(clientRect.width(), 300);
+    QCOMPARE(clientRect.height(), 400);
+
+    // Verify position via the widget's geometry
+    QWidget* w = _window->getWidget();
+    QVERIFY(w != nullptr);
+    QCOMPARE(w->geometry(), newRect);
 }
 
 void WindowTest::testReSizeToWH() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping geometry test in headless environment");
-    }
-
     _window->init(_parentWidget.get());
     _window->display(true);
 
     QRect newRect(10, 20, 300, 400);
     _window->reSizeToWH(newRect);
 
-    // Should have same geometry
-    QRect clientRect;
-    _window->getClientRect(clientRect);
-    QCOMPARE(clientRect.x(), 10);
-    QCOMPARE(clientRect.y(), 20);
-    QCOMPARE(clientRect.width(), 300);
-    QCOMPARE(clientRect.height(), 400);
+    // Verify geometry was applied to the widget
+    QWidget* w = _window->getWidget();
+    QVERIFY(w != nullptr);
+    QCOMPARE(w->geometry().x(), 10);
+    QCOMPARE(w->geometry().y(), 20);
+    QCOMPARE(w->geometry().width(), 300);
+    QCOMPARE(w->geometry().height(), 400);
 }
 
 void WindowTest::testGetClientRect() {

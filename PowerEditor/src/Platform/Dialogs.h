@@ -145,6 +145,10 @@ public:
     // Singleton accessor
     static IDialogs& getInstance();
 
+    // Test injection support
+    static void setTestInstance(IDialogs* instance) { _testInstance = instance; }
+    static void resetTestInstance() { _testInstance = nullptr; }
+
     // ------------------------------------------------------------------------
     // Message Boxes
     // ------------------------------------------------------------------------
@@ -269,6 +273,9 @@ public:
 
     /// Set dialog as modal
     virtual void setModal(void* dialogHandle, bool modal) = 0;
+
+private:
+    static IDialogs* _testInstance;
 };
 
 // ============================================================================

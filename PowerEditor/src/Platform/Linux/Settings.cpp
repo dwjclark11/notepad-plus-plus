@@ -471,7 +471,12 @@ private:
 // ============================================================================
 // Singleton Accessor
 // ============================================================================
+ISettings* ISettings::_testInstance = nullptr;
+
 ISettings& ISettings::getInstance() {
+    if (_testInstance) {
+        return *_testInstance;
+    }
     static SettingsLinux instance;
     return instance;
 }

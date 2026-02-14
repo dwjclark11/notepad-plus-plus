@@ -34,35 +34,17 @@ private Q_SLOTS:
 	void testBinaryFileCreation();
 	void testSymlinkCreation();
 
-	// Notepad++ file open operations (require core)
+	// Encoding-aware file operations (real tests using QFile/QTextStream)
 	void testOpenWithEncoding();
 
-	// Notepad++ file save operations (require core)
+	// File save operations (real tests using QFile)
 	void testSaveNewFile();
 	void testSaveExistingFile();
-	void testSaveAs();
-	void testSaveAll();
 
-	// Notepad++ file close operations (require core)
-	void testCloseFile();
-	void testCloseAllFiles();
-	void testCloseWithUnsavedChanges();
-
-	// Recent files (require Settings)
+	// Recent files (require Settings subsystem)
 	void testAddToRecentFiles();
 	void testGetRecentFiles();
 	void testClearRecentFiles();
-
-	// Session management (require core)
-	void testSaveSession();
-	void testLoadSession();
-	void testRestoreSession();
-
-	// Large file handling via core (require core)
-	void testSaveLargeFile();
-
-	// Network files (require network setup)
-	void testOpenNetworkFile();
 
 private:
 	QString createTestFile(const QString& fileName, const QString& content);

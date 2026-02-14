@@ -43,12 +43,10 @@ void DockingManagerTest::cleanup() {
 // Initialization Tests
 // ============================================================================
 void DockingManagerTest::testInit() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping test in headless environment - widget initialization requires display");
-    }
-
     _dockingManager->init(_mainWindow.get());
-    QVERIFY(_dockingManager->getWidget() != nullptr);
+    // DockingManager does not use the base Window::_widget; verify init succeeded
+    // by confirming we can manage panels
+    QCOMPARE(_dockingManager->getPanelCount(), 0);
 }
 
 void DockingManagerTest::testDestroy() {
@@ -96,10 +94,6 @@ void DockingManagerTest::testHasPanel() {
 // Visibility Tests
 // ============================================================================
 void DockingManagerTest::testShowPanel() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping visibility test in headless environment");
-    }
-
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
@@ -112,10 +106,6 @@ void DockingManagerTest::testShowPanel() {
 }
 
 void DockingManagerTest::testHidePanel() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping visibility test in headless environment");
-    }
-
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
@@ -127,10 +117,6 @@ void DockingManagerTest::testHidePanel() {
 }
 
 void DockingManagerTest::testTogglePanel() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping visibility test in headless environment");
-    }
-
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
@@ -145,10 +131,6 @@ void DockingManagerTest::testTogglePanel() {
 }
 
 void DockingManagerTest::testIsPanelVisible() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping visibility test in headless environment");
-    }
-
     _dockingManager->init(_mainWindow.get());
 
     QWidget* panel = new QLabel("Test Panel");
@@ -260,10 +242,6 @@ void DockingManagerTest::testSetTabbedDocking() {
 // Batch Operations Tests
 // ============================================================================
 void DockingManagerTest::testShowAllPanels() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping visibility test in headless environment");
-    }
-
     _dockingManager->init(_mainWindow.get());
 
     _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockingManager::DockArea::Right);
@@ -280,10 +258,6 @@ void DockingManagerTest::testShowAllPanels() {
 }
 
 void DockingManagerTest::testHideAllPanels() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping visibility test in headless environment");
-    }
-
     _dockingManager->init(_mainWindow.get());
 
     _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockingManager::DockArea::Right);
@@ -311,10 +285,6 @@ void DockingManagerTest::testGetPanelNames() {
 }
 
 void DockingManagerTest::testGetVisiblePanels() {
-    if (Tests::WidgetTestUtils::isHeadlessEnvironment()) {
-        QSKIP("Skipping visibility test in headless environment");
-    }
-
     _dockingManager->init(_mainWindow.get());
 
     _dockingManager->addPanel("panel1", new QLabel("Panel 1"), DockingManager::DockArea::Right);

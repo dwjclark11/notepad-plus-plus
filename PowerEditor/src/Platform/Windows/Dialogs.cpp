@@ -451,7 +451,12 @@ private:
 // ============================================================================
 // Singleton Accessor
 // ============================================================================
+IDialogs* IDialogs::_testInstance = nullptr;
+
 IDialogs& IDialogs::getInstance() {
+    if (_testInstance) {
+        return *_testInstance;
+    }
     static DialogsWin32 instance;
     return instance;
 }

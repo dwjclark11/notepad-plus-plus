@@ -17,6 +17,89 @@ using namespace PlatformLayer;
 
 namespace Tests {
 
+// ============================================================================
+// MockProcess - records calls without launching external applications
+// ============================================================================
+class MockProcess : public IProcess {
+public:
+    bool shellOpenCalled = false;
+    std::wstring lastShellOpenPath;
+    std::wstring lastShellOpenArgs;
+    bool shellOpenReturnValue = true;
+
+    ProcessInfo run(const std::wstring& command,
+                   const std::wstring& /*args*/,
+                   const ProcessOptions& /*options*/) override {
+        ProcessInfo info;
+        info.success = true;
+        info.pid = 12345;
+        info.command = command;
+        return info;
+    }
+
+    ProcessResult runSync(const std::wstring& /*command*/,
+                         const std::wstring& /*args*/,
+                         const ProcessOptions& /*options*/) override {
+        ProcessResult result;
+        result.success = true;
+        result.exitCode = 0;
+        return result;
+    }
+
+    bool shellOpen(const std::wstring& fileOrUrl,
+                  const std::wstring& args,
+                  bool /*elevated*/) override {
+        shellOpenCalled = true;
+        lastShellOpenPath = fileOrUrl;
+        lastShellOpenArgs = args;
+        return shellOpenReturnValue;
+    }
+
+    bool shellOpenWith(const std::wstring& /*application*/,
+                      const std::wstring& /*file*/,
+                      const std::wstring& /*args*/,
+                      bool /*elevated*/) override {
+        return true;
+    }
+
+    bool waitForProcess(const ProcessInfo& /*info*/, uint32_t /*timeoutMs*/) override {
+        return true;
+    }
+
+    bool terminateProcess(const ProcessInfo& /*info*/, bool /*force*/) override {
+        return true;
+    }
+
+    bool isProcessRunning(const ProcessInfo& /*info*/) override {
+        return false;
+    }
+
+    bool getExitCode(const ProcessInfo& /*info*/, uint32_t& exitCode) override {
+        exitCode = 0;
+        return true;
+    }
+
+    bool isProcessRunning(uint32_t /*pid*/) override {
+        return false;
+    }
+
+    uint32_t getCurrentProcessId() override {
+        return 99999;
+    }
+
+    std::wstring getCurrentProcessPath() override {
+        return L"/mock/process";
+    }
+
+    bool isCurrentProcessElevated() override {
+        return false;
+    }
+
+    bool restartElevated(const std::wstring& /*args*/) override {
+        return true;
+    }
+};
+
 ProcessTest::ProcessTest() {}
 
 ProcessTest::~ProcessTest() {}
@@ -80,10 +163,16 @@ void ProcessTest::testRunSyncWithOutput() {
 // Shell Execution Tests
 // ============================================================================
 void ProcessTest::testShellOpen() {
-    // DISABLED: This test spawns xdg-open which opens the default application
-    // (e.g., Kate text editor) which is disruptive in a test environment.
-    // The shellOpen() functionality is tested implicitly by testShellOpenWith.
-    QSKIP("Disabled: spawns external application");
+    MockProcess mock;
+    IProcess::setTestInstance(&mock);
+
+    bool result = IProcess::getInstance().shellOpen(L"/tmp/test.txt", L"", false);
+
+    QVERIFY(result);
+    QVERIFY(mock.shellOpenCalled);
+    QCOMPARE(mock.lastShellOpenPath, std::wstring(L"/tmp/test.txt"));
+
+    IProcess::resetTestInstance();
 }
 
 void ProcessTest::testShellOpenWith() {
@@ -259,16 +348,29 @@ void ProcessTest::testExecute() {
 }
 
 void ProcessTest::testOpenDocument() {
-    // DISABLED: This test spawns the default application (e.g., Kate)
-    // which is disruptive in a test environment.
-    QSKIP("Disabled: spawns external application");
+    MockProcess mock;
+    IProcess::setTestInstance(&mock);
+
+    bool result = ProcessUtils::openDocument(L"/tmp/document.txt");
+
+    QVERIFY(result);
+    QVERIFY(mock.shellOpenCalled);
+    QCOMPARE(mock.lastShellOpenPath, std::wstring(L"/tmp/document.txt"));
+
+    IProcess::resetTestInstance();
 }
 
 void ProcessTest::testOpenUrl() {
-    // DISABLED: This test spawns a web browser which is disruptive
-    // in a test environment. The functionality is simple wrapper around
-    // QDesktopServices::openUrl and is adequately covered by code review.
-    QSKIP("Disabled: spawns external web browser");
+    MockProcess mock;
+    IProcess::setTestInstance(&mock);
+
+    bool result = ProcessUtils::openUrl(L"https://example.com");
+
+    QVERIFY(result);
+    QVERIFY(mock.shellOpenCalled);
+    QCOMPARE(mock.lastShellOpenPath, std::wstring(L"https://example.com"));
+
+    IProcess::resetTestInstance();
 }
 
 void ProcessTest::testRunDetached() {
