@@ -9,62 +9,64 @@
 #pragma once
 
 #include <QtTest/QtTest>
-#include <memory>
 
 namespace Tests {
 
 class IOTest : public QObject {
-    Q_OBJECT
+	Q_OBJECT
 
 public:
-    IOTest();
-    ~IOTest();
+	IOTest();
+	~IOTest();
 
 private Q_SLOTS:
-    void initTestCase();
-    void cleanupTestCase();
-    void init();
-    void cleanup();
+	void initTestCase();
+	void cleanupTestCase();
+	void init();
+	void cleanup();
 
-    // File open operations
-    void testOpenExistingFile();
-    void testOpenNonExistentFile();
-    void testOpenMultipleFiles();
-    void testOpenWithEncoding();
+	// File creation and existence (real tests using QFile)
+	void testCreateAndVerifyFile();
+	void testNonExistentFileDetection();
+	void testCreateMultipleFiles();
+	void testWriteAndReadBackContent();
+	void testLargeFileCreation();
+	void testBinaryFileCreation();
+	void testSymlinkCreation();
 
-    // File save operations
-    void testSaveNewFile();
-    void testSaveExistingFile();
-    void testSaveAs();
-    void testSaveAll();
+	// Notepad++ file open operations (require core)
+	void testOpenWithEncoding();
 
-    // File close operations
-    void testCloseFile();
-    void testCloseAllFiles();
-    void testCloseWithUnsavedChanges();
+	// Notepad++ file save operations (require core)
+	void testSaveNewFile();
+	void testSaveExistingFile();
+	void testSaveAs();
+	void testSaveAll();
 
-    // Recent files
-    void testAddToRecentFiles();
-    void testGetRecentFiles();
-    void testClearRecentFiles();
+	// Notepad++ file close operations (require core)
+	void testCloseFile();
+	void testCloseAllFiles();
+	void testCloseWithUnsavedChanges();
 
-    // Session management
-    void testSaveSession();
-    void testLoadSession();
-    void testRestoreSession();
+	// Recent files (require Settings)
+	void testAddToRecentFiles();
+	void testGetRecentFiles();
+	void testClearRecentFiles();
 
-    // Large file handling
-    void testOpenLargeFile();
-    void testSaveLargeFile();
+	// Session management (require core)
+	void testSaveSession();
+	void testLoadSession();
+	void testRestoreSession();
 
-    // Special file types
-    void testOpenBinaryFile();
-    void testOpenSymlink();
-    void testOpenNetworkFile();
+	// Large file handling via core (require core)
+	void testSaveLargeFile();
+
+	// Network files (require network setup)
+	void testOpenNetworkFile();
 
 private:
-    QString createTestFile(const QString& fileName, const QString& content);
-    QString getTestPath(const QString& relativePath);
+	QString createTestFile(const QString& fileName, const QString& content);
+	QString getTestPath(const QString& relativePath);
 };
 
 } // namespace Tests

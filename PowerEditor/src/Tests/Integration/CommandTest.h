@@ -9,66 +9,55 @@
 #pragma once
 
 #include <QtTest/QtTest>
-#include <memory>
 
 namespace Tests {
 
 class CommandTest : public QObject {
-    Q_OBJECT
+	Q_OBJECT
 
 public:
-    CommandTest();
-    ~CommandTest();
+	CommandTest();
+	~CommandTest();
 
 private Q_SLOTS:
-    void initTestCase();
-    void cleanupTestCase();
-    void init();
-    void cleanup();
+	void initTestCase();
+	void cleanupTestCase();
 
-    // File commands
-    void testNewFile();
-    void testOpenFile();
-    void testSaveFile();
-    void testCloseFile();
+	// Real validation tests for command ID definitions
+	void testCommandIdRangesAreDistinct();
+	void testCommandIdsAreNonZero();
+	void testFileMenuRange();
+	void testEditMenuRange();
+	void testSearchMenuRange();
+	void testViewMenuRange();
 
-    // Edit commands
-    void testUndo();
-    void testRedo();
-    void testCut();
-    void testCopy();
-    void testPaste();
-    void testDelete();
-    void testSelectAll();
-
-    // Search commands
-    void testFind();
-    void testReplace();
-    void testGoToLine();
-
-    // View commands
-    void testZoomIn();
-    void testZoomOut();
-    void testZoomReset();
-    void testToggleWordWrap();
-    void testToggleLineNumbers();
-
-    // Macro commands
-    void testStartRecording();
-    void testStopRecording();
-    void testPlayback();
-
-    // Run commands
-    void testRunCommand();
-
-    // Window commands
-    void testNewWindow();
-    void testCloseWindow();
-    void testSplitView();
-
-private:
-    // Helper to execute a command
-    bool executeCommand(int commandId);
+	// Command dispatch tests (require full Notepad_plus core)
+	void testNewFile();
+	void testOpenFile();
+	void testSaveFile();
+	void testCloseFile();
+	void testUndo();
+	void testRedo();
+	void testCut();
+	void testCopy();
+	void testPaste();
+	void testDelete();
+	void testSelectAll();
+	void testFind();
+	void testReplace();
+	void testGoToLine();
+	void testZoomIn();
+	void testZoomOut();
+	void testZoomReset();
+	void testToggleWordWrap();
+	void testToggleLineNumbers();
+	void testStartRecording();
+	void testStopRecording();
+	void testPlayback();
+	void testRunCommand();
+	void testNewWindow();
+	void testCloseWindow();
+	void testSplitView();
 };
 
 } // namespace Tests

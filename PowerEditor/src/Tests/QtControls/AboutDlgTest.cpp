@@ -9,6 +9,8 @@
 #include "AboutDlgTest.h"
 #include "AboutDlg.h"
 #include "../Common/TestUtils.h"
+#include <QLabel>
+#include <QTextEdit>
 
 using namespace QtControls;
 
@@ -53,24 +55,70 @@ void AboutDlgTest::testDoDialog() {
 // Content Tests
 // ============================================================================
 void AboutDlgTest::testVersionString() {
-    // Version string should be non-empty
-    // QString version = _dialog->getVersionString();
-    // QVERIFY(!version.isEmpty());
-    QVERIFY(true);
+    _dialog->doDialog();
+
+    // Find the label containing the version string by searching all QLabel children
+    QWidget* widget = _dialog->getWidget();
+    QVERIFY(widget != nullptr);
+
+    QList<QLabel*> labels = widget->findChildren<QLabel*>();
+    bool foundVersion = false;
+    for (QLabel* label : labels)
+    {
+        if (label->text().contains("Notepad++") && label->text().contains("v"))
+        {
+            foundVersion = true;
+            QVERIFY(!label->text().isEmpty());
+            break;
+        }
+    }
+    QVERIFY(foundVersion);
 }
 
 void AboutDlgTest::testBuildTimeString() {
-    // Build time string should be non-empty
-    // QString buildTime = _dialog->getBuildTimeString();
-    // QVERIFY(!buildTime.isEmpty());
-    QVERIFY(true);
+    _dialog->doDialog();
+
+    QWidget* widget = _dialog->getWidget();
+    QVERIFY(widget != nullptr);
+
+    QList<QLabel*> labels = widget->findChildren<QLabel*>();
+    bool foundBuildTime = false;
+    for (QLabel* label : labels)
+    {
+        if (label->text().contains("Build time"))
+        {
+            foundBuildTime = true;
+            QVERIFY(!label->text().isEmpty());
+            // Build time should contain a date (month name from __DATE__)
+            QVERIFY(label->text().length() > QString("Build time: ").length());
+            break;
+        }
+    }
+    QVERIFY(foundBuildTime);
 }
 
 void AboutDlgTest::testLicenseText() {
-    // License text should contain GPL reference
-    // QString license = _dialog->getLicenseText();
-    // QVERIFY(license.contains("GPL") || license.contains("General Public License"));
-    QVERIFY(true);
+    _dialog->doDialog();
+
+    QWidget* widget = _dialog->getWidget();
+    QVERIFY(widget != nullptr);
+
+    // The license text is in a QTextEdit widget
+    QList<QTextEdit*> textEdits = widget->findChildren<QTextEdit*>();
+    QVERIFY(!textEdits.isEmpty());
+
+    bool foundLicense = false;
+    for (QTextEdit* edit : textEdits)
+    {
+        QString text = edit->toPlainText();
+        if (text.contains("GNU General Public License") || text.contains("GPL"))
+        {
+            foundLicense = true;
+            QVERIFY(text.contains("free software"));
+            break;
+        }
+    }
+    QVERIFY(foundLicense);
 }
 
 } // namespace Tests

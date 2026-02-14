@@ -8,91 +8,8 @@
 
 #include "CommandTest.h"
 #include "../Common/TestUtils.h"
-
-// Command ID definitions (fallback if menuCmdID.h not available)
-#ifndef IDM_FILE_NEW
-#define IDM_FILE_NEW 1001
-#endif
-#ifndef IDM_FILE_OPEN
-#define IDM_FILE_OPEN 1002
-#endif
-#ifndef IDM_FILE_SAVE
-#define IDM_FILE_SAVE 1003
-#endif
-#ifndef IDM_FILE_CLOSE
-#define IDM_FILE_CLOSE 1004
-#endif
-#ifndef IDM_FILE_CLOSEALL
-#define IDM_FILE_CLOSEALL 1005
-#endif
-#ifndef IDM_FILE_NEWINSTANCE
-#define IDM_FILE_NEWINSTANCE 1006
-#endif
-
-#ifndef IDM_EDIT_UNDO
-#define IDM_EDIT_UNDO 2001
-#endif
-#ifndef IDM_EDIT_REDO
-#define IDM_EDIT_REDO 2002
-#endif
-#ifndef IDM_EDIT_CUT
-#define IDM_EDIT_CUT 2003
-#endif
-#ifndef IDM_EDIT_COPY
-#define IDM_EDIT_COPY 2004
-#endif
-#ifndef IDM_EDIT_PASTE
-#define IDM_EDIT_PASTE 2005
-#endif
-#ifndef IDM_EDIT_DELETE
-#define IDM_EDIT_DELETE 2006
-#endif
-#ifndef IDM_EDIT_SELECTALL
-#define IDM_EDIT_SELECTALL 2007
-#endif
-
-#ifndef IDM_SEARCH_FIND
-#define IDM_SEARCH_FIND 3001
-#endif
-#ifndef IDM_SEARCH_REPLACE
-#define IDM_SEARCH_REPLACE 3002
-#endif
-#ifndef IDM_SEARCH_GOTOLINE
-#define IDM_SEARCH_GOTOLINE 3003
-#endif
-
-#ifndef IDM_VIEW_ZOOMIN
-#define IDM_VIEW_ZOOMIN 4001
-#endif
-#ifndef IDM_VIEW_ZOOMOUT
-#define IDM_VIEW_ZOOMOUT 4002
-#endif
-#ifndef IDM_VIEW_ZOOMRESTORE
-#define IDM_VIEW_ZOOMRESTORE 4003
-#endif
-#ifndef IDM_VIEW_WRAP
-#define IDM_VIEW_WRAP 4004
-#endif
-#ifndef IDM_VIEW_LINENUMBER
-#define IDM_VIEW_LINENUMBER 4005
-#endif
-#ifndef IDM_VIEW_CLONE_TO_ANOTHER_VIEW
-#define IDM_VIEW_CLONE_TO_ANOTHER_VIEW 4006
-#endif
-
-#ifndef IDM_MACRO_STARTRECORDING
-#define IDM_MACRO_STARTRECORDING 5001
-#endif
-#ifndef IDM_MACRO_STOPRECORDING
-#define IDM_MACRO_STOPRECORDING 5002
-#endif
-#ifndef IDM_MACRO_PLAYBACK
-#define IDM_MACRO_PLAYBACK 5003
-#endif
-
-#ifndef IDM_RUN_RUN
-#define IDM_RUN_RUN 6001
-#endif
+#include "menuCmdID.h"
+#include <set>
 
 namespace Tests {
 
@@ -100,175 +17,242 @@ CommandTest::CommandTest() {}
 
 CommandTest::~CommandTest() {}
 
-void CommandTest::initTestCase() {
-    QVERIFY(TestEnvironment::getInstance().init());
+void CommandTest::initTestCase()
+{
+	QVERIFY(TestEnvironment::getInstance().init());
 }
 
-void CommandTest::cleanupTestCase() {
-    TestEnvironment::getInstance().cleanup();
-}
-
-void CommandTest::init() {
-}
-
-void CommandTest::cleanup() {
-}
-
-bool CommandTest::executeCommand(int commandId) {
-    // Command execution would require full Notepad++ core
-    Q_UNUSED(commandId)
-    return true;
+void CommandTest::cleanupTestCase()
+{
+	TestEnvironment::getInstance().cleanup();
 }
 
 // ============================================================================
-// File Commands Tests
+// Real Validation Tests - Command ID Definitions
 // ============================================================================
-void CommandTest::testNewFile() {
-    // IDM_FILE_NEW
-    QVERIFY(executeCommand(IDM_FILE_NEW));
+
+void CommandTest::testCommandIdRangesAreDistinct()
+{
+	// Verify that the base ranges for each menu category do not overlap.
+	// Each category uses IDM + offset*1000, so bases must be distinct.
+	int bases[] = {IDM_FILE, IDM_EDIT, IDM_SEARCH, IDM_VIEW, IDM_FORMAT, IDM_LANG, IDM_ABOUT, IDM_SETTING};
+	std::set<int> baseSet(std::begin(bases), std::end(bases));
+	QCOMPARE(baseSet.size(), static_cast<size_t>(sizeof(bases) / sizeof(bases[0])));
 }
 
-void CommandTest::testOpenFile() {
-    // IDM_FILE_OPEN
-    QVERIFY(executeCommand(IDM_FILE_OPEN));
+void CommandTest::testCommandIdsAreNonZero()
+{
+	// All command IDs must be positive non-zero values
+	QVERIFY(IDM > 0);
+	QVERIFY(IDM_FILE_NEW > 0);
+	QVERIFY(IDM_FILE_OPEN > 0);
+	QVERIFY(IDM_FILE_SAVE > 0);
+	QVERIFY(IDM_FILE_CLOSE > 0);
+	QVERIFY(IDM_EDIT_CUT > 0);
+	QVERIFY(IDM_EDIT_COPY > 0);
+	QVERIFY(IDM_EDIT_UNDO > 0);
+	QVERIFY(IDM_EDIT_REDO > 0);
+	QVERIFY(IDM_EDIT_PASTE > 0);
+	QVERIFY(IDM_EDIT_DELETE > 0);
+	QVERIFY(IDM_EDIT_SELECTALL > 0);
+	QVERIFY(IDM_SEARCH_FIND > 0);
+	QVERIFY(IDM_SEARCH_REPLACE > 0);
+	QVERIFY(IDM_SEARCH_GOTOLINE > 0);
+	QVERIFY(IDM_VIEW_ZOOMIN > 0);
+	QVERIFY(IDM_VIEW_ZOOMOUT > 0);
+	QVERIFY(IDM_VIEW_ZOOMRESTORE > 0);
+	QVERIFY(IDM_VIEW_WRAP > 0);
 }
 
-void CommandTest::testSaveFile() {
-    // IDM_FILE_SAVE
-    QVERIFY(executeCommand(IDM_FILE_SAVE));
+void CommandTest::testFileMenuRange()
+{
+	// All file menu commands should fall within the IDM_FILE range
+	QVERIFY(IDM_FILE_NEW > IDM_FILE);
+	QVERIFY(IDM_FILE_OPEN > IDM_FILE);
+	QVERIFY(IDM_FILE_CLOSE > IDM_FILE);
+	QVERIFY(IDM_FILE_SAVE > IDM_FILE);
+	QVERIFY(IDM_FILE_SAVEAS > IDM_FILE);
+	QVERIFY(IDM_FILE_SAVEALL > IDM_FILE);
+	QVERIFY(IDM_FILE_EXIT > IDM_FILE);
+
+	// File commands should be below the Edit range
+	QVERIFY(IDM_FILE_NEW < IDM_EDIT);
+	QVERIFY(IDM_FILE_EXIT < IDM_EDIT);
+	QVERIFY(IDM_FILEMENU_LASTONE < IDM_EDIT);
 }
 
-void CommandTest::testCloseFile() {
-    // IDM_FILE_CLOSE
-    QVERIFY(executeCommand(IDM_FILE_CLOSE));
+void CommandTest::testEditMenuRange()
+{
+	// All edit menu commands should fall within the IDM_EDIT range
+	QVERIFY(IDM_EDIT_CUT > IDM_EDIT);
+	QVERIFY(IDM_EDIT_COPY > IDM_EDIT);
+	QVERIFY(IDM_EDIT_UNDO > IDM_EDIT);
+	QVERIFY(IDM_EDIT_REDO > IDM_EDIT);
+	QVERIFY(IDM_EDIT_PASTE > IDM_EDIT);
+	QVERIFY(IDM_EDIT_DELETE > IDM_EDIT);
+	QVERIFY(IDM_EDIT_SELECTALL > IDM_EDIT);
+
+	// Edit commands should be below the Search range
+	QVERIFY(IDM_EDIT_CUT < IDM_SEARCH);
+	QVERIFY(IDM_EDIT_SELECTALL < IDM_SEARCH);
 }
 
-// ============================================================================
-// Edit Commands Tests
-// ============================================================================
-void CommandTest::testUndo() {
-    // IDM_EDIT_UNDO
-    QVERIFY(executeCommand(IDM_EDIT_UNDO));
+void CommandTest::testSearchMenuRange()
+{
+	// All search menu commands should fall within the IDM_SEARCH range
+	QVERIFY(IDM_SEARCH_FIND > IDM_SEARCH);
+	QVERIFY(IDM_SEARCH_FINDNEXT > IDM_SEARCH);
+	QVERIFY(IDM_SEARCH_REPLACE > IDM_SEARCH);
+	QVERIFY(IDM_SEARCH_GOTOLINE > IDM_SEARCH);
+
+	// Search commands should be below the View range
+	QVERIFY(IDM_SEARCH_FIND < IDM_VIEW);
+	QVERIFY(IDM_SEARCH_GOTOLINE < IDM_VIEW);
 }
 
-void CommandTest::testRedo() {
-    // IDM_EDIT_REDO
-    QVERIFY(executeCommand(IDM_EDIT_REDO));
-}
-
-void CommandTest::testCut() {
-    // IDM_EDIT_CUT
-    QVERIFY(executeCommand(IDM_EDIT_CUT));
-}
-
-void CommandTest::testCopy() {
-    // IDM_EDIT_COPY
-    QVERIFY(executeCommand(IDM_EDIT_COPY));
-}
-
-void CommandTest::testPaste() {
-    // IDM_EDIT_PASTE
-    QVERIFY(executeCommand(IDM_EDIT_PASTE));
-}
-
-void CommandTest::testDelete() {
-    // IDM_EDIT_DELETE
-    QVERIFY(executeCommand(IDM_EDIT_DELETE));
-}
-
-void CommandTest::testSelectAll() {
-    // IDM_EDIT_SELECTALL
-    QVERIFY(executeCommand(IDM_EDIT_SELECTALL));
-}
-
-// ============================================================================
-// Search Commands Tests
-// ============================================================================
-void CommandTest::testFind() {
-    // IDM_SEARCH_FIND
-    QVERIFY(executeCommand(IDM_SEARCH_FIND));
-}
-
-void CommandTest::testReplace() {
-    // IDM_SEARCH_REPLACE
-    QVERIFY(executeCommand(IDM_SEARCH_REPLACE));
-}
-
-void CommandTest::testGoToLine() {
-    // IDM_SEARCH_GOTOLINE
-    QVERIFY(executeCommand(IDM_SEARCH_GOTOLINE));
-}
-
-// ============================================================================
-// View Commands Tests
-// ============================================================================
-void CommandTest::testZoomIn() {
-    // IDM_VIEW_ZOOMIN
-    QVERIFY(executeCommand(IDM_VIEW_ZOOMIN));
-}
-
-void CommandTest::testZoomOut() {
-    // IDM_VIEW_ZOOMOUT
-    QVERIFY(executeCommand(IDM_VIEW_ZOOMOUT));
-}
-
-void CommandTest::testZoomReset() {
-    // IDM_VIEW_ZOOMRESTORE
-    QVERIFY(executeCommand(IDM_VIEW_ZOOMRESTORE));
-}
-
-void CommandTest::testToggleWordWrap() {
-    // IDM_VIEW_WRAP
-    QVERIFY(executeCommand(IDM_VIEW_WRAP));
-}
-
-void CommandTest::testToggleLineNumbers() {
-    // IDM_VIEW_LINENUMBER
-    QVERIFY(executeCommand(IDM_VIEW_LINENUMBER));
+void CommandTest::testViewMenuRange()
+{
+	// Core view commands should fall within the IDM_VIEW range
+	QVERIFY(IDM_VIEW_ZOOMIN > IDM_VIEW);
+	QVERIFY(IDM_VIEW_ZOOMOUT > IDM_VIEW);
+	QVERIFY(IDM_VIEW_ZOOMRESTORE > IDM_VIEW);
+	QVERIFY(IDM_VIEW_WRAP > IDM_VIEW);
+	QVERIFY(IDM_VIEW_ALL_CHARACTERS > IDM_VIEW);
+	QVERIFY(IDM_VIEW_INDENT_GUIDE > IDM_VIEW);
 }
 
 // ============================================================================
-// Macro Commands Tests
+// Command Dispatch Tests - Require Full Notepad_plus Core
 // ============================================================================
-void CommandTest::testStartRecording() {
-    // IDM_MACRO_STARTRECORDING
-    QVERIFY(executeCommand(IDM_MACRO_STARTRECORDING));
+
+void CommandTest::testNewFile()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
 }
 
-void CommandTest::testStopRecording() {
-    // IDM_MACRO_STOPRECORDING
-    QVERIFY(executeCommand(IDM_MACRO_STOPRECORDING));
+void CommandTest::testOpenFile()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
 }
 
-void CommandTest::testPlayback() {
-    // IDM_MACRO_PLAYBACK
-    QVERIFY(executeCommand(IDM_MACRO_PLAYBACK));
+void CommandTest::testSaveFile()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
 }
 
-// ============================================================================
-// Run Commands Tests
-// ============================================================================
-void CommandTest::testRunCommand() {
-    // IDM_RUN_RUN
-    QVERIFY(executeCommand(IDM_RUN_RUN));
+void CommandTest::testCloseFile()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
 }
 
-// ============================================================================
-// Window Commands Tests
-// ============================================================================
-void CommandTest::testNewWindow() {
-    // IDM_FILE_NEWINSTANCE
-    QVERIFY(executeCommand(IDM_FILE_NEWINSTANCE));
+void CommandTest::testUndo()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
 }
 
-void CommandTest::testCloseWindow() {
-    // IDM_FILE_CLOSEALL
-    QVERIFY(executeCommand(IDM_FILE_CLOSEALL));
+void CommandTest::testRedo()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
 }
 
-void CommandTest::testSplitView() {
-    // IDM_VIEW_CLONE_TO_ANOTHER_VIEW
-    QVERIFY(executeCommand(IDM_VIEW_CLONE_TO_ANOTHER_VIEW));
+void CommandTest::testCut()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testCopy()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testPaste()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testDelete()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testSelectAll()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testFind()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testReplace()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testGoToLine()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testZoomIn()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testZoomOut()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testZoomReset()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testToggleWordWrap()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testToggleLineNumbers()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testStartRecording()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testStopRecording()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testPlayback()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testRunCommand()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testNewWindow()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testCloseWindow()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
+}
+
+void CommandTest::testSplitView()
+{
+	QSKIP("Requires full Notepad_plus core for command dispatch");
 }
 
 } // namespace Tests

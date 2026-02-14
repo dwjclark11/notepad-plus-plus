@@ -241,7 +241,7 @@ public:
         }
 
         result.exitCode = static_cast<uint32_t>(process.exitCode());
-        result.success = (process.exitStatus() == QProcess::NormalExit);
+        result.success = (process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0);
 
         return result;
     }

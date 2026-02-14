@@ -154,7 +154,8 @@ void FileWatcherTest::testUnwatchFile() {
 // Event Processing Tests
 // ============================================================================
 void FileWatcherTest::testProcessEvents() {
-    QString dirPath = _tempPath;
+    // Watch a file (not directory) so processEvents() can detect timestamp changes
+    QString filePath = createTestFile("process_events_test.txt", "initial content");
 
     int eventCount = 0;
     FileChangeCallback callback = [&eventCount](const FileChangeEvent& event) {
@@ -162,20 +163,23 @@ void FileWatcherTest::testProcessEvents() {
         eventCount++;
     };
 
-    FileWatchOptions options;
-    FileWatchHandle handle = _watcher->watchDirectory(dirPath.toStdWString(), options, callback);
+    FileWatchHandle handle = _watcher->watchFile(filePath.toStdWString(), callback);
     QVERIFY(handle != INVALID_WATCH_HANDLE);
 
-    // Create a file to trigger an event
-    createTestFile("event_trigger.txt", "content");
+    // Modify the file to trigger a change
+    QThread::msleep(100);
+    QFile file(filePath);
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+    QTextStream stream(&file);
+    stream << "modified content for event processing";
+    file.close();
 
-    // Wait and process events
+    // Allow filesystem timestamps to update
     QThread::msleep(200);
     size_t processed = _watcher->processEvents(1000);
 
-    // We may or may not get events depending on the watcher implementation
-    Q_UNUSED(processed)
-    QVERIFY(true); // Test passes if no crash
+    QVERIFY(processed > 0);
+    QVERIFY(eventCount > 0);
 }
 
 void FileWatcherTest::testHasPendingEvents() {
@@ -189,10 +193,11 @@ void FileWatcherTest::testHasPendingEvents() {
     FileWatchHandle handle = _watcher->watchDirectory(dirPath.toStdWString(), options, callback);
     QVERIFY(handle != INVALID_WATCH_HANDLE);
 
-    // Just verify the method doesn't crash
+    // The Linux implementation (QFileSystemWatcher-based) always returns false
+    // because Qt uses signals rather than a pollable event queue.
+    // Verify the method returns a consistent boolean value without crashing.
     bool hasPending = _watcher->hasPendingEvents();
-    Q_UNUSED(hasPending)
-    QVERIFY(true);
+    QCOMPARE(hasPending, false);
 }
 
 // ============================================================================
@@ -301,16 +306,19 @@ void FileWatcherTest::testDirectoryWatcher() {
     QString dirPath = _tempPath;
     dirWatcher.addDirectory(dirPath.toStdWString(), false, 0xFF);
 
-    // Test that we can get wait handle (may be nullptr on some platforms)
+    // Qt-based implementation returns nullptr for wait handle (uses signals instead)
     void* waitHandle = dirWatcher.getWaitHandle();
-    Q_UNUSED(waitHandle)
+    QCOMPARE(waitHandle, nullptr);
 
-    // Test hasEvents (may return true or false)
-    bool hasEvents = dirWatcher.hasEvents();
-    Q_UNUSED(hasEvents)
+    // Initially there should be no events in the queue
+    QVERIFY(!dirWatcher.hasEvents());
+
+    // Verify pop returns false when no events are queued
+    FileChangeType type;
+    std::wstring filename;
+    QVERIFY(!dirWatcher.pop(type, filename));
 
     dirWatcher.terminate();
-    QVERIFY(true); // Test passes if no crash
 }
 
 // ============================================================================
@@ -325,30 +333,35 @@ void FileWatcherTest::testFileWatcherClass() {
     // Initially should not detect changes
     QVERIFY(!fileWatcher.detectChanges());
 
+    // Ensure at least 1 second passes so the timestamp differs
+    // (filesystem timestamp resolution may be 1 second on some systems)
+    QThread::msleep(1100);
+
     // Modify the file
     QFile file(filePath);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream stream(&file);
-        stream << "modified content";
-        file.close();
-    }
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+    QTextStream stream(&file);
+    stream << "modified content that is different";
+    file.close();
 
-    // Give filesystem time to update timestamps
-    QThread::msleep(100);
+    // Give filesystem time to flush metadata
+    QThread::msleep(200);
 
-    // Now should detect changes
-    // Note: This may fail on some filesystems with low timestamp resolution
-    // QVERIFY(fileWatcher.detectChanges());
+    // Now should detect the change based on timestamp comparison
+    QVERIFY(fileWatcher.detectChanges());
+
+    // After detecting, a second call without further changes should return false
+    QVERIFY(!fileWatcher.detectChanges());
 
     fileWatcher.terminate();
-    QVERIFY(true); // Test passes if no crash
 }
 
 // ============================================================================
 // Integration Test
 // ============================================================================
 void FileWatcherTest::testFileChangeDetection() {
-    QString dirPath = _tempPath;
+    // Use file watching (not directory) since processEvents() polls file timestamps
+    QString filePath = createTestFile("integration_test.txt", "initial content");
 
     FileChangeEvent capturedEvent;
     bool eventReceived = false;
@@ -358,25 +371,28 @@ void FileWatcherTest::testFileChangeDetection() {
         eventReceived = true;
     };
 
-    FileWatchOptions options;
-    options.watchFileName = true;
-    FileWatchHandle handle = _watcher->watchDirectory(dirPath.toStdWString(), options, callback);
+    FileWatchHandle handle = _watcher->watchFile(filePath.toStdWString(), callback);
     QVERIFY(handle != INVALID_WATCH_HANDLE);
 
-    // Create a file
-    QString testFile = createTestFile("integration_test.txt", "content");
-    Q_UNUSED(testFile)
+    // Ensure timestamp will differ (filesystem resolution may be 1 second)
+    QThread::msleep(1100);
 
-    // Wait and process events
-    QThread::msleep(300);
+    // Modify the file
+    QFile file(filePath);
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+    QTextStream stream(&file);
+    stream << "modified content for integration test";
+    file.close();
+
+    // Allow filesystem metadata to update
+    QThread::msleep(200);
     _watcher->processEvents(1000);
 
-    // Event detection depends on the underlying implementation
-    // Some implementations may not detect events in the test environment
-    Q_UNUSED(eventReceived)
-    Q_UNUSED(capturedEvent)
-
-    QVERIFY(true); // Test passes if no crash
+    // Verify the callback was actually invoked with correct event details
+    QVERIFY(eventReceived);
+    QCOMPARE(capturedEvent.type, FileChangeType::Modified);
+    QVERIFY(!capturedEvent.path.empty());
+    QVERIFY(!capturedEvent.isDirectory);
 }
 
 } // namespace Tests

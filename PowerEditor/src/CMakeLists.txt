@@ -1150,6 +1150,7 @@ IF(UNIX AND NOT APPLE)
 	# ============================================================================
 	option(BUILD_TESTS "Build test suite" ON)
 	if(BUILD_TESTS)
+		enable_testing()
 		message(STATUS "Tests enabled - configure Tests/ directory")
 		add_subdirectory(Tests)
 	endif()

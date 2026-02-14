@@ -119,142 +119,74 @@ void DialogsTest::destroyTestDialog(void* handle) {
 // Message Box Tests
 // ============================================================================
 void DialogsTest::testMessageBox() {
-    // Just verify the method exists and doesn't crash
-    // Actual dialog display would require user interaction
-    // DialogResult result = _dialogs->messageBox(
-    //     L"Test message",
-    //     L"Test Title",
-    //     MessageBoxType::OK,
-    //     MessageBoxIcon::Information
-    // );
-    QVERIFY(true);
+    // messageBox() shows a modal dialog requiring user interaction.
+    // Cannot be tested without a mock injection mechanism for IDialogs.
+    QSKIP("messageBox() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testShowInfo() {
-    // Verify method doesn't crash
-    // _dialogs->showInfo(L"Information message");
-    QVERIFY(true);
+    QSKIP("showInfo() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testShowWarning() {
-    // Verify method doesn't crash
-    // _dialogs->showWarning(L"Warning message");
-    QVERIFY(true);
+    QSKIP("showWarning() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testShowError() {
-    // Verify method doesn't crash
-    // _dialogs->showError(L"Error message");
-    QVERIFY(true);
+    QSKIP("showError() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testAskYesNo() {
-    // Verify method doesn't crash
-    // bool result = _dialogs->askYesNo(L"Do you want to continue?");
-    QVERIFY(true);
+    QSKIP("askYesNo() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testAskYesNoCancel() {
-    // Verify method doesn't crash
-    // DialogResult result = _dialogs->askYesNoCancel(L"Save changes?");
-    QVERIFY(true);
+    QSKIP("askYesNoCancel() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testAskRetryCancel() {
-    // Verify method doesn't crash
-    // bool result = _dialogs->askRetryCancel(L"Operation failed. Retry?");
-    QVERIFY(true);
+    QSKIP("askRetryCancel() requires interactive display; no mock injection available");
 }
 
 // ============================================================================
 // File Dialog Tests
 // ============================================================================
 void DialogsTest::testShowOpenFileDialog() {
-    std::vector<FileFilter> filters = DialogFilters::allFiles();
-
-    // Verify method doesn't crash
-    // std::wstring result = _dialogs->showOpenFileDialog(L"Open File", filters);
-    QVERIFY(true);
+    QSKIP("showOpenFileDialog() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testShowOpenFilesDialog() {
-    std::vector<FileFilter> filters = DialogFilters::textFiles();
-
-    // Verify method doesn't crash
-    // std::vector<std::wstring> results = _dialogs->showOpenFilesDialog(L"Open Files", filters);
-    QVERIFY(true);
+    QSKIP("showOpenFilesDialog() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testShowSaveFileDialog() {
-    std::vector<FileFilter> filters = DialogFilters::allFiles();
-
-    // Verify method doesn't crash
-    // std::wstring result = _dialogs->showSaveFileDialog(
-    //     L"Save File",
-    //     filters,
-    //     L"default.txt"
-    // );
-    QVERIFY(true);
+    QSKIP("showSaveFileDialog() requires interactive display; no mock injection available");
 }
 
 // ============================================================================
 // Folder Dialog Tests
 // ============================================================================
 void DialogsTest::testShowFolderDialog() {
-    FolderDialogOptions options;
-    options.title = L"Select Folder";
-
-    // Verify method doesn't crash
-    // std::wstring result = _dialogs->showFolderDialog(L"Select Folder", options);
-    QVERIFY(true);
+    QSKIP("showFolderDialog() requires interactive display; no mock injection available");
 }
 
 // ============================================================================
 // Input Dialog Tests
 // ============================================================================
 void DialogsTest::testShowInputDialog() {
-    std::wstring value = L"default";
-
-    // Verify method doesn't crash
-    // bool result = _dialogs->showInputDialog(L"Enter value", L"Prompt:", value);
-    QVERIFY(true);
+    QSKIP("showInputDialog() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testShowInputDialogEx() {
-    InputDialogOptions options;
-    options.title = L"Input";
-    options.prompt = L"Enter value:";
-    options.defaultValue = L"default";
-
-    std::wstring value;
-
-    // Verify method doesn't crash
-    // bool result = _dialogs->showInputDialogEx(options, value);
-    QVERIFY(true);
+    QSKIP("showInputDialogEx() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testShowMultiLineInputDialog() {
-    std::wstring value = L"Line 1\nLine 2";
-
-    // Verify method doesn't crash
-    // bool result = _dialogs->showMultiLineInputDialog(
-    //     L"Enter text",
-    //     L"Multi-line input:",
-    //     value
-    // );
-    QVERIFY(true);
+    QSKIP("showMultiLineInputDialog() requires interactive display; no mock injection available");
 }
 
 void DialogsTest::testShowListDialog() {
-    std::vector<std::wstring> items = {
-        L"Item 1",
-        L"Item 2",
-        L"Item 3"
-    };
-
-    // Verify method doesn't crash
-    // int result = _dialogs->showListDialog(L"Select Item", L"Choose:", items, 0);
-    QVERIFY(true);
+    QSKIP("showListDialog() requires interactive display; no mock injection available");
 }
 
 // ============================================================================
