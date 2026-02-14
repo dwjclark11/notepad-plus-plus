@@ -7,22 +7,23 @@
 
 ## Executive Summary
 
-The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtControls/` and ~15 files in `QtCore/`. The Platform Abstraction Layer (7 interfaces) is **fully implemented**. **NppCommands.cpp** has been ported to Linux (guard fixed from `#ifndef` to `#ifdef NPP_LINUX`) with 100+ command handlers now available including all line operations. Auto-completion, dual view, macro system, shortcut management, file monitoring, encoding support, run dialog variables, and localization have all been implemented in Phase 3.
+The Linux Qt6 port contains **~48,000–53,000 lines** across ~88 files in `QtControls/` and ~15 files in `QtCore/`. The Platform Abstraction Layer (7 interfaces) is **fully implemented**. **NppCommands.cpp** has been ported to Linux (guard fixed from `#ifndef` to `#ifdef NPP_LINUX`) with 100+ command handlers now available including all line operations. Auto-completion, dual view, macro system, shortcut management, file monitoring, encoding support, run dialog variables, and localization have all been implemented in Phase 3. Phase 4 adds plugin notifications (26 lifecycle events), Document Map scroll sync, UDL Scintilla preview, Windows dialog (document grid), Style Configurator theme save/load, and context menu customization from XML.
 
 ### By the Numbers
 
 | Metric | Windows | Linux | Gap |
 |--------|---------|-------|-----|
-| Menu commands | ~400+ | ~320+ connected | ~20% |
-| WinControls directories | 31 | 28 Qt equivalents | Most functional |
+| Menu commands | ~400+ | ~340+ connected | ~15% |
+| WinControls directories | 31 | 29 Qt equivalents | Most functional |
 | Preference sub-pages | 24 | 16 implemented | 67% |
 | Supported languages | 90+ | 90+ (same data) | ~0% (data shared) |
 | Encoding support | 49 charsets | 49 charsets (full menu) | ~0% gap |
-| Dockable panels | 8 | 8 connected | ~10% gap |
+| Dockable panels | 8 | 8 connected | ~5% gap |
+| Plugin notifications | 33 events | 26 implemented | ~21% gap |
 | Plugin API messages | 118+ | 0 | 100% gap |
 | Toolbar icons | Full icon sets | freedesktop icons | ~0% gap |
-| TODOs in Linux code | — | ~40+ | — |
-| "Not Implemented" dialogs | — | ~5 | — |
+| TODOs in Linux code | — | ~20+ | — |
+| "Not Implemented" dialogs | — | ~3 | — |
 
 ---
 
@@ -162,7 +163,7 @@ The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtCo
 
 | Panel | Windows | Linux | Priority | Notes |
 |-------|---------|-------|----------|-------|
-| Document Map | Full minimap | **Connected (70%)** | P2 | Toggle working, scroll sync still partial (Phase 2) |
+| Document Map | Full minimap | **Working (95%)** | — | Bidirectional scroll sync via painted() signals, syntax highlighting in map (Phase 4) |
 | Document List | Full switcher | **Connected (90%)** | — | Panel launch + toggle via DockingManager (Phase 2) |
 | Function List | 40+ language parsers | **Connected (85%)** | — | Panel launch + toggle, parses on show (Phase 2) |
 | Folder as Workspace | Full file browser | **Connected (80%)** | P2 | Toggle working, some stubs remain (Phase 2) |
@@ -191,8 +192,8 @@ The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtCo
 | 90+ built-in languages | Implemented | **Working** | — | Language detection from extension (50+) and shebang |
 | Language menu | Full with all languages | **Working** | — | |
 | Syntax highlighting | Scintilla lexers | **Working** | — | |
-| User Defined Language | Full UDL editor | **Substantial (75%)** | P2 | Dialog works, preview and some integration stubs |
-| Style Configurator | Full theme editor | **Substantial (80%)** | P2 | `saveTheme()` is stub |
+| User Defined Language | Full UDL editor | **Working (90%)** | — | Live ScintillaEditBase preview, menu integration signals (Phase 4) |
+| Style Configurator | Full theme editor | **Working (95%)** | — | XML theme save/save-as, theme switching, global overrides (Phase 4) |
 | XML tag matching | Implemented | **Not started** | P2 | |
 
 ### 8. SETTINGS & CONFIGURATION
@@ -204,7 +205,7 @@ The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtCo
 | XML config parsing | Full XML load/save | **Working** | — | 25+ methods implemented in Parameters.cpp (Phase 1) |
 | Shortcut Mapper | 5 tabs, full editing | **Working** | — | Delete, import, export, reset, Scintilla tab all implemented (Phase 3) |
 | Shortcut customization | Full remap | **Working** | — | All 5 tabs including Scintilla key mappings (Phase 3) |
-| Context menu customization | Editable XML | **Stub** | P2 | ContextMenu is empty stub |
+| Context menu customization | Editable XML | **Working** | — | QMenu from MenuItemUnit arrays, XML parsing, ShortcutManager dispatch (Phase 4) |
 
 ### 9. MACRO SYSTEM
 
@@ -220,10 +221,10 @@ The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtCo
 
 | Feature | Windows | Linux | Priority | Notes |
 |---------|---------|-------|----------|-------|
-| DLL plugin loading | Full architecture | **Not started** | P2 | Would need .so adaptation |
-| Plugin API (118+ messages) | Implemented | **Not started** | P2 | |
+| .so plugin loading | Full architecture | **Working** | — | dlopen/dlsym loading, ELF arch detection (Phase 2) |
+| Plugin API (118+ messages) | Implemented | **Not started** | P2 | Message relay infrastructure exists |
 | Plugin Admin dialog | Full install/update/remove | **UI only (50%)** | P2 | 8 critical backend stubs |
-| Plugin notifications | Full event system | **Not started** | P2 | 4 TODO stubs in Notepad_plus.cpp |
+| Plugin notifications | Full event system | **Working (79%)** | — | 26 of 33 notifications implemented at lifecycle points (Phase 4) |
 | Default plugins (MIME, etc.) | 3 built-in | **Not started** | P3 | |
 
 ### 11. TOOLS
@@ -247,8 +248,8 @@ The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtCo
 
 | Feature | Windows | Linux | Priority | Notes |
 |---------|---------|-------|----------|-------|
-| Windows dialog (doc list) | Full grid with sort | **Not started** | P2 | TODO in MainWindow |
-| Sort open docs | By name/path/type/size/date | **Not started** | P3 | |
+| Windows dialog (doc list) | Full grid with sort | **Working** | — | QTableWidget with sort, multi-select, activate/save/close (Phase 4) |
+| Sort open docs | By name/path/type/size/date | **Working** | — | Sort via Windows dialog column headers (Phase 4) |
 | System tray icon | Implemented | **Working** | — | |
 | Tray minimize | Implemented | **Working** | — | |
 
@@ -277,10 +278,10 @@ The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtCo
 
 | Status | Count | Examples |
 |--------|-------|---------|
-| **Working** | ~110 features | Basic editing, find/replace, save, syntax highlighting, folding, bookmarks, hash tools, print, sessions, drag-drop, recent files, smart highlighting, auto-close brackets, multi-cursor, Find in Files, Search Results, toolbar icons, XML config, view modes, panel toggles, **auto-completion (word/function/path), function call tips, dual view move/clone, sort lines (14 modes), trim whitespace, tab↔space, remove duplicates, remove empty lines, file monitoring/tail mode, macro record/playback/save/run-multiple, shortcut mapper (full), encoding (49 charsets), run dialog variables, localization (94 languages)** |
-| **Partial** | ~10 features | Case conversion (8 modes), preferences (67%), UDL preview, Style Configurator save |
-| **Stub/UI only** | ~8 features | Plugin admin backend, context menu, some close variants |
-| **Not started** | ~25 features | Plugin system (.so), synchronized scrolling, incremental search, bookmark line operations, style tokens |
+| **Working** | ~118 features | Basic editing, find/replace, save, syntax highlighting, folding, bookmarks, hash tools, print, sessions, drag-drop, recent files, smart highlighting, auto-close brackets, multi-cursor, Find in Files, Search Results, toolbar icons, XML config, view modes, panel toggles, auto-completion (word/function/path), function call tips, dual view move/clone, sort lines (14 modes), trim whitespace, tab↔space, remove duplicates, remove empty lines, file monitoring/tail mode, macro record/playback/save/run-multiple, shortcut mapper (full), encoding (49 charsets), run dialog variables, localization (94 languages), **plugin notifications (26 events), Document Map scroll sync, UDL Scintilla preview, Windows dialog (document grid), Style Configurator theme save/load, context menu from XML** |
+| **Partial** | ~7 features | Case conversion (8 modes), preferences (67%), plugin notifications (7 deferred) |
+| **Stub/UI only** | ~5 features | Plugin admin backend, some close variants |
+| **Not started** | ~20 features | Plugin API messages (118+), synchronized scrolling, incremental search, bookmark line operations, style tokens |
 
 ### By Priority
 
@@ -288,8 +289,8 @@ The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtCo
 |----------|-------|-----------|
 | **P0 — CRITICAL** | ~~5~~ **0 remaining** | All resolved in Phase 1 |
 | **P1 — HIGH** | ~~22~~ **~2 remaining** | ~~Print, sessions, recent files, drag-drop, smart highlighting, auto-close brackets, multi-cursor~~ resolved in Phase 2. ~~Auto-completion, dual view, shortcut editing~~ resolved in Phase 3. Remaining: preferences completeness, extended search mode verification |
-| **P2 — MEDIUM** | ~~30~~ **~12 remaining** | ~~Encoding charsets, file monitoring, macro save, localization, line sorting, run variables~~ resolved in Phase 3. Remaining: plugin system, synchronized scrolling, incremental search, UDL preview, document map scroll sync, context menu, bookmark line ops, style tokens, find in projects |
-| **P3 — LOW** | ~12 | Date/time insert, paste HTML/RTF, view in browser, always-on-top, hide lines, change history, sort open docs |
+| **P2 — MEDIUM** | ~~30~~ **~6 remaining** | ~~Encoding charsets, file monitoring, macro save, localization, line sorting, run variables~~ resolved in Phase 3. ~~Plugin notifications, Document Map scroll sync, UDL preview, Style Configurator save, context menu, Windows dialog~~ resolved in Phase 4. Remaining: plugin API messages, synchronized scrolling, incremental search, bookmark line ops, style tokens, find in projects |
+| **P3 — LOW** | ~10 | Date/time insert, paste HTML/RTF, view in browser, always-on-top, hide lines, change history |
 
 ---
 
@@ -326,13 +327,13 @@ The Linux Qt6 port contains **~45,000–50,000 lines** across ~85 files in `QtCo
 24. ~~**Run dialog variables**~~ — All 10 $(VAR) expansions with shell escaping, save command to XML
 25. ~~**Localization system**~~ — NativeLangSpeaker with menu/dialog translation, 94 language XML files
 
-### Phase 4 — Advanced Features
-25. **Plugin system** — .so loading, API messages, notifications
-26. **Document Map scroll sync** — Complete minimap
-27. **User Defined Language preview** — Scintilla integration
-28. **Windows dialog** — Open document grid
-29. **Style Configurator save** — Theme persistence
-30. **Context menu customization** — Replace empty stub
+### Phase 4 — Advanced Features — COMPLETED
+25. ~~**Plugin notifications**~~ — 26 lifecycle notifications (file open/close/save, rename, delete, app start/shutdown, buffer activation, style updates); 7 deferred pending prerequisite infrastructure
+26. ~~**Document Map scroll sync**~~ — Bidirectional sync via Scintilla painted() signals, syntax highlighting in map view, temporary buffer display, guard flag prevents infinite loops
+27. ~~**User Defined Language preview**~~ — Embedded ScintillaEditBase with real-time style application across 25 style indices, SCI_COLOURISE refresh, menu integration signals
+28. ~~**Windows dialog**~~ — QTableWidget with sortable columns (name, path, type, size), multi-selection, activate/save/close, dirty/readonly indicators
+29. ~~**Style Configurator save**~~ — XML theme serialization via TiXmlElement, save/save-as, theme switching with save prompts, global overrides, cancel/restore
+30. ~~**Context menu customization**~~ — QMenu from MenuItemUnit arrays, XML parsing in Parameters.cpp, submenu support, separator deduplication, ShortcutManager command dispatch
 
 ---
 
@@ -352,6 +353,14 @@ The `#ifndef NPP_LINUX` guard on `NppCommands.cpp` was fixed to `#ifdef NPP_LINU
 - **Dual view**: `docGotoAnotherEditView()` follows Windows pattern with SCI_CREATEDOCUMENT/ADDREFDOCUMENT, preserves pinned and monitoring state across move/clone
 - **Localization**: `NativeLangSpeaker` maps Win32 MB_* constants to QMessageBox, 3-phase menu translation (top-level by position, commands by ID, submenus by SubEntries)
 - **Run dialog**: Commands execute via `/bin/sh -c` for proper shell handling; variables shell-escaped with single-quote wrapping
+
+### Phase 4 Key Implementation Details
+- **Plugin notifications**: 26 notifications added across Notepad_plus.cpp (19), Notepad_plus_Window.cpp (6), and main_linux.cpp (1). Duplicate `_pluginsManager` removed from MainWindow; all access via `Notepad_plus::getPluginsManager()` accessor. 7 notifications deferred: NPPN_SHORTCUTREMAPPED, NPPN_DOCORDERCHANGED, NPPN_DARKMODECHANGED, NPPN_EXTERNALLEXERBUFFER, NPPN_GLOBALMODIFIED, NPPN_NATIVELANGCHANGED, NPPN_TOOLBARICONSETCHANGED
+- **Document Map scroll sync**: Connected `ScintillaEditBase::painted()` signals from both editors to `DocumentMap::onMainEditorScrolled()`. `ViewZoneWidget` tracks visible region with `SCI_GETFIRSTVISIBLELINE`/`SCI_LINESONSCREEN`. Guard flag `_updating` prevents infinite signal loops
+- **UDL preview**: Embedded `ScintillaEditBase` in preview group box (120-180px), read-only with hidden margins. `applyUDLStylesToPreview()` applies all 25 style indices via SCI_STYLESET* messages then SCI_COLOURISE. Signals emitted for language menu updates on add/remove/rename
+- **Windows dialog**: New `WindowsDlg` class in `QtControls/WindowsDlg/`, QTableWidget with 4 sortable columns. Connected via `Window > Window List` menu. Close operations iterate in descending index order to avoid shift issues
+- **Style Configurator save**: `NppParameters::writeStyle2Element()` serializes COLORREF to RRGGBB hex. `writeStyles()` iterates LexerStyles and GlobalStyles XML trees. `RGB2int()` helper converts BGR→RGB. Theme switching prompts to save unsaved changes
+- **Context menu**: `ContextMenu` class builds `QMenu` from `MenuItemUnit` vector with subfolder grouping. `QMap<int, QAction*>` for O(1) lookup. `getContextMenuFromXmlTree()` parses XML with `id` attribute and `MenuEntryName`/`MenuItemName` resolution via ShortcutManager
 
 ### Platform Abstraction Layer
 All 7 PAL interfaces are fully implemented for Linux — this is a solid foundation.
@@ -373,3 +382,9 @@ The following are solid and production-ready:
 - Status bar
 - Hash tools (MD5, SHA-1/256/512)
 - Platform abstraction layer (all 7 interfaces)
+- Plugin notifications (26 lifecycle events)
+- Document Map with bidirectional scroll sync
+- UDL editor with live Scintilla preview
+- Windows dialog (open document grid with sort)
+- Style Configurator with theme save/load
+- Context menu from XML configuration
