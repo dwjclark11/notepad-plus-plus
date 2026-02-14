@@ -598,30 +598,20 @@ public:
 
     void openFiles(const QStringList& files, const CmdLineParams& params)
     {
-        // Convert QStringList to vector of wstrings for Notepad_plus
-        std::vector<std::wstring> fileNames;
-        for (const QString& file : files)
+        Q_UNUSED(params);
+
+        Notepad_plus* npp = getNotepadPlusCore();
+        if (!npp)
         {
-            fileNames.push_back(qStringToWString(file));
+            return;
         }
 
-        // Load files through Notepad_plus core
-        if (!fileNames.empty())
+        for (const QString& file : files)
         {
-            // Build command line string from file names
-            std::wstring cmdLineString;
-            for (const auto& fn : fileNames)
+            if (!file.isEmpty())
             {
-                if (!cmdLineString.empty()) cmdLineString += L" ";
-                cmdLineString += L"\"" + fn + L"\"";
+                npp->doOpen(file.toStdWString());
             }
-
-            // Load command line params
-            // TODO: loadCommandlineParams is private - need to use public method or friend class
-            // CmdLineParamsDTO dto = CmdLineParamsDTO::FromCmdLineParams(params);
-            // _notepad_plus_plus_core.loadCommandlineParams(cmdLineString.c_str(), &dto);
-            (void)cmdLineString;
-            (void)params;
         }
     }
 

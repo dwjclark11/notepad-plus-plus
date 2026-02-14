@@ -439,12 +439,20 @@ bool Buffer::saveToFile(const QString& filePath)
 
     QByteArray content;
 
-    if (_pView) {
+    if (_pView)
+    {
         int length = static_cast<int>(_pView->execute(SCI_GETLENGTH));
         content.resize(length);
-        if (length > 0) {
+        if (length > 0)
+        {
             _pView->getText(content.data(), 0, length);
         }
+    }
+    else
+    {
+        qWarning() << "Buffer::saveToFile: _pView is null for" << filePath
+                   << "- cannot retrieve content from Scintilla";
+        return false;
     }
 
     // Convert line endings if needed

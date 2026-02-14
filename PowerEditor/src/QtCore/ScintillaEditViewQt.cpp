@@ -1740,6 +1740,7 @@ void ScintillaEditView::activateBuffer(BufferID buffer, bool force)
 
     _currentBufferID = buffer;
     _currentBuffer = newBuf;
+    newBuf->setScintillaView(this);
 
     std::cout << "[ScintillaEditView::activateBuffer] AFTER SWITCH ASSIGNMENT:"
               << " _currentBuffer=" << _currentBuffer
