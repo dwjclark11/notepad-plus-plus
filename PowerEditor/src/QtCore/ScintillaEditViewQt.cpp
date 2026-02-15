@@ -1672,11 +1672,7 @@ int ScintillaEditView::getTextZoneWidth() const
 
 bool ScintillaEditView::isTextDirectionRTL() const
 {
-    // Qt/Linux: Check if RTL layout is enabled via Scintilla
-    // Scintilla doesn't have a direct SCI_GETLAYOUTRTL, so we track it via a member or check bidirectional settings
-    // For now, return false as default (LTR)
-    // TODO: Implement proper RTL tracking if needed
-    return false;
+    return execute(SCI_GETBIDIRECTIONAL) == SC_BIDIRECTIONAL_R2L;
 }
 
 void ScintillaEditView::changeTextDirection(bool isRTL)
@@ -2976,6 +2972,10 @@ void ScintillaEditView::setExternalLexer(LangType typeDoc)
     if (!iLex5)
         return;
     execute(SCI_SETILEXER, 0, reinterpret_cast<LPARAM>(iLex5));
+
+    // Notify that an external lexer buffer was created
+    if (_externalLexerBufferCb)
+        _externalLexerBufferCb(getCurrentBufferID(), _externalLexerBufferUserData);
 
     WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
     const wchar_t* lexerNameW = wmc.char2wchar(externalLexer->_name.c_str(), CP_UTF8);

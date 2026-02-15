@@ -1187,6 +1187,10 @@ int FindReplaceDlg::processReplaceAll(const QString& findText, const QString& re
 
     view->execute(SCI_ENDUNDOACTION);
 
+    // Notify plugins of global modification (Replace All)
+    if (count > 0)
+        emit globalModified(view->getCurrentBufferID());
+
     return count;
 }
 

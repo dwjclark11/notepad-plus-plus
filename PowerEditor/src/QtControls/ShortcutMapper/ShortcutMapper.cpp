@@ -485,6 +485,9 @@ void ShortcutMapper::onModifyClicked() {
     ShortcutManager* manager = ShortcutManager::getInstance();
     manager->updateCommandShortcut(commandId, newCombo);
 
+    // Notify plugins that shortcut was remapped
+    emit shortcutRemapped(commandId, newCombo);
+
     // Refresh the grid
     loadShortcutsFromParameters();
     fillGrid();

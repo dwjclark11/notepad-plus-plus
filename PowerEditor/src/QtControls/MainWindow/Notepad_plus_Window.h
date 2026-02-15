@@ -205,6 +205,13 @@ private slots:
     void onEditUpperCase();
     void onEditLowerCase();
     void onEditTitleCase();
+    void onEditCopyBinary();
+    void onEditCutBinary();
+    void onEditPasteBinary();
+    void onEditPasteAsHtml();
+    void onEditPasteAsRtf();
+    void onEditSearchOnInternet();
+    void onFileOpenInDefaultViewer();
 
     // Search menu
     void onSearchFind();
@@ -218,6 +225,8 @@ private slots:
     void onViewPostIt();
     void onViewDistractionFreeMode();
     void onViewAlwaysOnTop();
+    void onViewTabColour(int colorId);
+    void onEditTextDirection(bool isRTL);
     void onViewWordWrap();
     void onViewShowWhiteSpace();
     void onViewShowEOL();
@@ -230,6 +239,14 @@ private slots:
     void onViewClipboardHistory();
     void onViewFileBrowser();
     void onViewMonitoring();
+
+    // Hide lines
+    void onViewHideLines();
+
+    // Change history navigation
+    void onSearchChangedNext();
+    void onSearchChangedPrev();
+    void onSearchClearChangeHistory();
 
     // Encoding menu
     void onEncodingANSI();
@@ -408,6 +425,7 @@ private:
     NppFindReplace::FindReplaceDlg* _findReplaceDlg = nullptr;
 
     // View menu actions (for state management)
+    QAction* _alwaysOnTopAction = nullptr;
     QAction* _wordWrapAction = nullptr;
     QAction* _showWhiteSpaceAction = nullptr;
     QAction* _showEOLAction = nullptr;

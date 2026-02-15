@@ -146,6 +146,7 @@ public:
 
 signals:
     void commandTriggered(int cmdID);
+    void iconSetChanged(int state);
 
 private:
     std::vector<std::unique_ptr<ToolBarButtonUnit>> _pTBB;

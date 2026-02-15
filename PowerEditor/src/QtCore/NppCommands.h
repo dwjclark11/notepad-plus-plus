@@ -118,6 +118,14 @@ enum CommandID {
     CMD_EDIT_TOGGLEREADONLY = 42028,
     CMD_EDIT_SORTLINES_LENGTH_ASC = 42104,
     CMD_EDIT_SORTLINES_LENGTH_DESC = 42105,
+    CMD_EDIT_PASTE_AS_HTML = 42038,
+    CMD_EDIT_PASTE_AS_RTF = 42039,
+    CMD_EDIT_COPY_BINARY = 42048,
+    CMD_EDIT_CUT_BINARY = 42049,
+    CMD_EDIT_PASTE_BINARY = 42050,
+    CMD_EDIT_SEARCHONINTERNET = 42075,
+    CMD_EDIT_RTL = 42026,
+    CMD_EDIT_LTR = 42027,
     CMD_EDIT_INSERT_DATETIME_SHORT = 42084,
     CMD_EDIT_INSERT_DATETIME_LONG = 42085,
     CMD_EDIT_INSERT_DATETIME_CUSTOMIZED = 42086,
@@ -173,6 +181,9 @@ enum CommandID {
     CMD_SEARCH_FINDCHARINRANGE = 43052,
     CMD_SEARCH_SELECTMATCHINGBRACES = 43053,
     CMD_SEARCH_MARK = 43054,
+    CMD_SEARCH_CHANGED_NEXT = 43067,
+    CMD_SEARCH_CHANGED_PREV = 43068,
+    CMD_SEARCH_CLEAR_CHANGE_HISTORY = 43069,
 
     // View commands (IDM_VIEW = 44000)
     CMD_VIEW_POSTIT = 44009,
@@ -240,6 +251,12 @@ enum CommandID {
     CMD_VIEW_SWITCHTO_FILEBROWSER = 44107,
     CMD_VIEW_SWITCHTO_FUNC_LIST = 44108,
     CMD_VIEW_SWITCHTO_DOCLIST = 44109,
+    CMD_VIEW_TAB_COLOUR_NONE = 44110,
+    CMD_VIEW_TAB_COLOUR_1 = 44111,
+    CMD_VIEW_TAB_COLOUR_2 = 44112,
+    CMD_VIEW_TAB_COLOUR_3 = 44113,
+    CMD_VIEW_TAB_COLOUR_4 = 44114,
+    CMD_VIEW_TAB_COLOUR_5 = 44115,
     CMD_VIEW_TAB_START = 44116,
     CMD_VIEW_TAB_END = 44117,
 
@@ -329,6 +346,7 @@ public:
     void fileOpenFolderAsWorkspace();
     void fileOpenContainingFolder();
     void fileOpenCmd();
+    void fileOpenInDefaultViewer();
 
     // Edit commands
     void editUndo();
@@ -383,6 +401,12 @@ public:
     void editCopyAllPaths();
     void editColumnMode();
     void editColumnModeTip();
+    void editCopyBinary();
+    void editCutBinary();
+    void editPasteBinary();
+    void editPasteAsHtml();
+    void editPasteAsRtf();
+    void editSearchOnInternet();
     void editInsertDateTimeShort();
     void editInsertDateTimeLong();
     void editInsertDateTimeCustomized();
@@ -476,6 +500,10 @@ public:
     void viewTabEnd();
     void viewTabMoveForward();
     void viewTabMoveBackward();
+    void viewTabColour(int colorId);
+
+    // Text direction commands
+    void editTextDirection(bool isRTL);
 
     // Macro commands
     void macroStartRecording();

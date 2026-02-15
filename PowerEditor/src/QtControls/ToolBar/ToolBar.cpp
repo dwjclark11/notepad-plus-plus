@@ -389,9 +389,7 @@ void ToolBar::reset(bool create)
 void ToolBar::setState(toolBarStatusType state)
 {
     _state = state;
-    // TODO: Notify parent window of icon change
-    // HWND hRoot = ::GetAncestor(_hSelf, GA_ROOTOWNER);
-    // ::SendMessage(hRoot, NPPM_INTERNAL_TOOLBARICONSCHANGED, 0, 0);
+    emit iconSetChanged(static_cast<int>(_state));
 }
 
 void ToolBar::setDefaultImageList()

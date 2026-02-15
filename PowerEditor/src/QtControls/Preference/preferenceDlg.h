@@ -357,6 +357,9 @@ public:
     void saveSettings();
     bool applySettings();
 
+signals:
+    void darkModeChanged(bool enabled);
+
 private slots:
     void onDarkModeToggled(bool checked);
     void onThemeChanged(int index);

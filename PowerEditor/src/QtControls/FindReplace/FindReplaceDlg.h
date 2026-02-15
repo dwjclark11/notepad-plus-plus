@@ -213,6 +213,9 @@ public:
     // Windows-compatible processFindNext
     bool processFindNext(const wchar_t* text, const FindOption* opt, ::FindStatus* status, FindNextType type = FINDNEXTTYPE_FINDNEXT);
 
+signals:
+    void globalModified(void* bufferID);
+
 public slots:
     void onFindNextClicked();
     void onFindPreviousClicked();

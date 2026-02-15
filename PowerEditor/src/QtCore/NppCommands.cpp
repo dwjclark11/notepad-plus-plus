@@ -28,7 +28,9 @@
 #include <QPainter>
 #include <QTextDocument>
 #include <QDateTime>
+#include <QDesktopServices>
 #include <QLocale>
+#include <QUrl>
 
 // Local headers
 #include "NppCommands.h"
@@ -173,6 +175,7 @@ void NppCommands::registerFileCommands() {
     _handler.registerCommand(CMD_FILE_OPENFOLDERASWORKSPACE, [this]() { fileOpenFolderAsWorkspace(); });
     _handler.registerCommand(CMD_FILE_OPEN_FOLDER, [this]() { fileOpenContainingFolder(); });
     _handler.registerCommand(CMD_FILE_OPEN_CMD, [this]() { fileOpenCmd(); });
+    _handler.registerCommand(CMD_FILE_OPEN_DEFAULT_VIEWER, [this]() { fileOpenInDefaultViewer(); });
 }
 
 void NppCommands::fileNew() {
@@ -353,6 +356,21 @@ void NppCommands::fileOpenCmd() {
     }
 }
 
+void NppCommands::fileOpenInDefaultViewer() {
+    if (!_pNotepad_plus)
+        return;
+
+    Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+    if (!buf)
+        return;
+
+    std::wstring path = buf->getFullPathName();
+    if (!path.empty())
+    {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QString::fromStdWString(path)));
+    }
+}
+
 // ============================================================================
 // Edit Commands Registration
 // ============================================================================
@@ -412,6 +430,12 @@ void NppCommands::registerEditCommands() {
     _handler.registerCommand(CMD_EDIT_SORTLINES_RANDOMLY, [this]() { editSortLines(CMD_EDIT_SORTLINES_RANDOMLY); });
     _handler.registerCommand(CMD_EDIT_SORTLINES_LENGTH_ASC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LENGTH_ASC); });
     _handler.registerCommand(CMD_EDIT_SORTLINES_LENGTH_DESC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LENGTH_DESC); });
+    _handler.registerCommand(CMD_EDIT_COPY_BINARY, [this]() { editCopyBinary(); });
+    _handler.registerCommand(CMD_EDIT_CUT_BINARY, [this]() { editCutBinary(); });
+    _handler.registerCommand(CMD_EDIT_PASTE_BINARY, [this]() { editPasteBinary(); });
+    _handler.registerCommand(CMD_EDIT_PASTE_AS_HTML, [this]() { editPasteAsHtml(); });
+    _handler.registerCommand(CMD_EDIT_PASTE_AS_RTF, [this]() { editPasteAsRtf(); });
+    _handler.registerCommand(CMD_EDIT_SEARCHONINTERNET, [this]() { editSearchOnInternet(); });
     _handler.registerCommand(CMD_EDIT_INSERT_DATETIME_SHORT, [this]() { editInsertDateTimeShort(); });
     _handler.registerCommand(CMD_EDIT_INSERT_DATETIME_LONG, [this]() { editInsertDateTimeLong(); });
     _handler.registerCommand(CMD_EDIT_INSERT_DATETIME_CUSTOMIZED, [this]() { editInsertDateTimeCustomized(); });
@@ -1316,6 +1340,143 @@ void NppCommands::editColumnModeTip() {
                    "       execute \"Begin/End Select in Column Mode\" command again\n"));
 }
 
+void NppCommands::editCopyBinary() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view)
+        return;
+
+    // SCI_GETSELTEXT returns length including null terminator
+    size_t bufLen = view->execute(SCI_GETSELTEXT, 0, 0);
+    if (bufLen <= 1)
+        return;
+
+    size_t dataLen = bufLen - 1;
+    auto pBinText = std::make_unique<char[]>(bufLen);
+    view->execute(SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(pBinText.get()));
+
+    QMimeData* mimeData = new QMimeData();
+    mimeData->setText(QString::fromUtf8(pBinText.get()));
+
+    // Store the raw binary data (including nulls) and exact length
+    QByteArray rawData(pBinText.get(), static_cast<int>(dataLen));
+    mimeData->setData("application/x-npp-binary-data", rawData);
+    QByteArray lenData;
+    lenData.setNum(static_cast<qulonglong>(dataLen));
+    mimeData->setData("application/x-npp-binary-length", lenData);
+
+    QApplication::clipboard()->setMimeData(mimeData);
+}
+
+void NppCommands::editCutBinary() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view)
+        return;
+
+    editCopyBinary();
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(""));
+}
+
+void NppCommands::editPasteBinary() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view)
+        return;
+
+    QClipboard* clipboard = QApplication::clipboard();
+    const QMimeData* mimeData = clipboard->mimeData();
+    if (!mimeData)
+        return;
+
+    if (mimeData->hasFormat("application/x-npp-binary-data"))
+    {
+        QByteArray rawData = mimeData->data("application/x-npp-binary-data");
+        view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(""));
+        view->execute(SCI_ADDTEXT, rawData.size(), reinterpret_cast<LPARAM>(rawData.constData()));
+    }
+    else if (mimeData->hasText())
+    {
+        QByteArray text = mimeData->text().toUtf8();
+        view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(text.constData()));
+    }
+}
+
+void NppCommands::editPasteAsHtml() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view)
+        return;
+
+    QClipboard* clipboard = QApplication::clipboard();
+    const QMimeData* mimeData = clipboard->mimeData();
+    if (!mimeData || !mimeData->hasFormat("text/html"))
+        return;
+
+    QByteArray htmlData = mimeData->data("text/html");
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(htmlData.constData()));
+}
+
+void NppCommands::editPasteAsRtf() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view)
+        return;
+
+    QClipboard* clipboard = QApplication::clipboard();
+    const QMimeData* mimeData = clipboard->mimeData();
+    if (!mimeData || !mimeData->hasFormat("text/rtf"))
+        return;
+
+    QByteArray rtfData = mimeData->data("text/rtf");
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(rtfData.constData()));
+}
+
+void NppCommands::editSearchOnInternet() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view)
+        return;
+
+    if (view->execute(SCI_GETSELECTIONS) != 1)
+        return;
+
+    size_t textLen = view->execute(SCI_GETSELTEXT, 0, 0);
+    if (textLen <= 1)
+        return;
+
+    auto selText = std::make_unique<char[]>(textLen);
+    view->execute(SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(selText.get()));
+    QString selectedText = QString::fromUtf8(selText.get());
+
+    const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+    QString url;
+
+    if (nppGUI._searchEngineChoice == NppGUI::se_custom)
+    {
+        url = QString::fromStdWString(nppGUI._searchEngineCustom).trimmed();
+        if (url.isEmpty() || (!url.startsWith("http://") && !url.startsWith("https://")))
+        {
+            url = "https://www.google.com/search?q=$(CURRENT_WORD)";
+        }
+    }
+    else if (nppGUI._searchEngineChoice == NppGUI::se_duckDuckGo || nppGUI._searchEngineChoice == NppGUI::se_bing)
+    {
+        url = "https://duckduckgo.com/?q=$(CURRENT_WORD)";
+    }
+    else if (nppGUI._searchEngineChoice == NppGUI::se_google)
+    {
+        url = "https://www.google.com/search?q=$(CURRENT_WORD)";
+    }
+    else if (nppGUI._searchEngineChoice == NppGUI::se_yahoo)
+    {
+        url = "https://search.yahoo.com/search?q=$(CURRENT_WORD)";
+    }
+    else if (nppGUI._searchEngineChoice == NppGUI::se_stackoverflow)
+    {
+        url = "https://stackoverflow.com/search?q=$(CURRENT_WORD)";
+    }
+
+    QString encodedText = QUrl::toPercentEncoding(selectedText);
+    url.replace("$(CURRENT_WORD)", encodedText);
+
+    QDesktopServices::openUrl(QUrl(url));
+}
+
 void NppCommands::editInsertDateTimeShort() {
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
@@ -1857,6 +2018,18 @@ void NppCommands::registerViewCommands() {
     _handler.registerCommand(CMD_VIEW_TAB_END, [this]() { viewTabEnd(); });
     _handler.registerCommand(CMD_VIEW_TAB_MOVEFORWARD, [this]() { viewTabMoveForward(); });
     _handler.registerCommand(CMD_VIEW_TAB_MOVEBACKWARD, [this]() { viewTabMoveBackward(); });
+
+    // Tab colour commands
+    _handler.registerCommand(CMD_VIEW_TAB_COLOUR_NONE, [this]() { viewTabColour(-1); });
+    _handler.registerCommand(CMD_VIEW_TAB_COLOUR_1, [this]() { viewTabColour(0); });
+    _handler.registerCommand(CMD_VIEW_TAB_COLOUR_2, [this]() { viewTabColour(1); });
+    _handler.registerCommand(CMD_VIEW_TAB_COLOUR_3, [this]() { viewTabColour(2); });
+    _handler.registerCommand(CMD_VIEW_TAB_COLOUR_4, [this]() { viewTabColour(3); });
+    _handler.registerCommand(CMD_VIEW_TAB_COLOUR_5, [this]() { viewTabColour(4); });
+
+    // Text direction commands
+    _handler.registerCommand(CMD_EDIT_RTL, [this]() { editTextDirection(true); });
+    _handler.registerCommand(CMD_EDIT_LTR, [this]() { editTextDirection(false); });
 }
 
 void NppCommands::viewFullScreen() {
@@ -1878,7 +2051,9 @@ void NppCommands::viewDistractionFree() {
 }
 
 void NppCommands::viewAlwaysOnTop() {
-    // Toggle always on top window flag
+    if (_pNotepad_plus) {
+        _pNotepad_plus->alwaysOnTopToggle();
+    }
 }
 
 void NppCommands::viewWordWrap() {
@@ -2131,6 +2306,34 @@ void NppCommands::viewTabMoveBackward() {
     if (_pNotepad_plus) {
         _pNotepad_plus->moveTabBackward();
     }
+}
+
+void NppCommands::viewTabColour(int colorId) {
+    if (!_pNotepad_plus) return;
+
+    DocTabView* docTab = _pNotepad_plus->getCurrentDocTab();
+    if (!docTab) return;
+
+    int currentIndex = docTab->getCurrentTabIndex();
+    BufferID bufferId = docTab->getBufferByIndex(currentIndex);
+    if (bufferId) {
+        docTab->setIndividualTabColour(bufferId, colorId);
+    }
+}
+
+void NppCommands::editTextDirection(bool isRTL) {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view) return;
+
+    if (view->isTextDirectionRTL() == isRTL)
+        return;
+
+    view->changeTextDirection(isRTL);
+
+    // Wrap then unwrap to fix display of mirrored characters
+    bool isWrapped = view->isWrap();
+    view->wrap(!isWrapped);
+    view->wrap(isWrapped);
 }
 
 // ============================================================================

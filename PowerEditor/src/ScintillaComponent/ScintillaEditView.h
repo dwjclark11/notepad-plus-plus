@@ -356,6 +356,14 @@ public:
 #ifdef NPP_LINUX
 	// Initialize the scratch editor for document creation (Qt only)
 	static void initScratchEditor(QWidget* parent);
+
+	// Callback for external lexer buffer notification (replaces SendMessage on Windows)
+	using ExternalLexerBufferCallback = void(*)(BufferID bufID, void* userData);
+	void setExternalLexerBufferCallback(ExternalLexerBufferCallback cb, void* userData)
+	{
+		_externalLexerBufferCb = cb;
+		_externalLexerBufferUserData = userData;
+	}
 #endif
 
 	void getText(char *dest, size_t start, size_t end) const;
@@ -1227,4 +1235,9 @@ protected:
 
 	std::pair<size_t, size_t> getWordRange();
 	void getFoldColor(COLORREF& fgColor, COLORREF& bgColor, COLORREF& activeFgColor);
+
+#ifdef NPP_LINUX
+	ExternalLexerBufferCallback _externalLexerBufferCb = nullptr;
+	void* _externalLexerBufferUserData = nullptr;
+#endif
 };

@@ -2298,6 +2298,15 @@ void Notepad_plus::distractionFreeToggle()
 	}
 }
 
+void Notepad_plus::alwaysOnTopToggle()
+{
+	auto* mainWin = getMainWindow(_mainEditView);
+	if (mainWin)
+	{
+		mainWin->setAlwaysOnTop(!mainWin->isAlwaysOnTop());
+	}
+}
+
 // ============================================================================
 // View Operations (Wrap, Indent Guide, Whitespace, EOL, etc.)
 // ============================================================================
@@ -2677,6 +2686,17 @@ void Notepad_plus::showFindReplaceDlg(int dialogType)
             }
             return {};
         });
+
+        // Connect globalModified signal for plugin notification
+        QObject::connect(&_findReplaceDlg, &NppFindReplace::FindReplaceDlg::globalModified,
+            [this](void* bufferID)
+            {
+                SCNotification scnN{};
+                scnN.nmhdr.code = NPPN_GLOBALMODIFIED;
+                scnN.nmhdr.hwndFrom = bufferID;
+                scnN.nmhdr.idFrom = 0;
+                _pluginsManager.notify(&scnN);
+            });
     }
 
     // Map dialog type to DIALOG_TYPE enum
@@ -3104,6 +3124,13 @@ void Notepad_plus::moveTabForward()
     _pDocTab->setBuffer(currentIndex, nextID);
     _pDocTab->setBuffer(currentIndex + 1, currentID);
     _pDocTab->activateBuffer(currentID);
+
+    // Notify plugins of tab order change
+    SCNotification scnN{};
+    scnN.nmhdr.code = NPPN_DOCORDERCHANGED;
+    scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(_pDocTab);
+    scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(currentID);
+    _pluginsManager.notify(&scnN);
 }
 
 void Notepad_plus::moveTabBackward()
@@ -3128,6 +3155,13 @@ void Notepad_plus::moveTabBackward()
     _pDocTab->setBuffer(currentIndex, prevID);
     _pDocTab->setBuffer(currentIndex - 1, currentID);
     _pDocTab->activateBuffer(currentID);
+
+    // Notify plugins of tab order change
+    SCNotification scnN{};
+    scnN.nmhdr.code = NPPN_DOCORDERCHANGED;
+    scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(_pDocTab);
+    scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(currentID);
+    _pluginsManager.notify(&scnN);
 }
 
 // ============================================================================
@@ -4212,15 +4246,15 @@ void Notepad_plus::maintainIndentation(wchar_t ch)
 
 			// get previous char from current line
 			intptr_t prevPos = _pEditView->execute(SCI_GETCURRENTPOS) - (eolMode == SC_EOL_CRLF ? 3 : 2);
-			UCHAR prevChar = (UCHAR)_pEditView->execute(SCI_GETCHARAT, prevPos);
+			UCHAR prevChar = static_cast<UCHAR>(_pEditView->execute(SCI_GETCHARAT, prevPos));
 			auto curPos = _pEditView->execute(SCI_GETCURRENTPOS);
-			UCHAR nextChar = (UCHAR)_pEditView->execute(SCI_GETCHARAT, curPos);
+			UCHAR nextChar = static_cast<UCHAR>(_pEditView->execute(SCI_GETCHARAT, curPos));
 
 			if (prevChar == '{')
 			{
 				if (nextChar == '}')
 				{
-					const char *eolChars;
+					const char* eolChars;
 					if (eolMode == SC_EOL_CRLF)
 						eolChars = "\r\n";
 					else if (eolMode == SC_EOL_LF)
@@ -4265,7 +4299,7 @@ void Notepad_plus::maintainIndentation(wchar_t ch)
 
 			for (LRESULT i = endPos - 2; i > 0 && i >= startPos; --i)
 			{
-				UCHAR aChar = (UCHAR)_pEditView->execute(SCI_GETCHARAT, i);
+				UCHAR aChar = static_cast<UCHAR>(_pEditView->execute(SCI_GETCHARAT, i));
 				if (aChar != ' ' && aChar != '\t')
 					return;
 			}
@@ -4377,6 +4411,96 @@ void Notepad_plus::maintainIndentation(wchar_t ch)
 				_pEditView->setLineIndent(curLine, indentAmountPrevLine);
 			}
 		}
+	}
+}
+
+// ============================================================================
+// Change History Navigation
+// ============================================================================
+
+void Notepad_plus::clearChangesHistory(int iView)
+{
+	ScintillaEditView* pViewToChange = _pEditView;
+
+	if (iView == MAIN_VIEW)
+		pViewToChange = &_mainEditView;
+	else if (iView == SUB_VIEW)
+		pViewToChange = &_subEditView;
+
+	intptr_t pos = pViewToChange->execute(SCI_GETCURRENTPOS);
+	int chFlags = static_cast<int>(pViewToChange->execute(SCI_GETCHANGEHISTORY));
+
+	pViewToChange->execute(SCI_EMPTYUNDOBUFFER);
+	pViewToChange->execute(SCI_SETCHANGEHISTORY, SC_CHANGE_HISTORY_DISABLED);
+	pViewToChange->execute(SCI_SETCHANGEHISTORY, chFlags);
+	pViewToChange->execute(SCI_GOTOPOS, pos);
+}
+
+void Notepad_plus::changedHistoryGoTo(int idGoTo)
+{
+	int mask = (1 << SC_MARKNUM_HISTORY_REVERTED_TO_ORIGIN) |
+	           (1 << SC_MARKNUM_HISTORY_SAVED) |
+	           (1 << SC_MARKNUM_HISTORY_MODIFIED) |
+	           (1 << SC_MARKNUM_HISTORY_REVERTED_TO_MODIFIED);
+
+	intptr_t line = -1;
+	intptr_t blockIndicator = _pEditView->getCurrentLineNumber();
+	intptr_t lastLine = _pEditView->execute(SCI_GETLINECOUNT);
+
+	if (idGoTo == IDM_SEARCH_CHANGED_NEXT)
+	{
+		intptr_t currentLine = blockIndicator;
+
+		for (intptr_t i = currentLine; i < lastLine; ++i)
+		{
+			if (_pEditView->execute(SCI_MARKERGET, i) & mask)
+			{
+				if (i != blockIndicator)
+				{
+					line = i;
+					break;
+				}
+				else
+				{
+					++blockIndicator;
+				}
+			}
+		}
+
+		if (line == -1)
+		{
+			intptr_t endRange = currentLine + 1;
+			for (intptr_t i = 0; i < endRange; ++i)
+			{
+				if (_pEditView->execute(SCI_MARKERGET, i) & mask)
+				{
+					line = i;
+					break;
+				}
+			}
+		}
+	}
+	else
+	{
+		while (true)
+		{
+			line = _pEditView->execute(SCI_MARKERPREVIOUS, blockIndicator, mask);
+			if (line == -1 || line != blockIndicator)
+				break;
+			else
+				--blockIndicator;
+		}
+
+		if (line == -1)
+		{
+			line = _pEditView->execute(SCI_MARKERPREVIOUS, lastLine - 1, mask);
+		}
+	}
+
+	if (line != -1)
+	{
+		_pEditView->execute(SCI_ENSUREVISIBLEENFORCEPOLICY, line);
+		_pEditView->execute(SCI_GOTOLINE, line);
 	}
 }
 

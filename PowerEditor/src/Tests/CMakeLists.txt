@@ -264,6 +264,8 @@ add_executable(IntegrationTests
     Integration/FindReplaceDlgInitTest.h
     Integration/Phase5RegressionTest.cpp
     Integration/Phase5RegressionTest.h
+    Integration/Phase6FinalGapRegressionTest.cpp
+    Integration/Phase6FinalGapRegressionTest.h
     Integration/Stubs/NppParametersStub.cpp
     Integration/Stubs/CommandHandlerStub.cpp
 )

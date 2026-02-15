@@ -63,6 +63,9 @@ public:
     // Check for key conflicts
     bool findKeyConflicts(const KeyCombo& combo, size_t itemIndex, QString* conflictLocation);
 
+signals:
+    void shortcutRemapped(int cmdID, const KeyCombo& newKey);
+
 private slots:
     void onTabChanged(int index);
     void onFilterChanged(const QString& text);

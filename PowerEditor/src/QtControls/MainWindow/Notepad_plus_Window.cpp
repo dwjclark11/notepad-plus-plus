@@ -49,7 +49,9 @@
 #include <QSettings>
 #include <QScreen>
 
+#include <algorithm>
 #include <iostream>
+#include <memory>
 #include <QActionGroup>
 #include <QProcess>
 #include <QDesktopServices>
@@ -211,6 +213,26 @@ bool MainWindow::init(Notepad_plus* pNotepad_plus)
                 case IDM_VIEW_FILEBROWSER: onViewFileBrowser(); break;
                 case IDM_EDIT_CLIPBOARDHISTORY_PANEL: onViewClipboardHistory(); break;
 
+                // Tab color commands
+                case IDM_VIEW_TAB_COLOUR_NONE: onViewTabColour(-1); break;
+                case IDM_VIEW_TAB_COLOUR_1: onViewTabColour(0); break;
+                case IDM_VIEW_TAB_COLOUR_2: onViewTabColour(1); break;
+                case IDM_VIEW_TAB_COLOUR_3: onViewTabColour(2); break;
+                case IDM_VIEW_TAB_COLOUR_4: onViewTabColour(3); break;
+                case IDM_VIEW_TAB_COLOUR_5: onViewTabColour(4); break;
+
+                // Text direction commands
+                case IDM_EDIT_RTL: onEditTextDirection(true); break;
+                case IDM_EDIT_LTR: onEditTextDirection(false); break;
+
+                // Hide lines
+                case IDM_VIEW_HIDELINES: onViewHideLines(); break;
+
+                // Change history navigation
+                case IDM_SEARCH_CHANGED_NEXT: onSearchChangedNext(); break;
+                case IDM_SEARCH_CHANGED_PREV: onSearchChangedPrev(); break;
+                case IDM_SEARCH_CLEAR_CHANGE_HISTORY: onSearchClearChangeHistory(); break;
+
                 // Macro commands
                 case IDM_MACRO_STARTRECORDINGMACRO: onMacroStartRecording(); break;
                 case IDM_MACRO_STOPRECORDINGMACRO: onMacroStopRecording(); break;
@@ -279,6 +301,34 @@ bool MainWindow::init(Notepad_plus* pNotepad_plus)
         scnN.nmhdr.idFrom = 0;
         _pNotepad_plus->getPluginsManager().notify(&scnN);
     }
+
+    // Connect toolbar icon set change to plugin notification
+    if (_mainToolBar)
+    {
+        connect(_mainToolBar, &ToolBar::iconSetChanged, this, [this](int state)
+        {
+            SCNotification scnN{};
+            scnN.nmhdr.code = NPPN_TOOLBARICONSETCHANGED;
+            scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(this);
+            scnN.nmhdr.idFrom = static_cast<uptr_t>(state);
+            _pNotepad_plus->getPluginsManager().notify(&scnN);
+        });
+    }
+
+    // Set up external lexer buffer callback on edit views
+    auto externalLexerCb = [](BufferID bufID, void* userData)
+    {
+        auto* self = static_cast<MainWindow*>(userData);
+        SCNotification scnN{};
+        scnN.nmhdr.code = NPPN_EXTERNALLEXERBUFFER;
+        scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(self);
+        scnN.nmhdr.idFrom = reinterpret_cast<uptr_t>(bufID);
+        self->_pNotepad_plus->getPluginsManager().notify(&scnN);
+    };
+    if (getMainEditView())
+        getMainEditView()->setExternalLexerBufferCallback(externalLexerCb, this);
+    if (getSubEditView())
+        getSubEditView()->setExternalLexerBufferCallback(externalLexerCb, this);
 
     std::cout << "[MainWindow::init] Initialization complete!" << std::endl;
     return true;
@@ -786,6 +836,12 @@ void MainWindow::createFileMenu()
 
     _fileMenu->addSeparator();
 
+    // Open in Default Viewer
+    auto* defaultViewerAction = _fileMenu->addAction(tr("Open in Default Viewer"), this, &MainWindow::onFileOpenInDefaultViewer);
+    defaultViewerAction->setProperty("commandId", IDM_FILE_OPEN_DEFAULT_VIEWER);
+
+    _fileMenu->addSeparator();
+
     // Print
     auto* printAction = _fileMenu->addAction(tr("&Print..."), this, &MainWindow::onFilePrint);
     printAction->setShortcut(QKeySequence::Print);
@@ -834,6 +890,22 @@ void MainWindow::createEditMenu()
 
     _editMenu->addSeparator();
 
+    // Clipboard Special submenu
+    auto* clipSpecialMenu = _editMenu->addMenu(tr("Clipboard"));
+    auto* copyBinaryAction = clipSpecialMenu->addAction(tr("Copy Binary Content"), this, &MainWindow::onEditCopyBinary);
+    copyBinaryAction->setProperty("commandId", IDM_EDIT_COPY_BINARY);
+    auto* cutBinaryAction = clipSpecialMenu->addAction(tr("Cut Binary Content"), this, &MainWindow::onEditCutBinary);
+    cutBinaryAction->setProperty("commandId", IDM_EDIT_CUT_BINARY);
+    auto* pasteBinaryAction = clipSpecialMenu->addAction(tr("Paste Binary Content"), this, &MainWindow::onEditPasteBinary);
+    pasteBinaryAction->setProperty("commandId", IDM_EDIT_PASTE_BINARY);
+    clipSpecialMenu->addSeparator();
+    auto* pasteHtmlAction = clipSpecialMenu->addAction(tr("Paste HTML Content"), this, &MainWindow::onEditPasteAsHtml);
+    pasteHtmlAction->setProperty("commandId", IDM_EDIT_PASTE_AS_HTML);
+    auto* pasteRtfAction = clipSpecialMenu->addAction(tr("Paste RTF Content"), this, &MainWindow::onEditPasteAsRtf);
+    pasteRtfAction->setProperty("commandId", IDM_EDIT_PASTE_AS_RTF);
+
+    _editMenu->addSeparator();
+
     // Select All
     auto* selectAllAction = _editMenu->addAction(tr("Select &All"), this, &MainWindow::onEditSelectAll);
     selectAllAction->setShortcut(QKeySequence::SelectAll);
@@ -869,6 +941,12 @@ void MainWindow::createEditMenu()
     convertMenu->addAction(tr("Uppercase"), this, &MainWindow::onEditUpperCase);
     convertMenu->addAction(tr("Lowercase"), this, &MainWindow::onEditLowerCase);
     convertMenu->addAction(tr("Title Case"), this, &MainWindow::onEditTitleCase);
+
+    _editMenu->addSeparator();
+
+    // Search on Internet
+    auto* searchInternetAction = _editMenu->addAction(tr("Search on Internet"), this, &MainWindow::onEditSearchOnInternet);
+    searchInternetAction->setProperty("commandId", IDM_EDIT_SEARCHONINTERNET);
 
     _editMenu->addSeparator();
 
@@ -935,7 +1013,8 @@ void MainWindow::createViewMenu()
     _viewMenu->addSeparator();
 
     // Always on Top
-    _viewMenu->addAction(tr("Always on &Top"), this, &MainWindow::onViewAlwaysOnTop);
+    _alwaysOnTopAction = _viewMenu->addAction(tr("Always on &Top"), this, &MainWindow::onViewAlwaysOnTop);
+    _alwaysOnTopAction->setCheckable(true);
 
     _viewMenu->addSeparator();
 
@@ -995,6 +1074,22 @@ void MainWindow::createViewMenu()
     clipboardHistoryAction->setCheckable(true);
     auto* fileBrowserAction = panelsMenu->addAction(tr("Folder as &Workspace"), this, &MainWindow::onViewFileBrowser);
     fileBrowserAction->setCheckable(true);
+
+    // Tab Color submenu
+    _viewMenu->addSeparator();
+    auto* tabColorMenu = _viewMenu->addMenu(tr("Tab Color"));
+    tabColorMenu->addAction(tr("Apply Color 1"), this, [this]() { onViewTabColour(0); });
+    tabColorMenu->addAction(tr("Apply Color 2"), this, [this]() { onViewTabColour(1); });
+    tabColorMenu->addAction(tr("Apply Color 3"), this, [this]() { onViewTabColour(2); });
+    tabColorMenu->addAction(tr("Apply Color 4"), this, [this]() { onViewTabColour(3); });
+    tabColorMenu->addAction(tr("Apply Color 5"), this, [this]() { onViewTabColour(4); });
+    tabColorMenu->addSeparator();
+    tabColorMenu->addAction(tr("Remove Color"), this, [this]() { onViewTabColour(-1); });
+
+    // Text Direction
+    _viewMenu->addSeparator();
+    _viewMenu->addAction(tr("Text Direction RTL"), this, [this]() { onEditTextDirection(true); });
+    _viewMenu->addAction(tr("Text Direction LTR"), this, [this]() { onEditTextDirection(false); });
 
     // Monitoring (tail -f)
     _viewMenu->addSeparator();
@@ -2707,6 +2802,152 @@ void MainWindow::onEditTitleCase()
     }
 }
 
+void MainWindow::onEditCopyBinary()
+{
+    if (!_pNotepad_plus) return;
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    // SCI_GETSELTEXT returns length including null terminator
+    size_t bufLen = view->execute(SCI_GETSELTEXT, 0, 0);
+    if (bufLen <= 1) return;
+
+    size_t dataLen = bufLen - 1;
+    auto pBinText = std::make_unique<char[]>(bufLen);
+    view->execute(SCI_GETSELTEXT, 0, reinterpret_cast<sptr_t>(pBinText.get()));
+
+    QMimeData* mimeData = new QMimeData();
+    mimeData->setText(QString::fromUtf8(pBinText.get()));
+    QByteArray rawData(pBinText.get(), static_cast<int>(dataLen));
+    mimeData->setData("application/x-npp-binary-data", rawData);
+    QByteArray lenData;
+    lenData.setNum(static_cast<qulonglong>(dataLen));
+    mimeData->setData("application/x-npp-binary-length", lenData);
+
+    QApplication::clipboard()->setMimeData(mimeData);
+}
+
+void MainWindow::onEditCutBinary()
+{
+    if (!_pNotepad_plus) return;
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    onEditCopyBinary();
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(""));
+}
+
+void MainWindow::onEditPasteBinary()
+{
+    if (!_pNotepad_plus) return;
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    QClipboard* clipboard = QApplication::clipboard();
+    const QMimeData* mimeData = clipboard->mimeData();
+    if (!mimeData) return;
+
+    if (mimeData->hasFormat("application/x-npp-binary-data"))
+    {
+        QByteArray rawData = mimeData->data("application/x-npp-binary-data");
+        view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(""));
+        view->execute(SCI_ADDTEXT, rawData.size(), reinterpret_cast<sptr_t>(rawData.constData()));
+    }
+    else if (mimeData->hasText())
+    {
+        QByteArray text = mimeData->text().toUtf8();
+        view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(text.constData()));
+    }
+}
+
+void MainWindow::onEditPasteAsHtml()
+{
+    if (!_pNotepad_plus) return;
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    const QMimeData* mimeData = QApplication::clipboard()->mimeData();
+    if (!mimeData || !mimeData->hasFormat("text/html")) return;
+
+    QByteArray htmlData = mimeData->data("text/html");
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(htmlData.constData()));
+}
+
+void MainWindow::onEditPasteAsRtf()
+{
+    if (!_pNotepad_plus) return;
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    const QMimeData* mimeData = QApplication::clipboard()->mimeData();
+    if (!mimeData || !mimeData->hasFormat("text/rtf")) return;
+
+    QByteArray rtfData = mimeData->data("text/rtf");
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(rtfData.constData()));
+}
+
+void MainWindow::onEditSearchOnInternet()
+{
+    if (!_pNotepad_plus) return;
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    if (view->execute(SCI_GETSELECTIONS) != 1) return;
+
+    size_t textLen = view->execute(SCI_GETSELTEXT, 0, 0);
+    if (textLen <= 1) return;
+
+    auto selText = std::make_unique<char[]>(textLen);
+    view->execute(SCI_GETSELTEXT, 0, reinterpret_cast<sptr_t>(selText.get()));
+    QString selectedText = QString::fromUtf8(selText.get());
+
+    const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+    QString url;
+
+    if (nppGUI._searchEngineChoice == NppGUI::se_custom)
+    {
+        url = QString::fromStdWString(nppGUI._searchEngineCustom).trimmed();
+        if (url.isEmpty() || (!url.startsWith("http://") && !url.startsWith("https://")))
+        {
+            url = "https://www.google.com/search?q=$(CURRENT_WORD)";
+        }
+    }
+    else if (nppGUI._searchEngineChoice == NppGUI::se_duckDuckGo || nppGUI._searchEngineChoice == NppGUI::se_bing)
+    {
+        url = "https://duckduckgo.com/?q=$(CURRENT_WORD)";
+    }
+    else if (nppGUI._searchEngineChoice == NppGUI::se_google)
+    {
+        url = "https://www.google.com/search?q=$(CURRENT_WORD)";
+    }
+    else if (nppGUI._searchEngineChoice == NppGUI::se_yahoo)
+    {
+        url = "https://search.yahoo.com/search?q=$(CURRENT_WORD)";
+    }
+    else if (nppGUI._searchEngineChoice == NppGUI::se_stackoverflow)
+    {
+        url = "https://stackoverflow.com/search?q=$(CURRENT_WORD)";
+    }
+
+    QString encodedText = QUrl::toPercentEncoding(selectedText);
+    url.replace("$(CURRENT_WORD)", encodedText);
+
+    QDesktopServices::openUrl(QUrl(url));
+}
+
+void MainWindow::onFileOpenInDefaultViewer()
+{
+    if (!_pNotepad_plus) return;
+    Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+    if (!buf) return;
+
+    std::wstring path = buf->getFullPathName();
+    if (!path.empty())
+    {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QString::fromStdWString(path)));
+    }
+}
+
 // ============================================================================
 // Slot Implementations - Search Menu
 // ============================================================================
@@ -2768,6 +3009,43 @@ void MainWindow::onViewDistractionFreeMode()
 void MainWindow::onViewAlwaysOnTop()
 {
     setAlwaysOnTop(!isAlwaysOnTop());
+    if (_alwaysOnTopAction)
+    {
+        _alwaysOnTopAction->setChecked(isAlwaysOnTop());
+    }
+}
+
+void MainWindow::onViewTabColour(int colorId)
+{
+    if (!_pNotepad_plus) return;
+
+    DocTabView* docTab = _pNotepad_plus->getCurrentDocTab();
+    if (!docTab) return;
+
+    int currentIndex = docTab->getCurrentTabIndex();
+    BufferID bufferId = docTab->getBufferByIndex(currentIndex);
+    if (bufferId)
+    {
+        docTab->setIndividualTabColour(bufferId, colorId);
+    }
+}
+
+void MainWindow::onEditTextDirection(bool isRTL)
+{
+    if (!_pNotepad_plus) return;
+
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    if (view->isTextDirectionRTL() == isRTL)
+        return;
+
+    view->changeTextDirection(isRTL);
+
+    // Wrap then unwrap to fix display of mirrored characters
+    bool isWrapped = view->isWrap();
+    view->wrap(!isWrapped);
+    view->wrap(isWrapped);
 }
 
 void MainWindow::onViewWordWrap()
@@ -2861,6 +3139,34 @@ void MainWindow::onViewMonitoring()
         _monitoringAction->setChecked(!isMonitoring);
 
     updateStatusBar();
+}
+
+void MainWindow::onViewHideLines()
+{
+    if (!_pNotepad_plus)
+        return;
+
+    ScintillaEditView* pEditView = _pNotepad_plus->getCurrentEditView();
+    if (pEditView)
+        pEditView->hideLines();
+}
+
+void MainWindow::onSearchChangedNext()
+{
+    if (_pNotepad_plus)
+        _pNotepad_plus->changedHistoryGoTo(IDM_SEARCH_CHANGED_NEXT);
+}
+
+void MainWindow::onSearchChangedPrev()
+{
+    if (_pNotepad_plus)
+        _pNotepad_plus->changedHistoryGoTo(IDM_SEARCH_CHANGED_PREV);
+}
+
+void MainWindow::onSearchClearChangeHistory()
+{
+    if (_pNotepad_plus)
+        _pNotepad_plus->clearChangesHistory(_pNotepad_plus->currentView());
 }
 
 // ============================================================================
@@ -3122,8 +3428,24 @@ void MainWindow::onLanguageDefineUserLang()
 
 void MainWindow::onSettingsPreferences()
 {
-    if (!_preferenceDlg) {
+    if (!_preferenceDlg)
+    {
         _preferenceDlg = new QtControls::PreferenceDlg(this);
+
+        // Connect dark mode change to plugin notification
+        auto* darkModePage = _preferenceDlg->findChild<QtControls::DarkModeSubDlg*>();
+        if (darkModePage)
+        {
+            connect(darkModePage, &QtControls::DarkModeSubDlg::darkModeChanged,
+                this, [this](bool /*enabled*/)
+                {
+                    SCNotification scnN{};
+                    scnN.nmhdr.code = NPPN_DARKMODECHANGED;
+                    scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(this);
+                    scnN.nmhdr.idFrom = 0;
+                    _pNotepad_plus->getPluginsManager().notify(&scnN);
+                });
+        }
     }
     _preferenceDlg->doDialog();
 }
@@ -3149,8 +3471,20 @@ void MainWindow::onSettingsStyleConfigurator()
 
 void MainWindow::onSettingsShortcutMapper()
 {
-    if (!_shortcutMapper) {
+    if (!_shortcutMapper)
+    {
         _shortcutMapper = new QtControls::ShortcutMapper::ShortcutMapper(this);
+
+        // Connect shortcut remapped signal to plugin notification
+        connect(_shortcutMapper, &QtControls::ShortcutMapper::ShortcutMapper::shortcutRemapped,
+            this, [this](int cmdID, const KeyCombo& newKey)
+            {
+                SCNotification scnN{};
+                scnN.nmhdr.code = NPPN_SHORTCUTREMAPPED;
+                scnN.nmhdr.hwndFrom = reinterpret_cast<void*>(const_cast<KeyCombo*>(&newKey));
+                scnN.nmhdr.idFrom = static_cast<uptr_t>(cmdID);
+                _pNotepad_plus->getPluginsManager().notify(&scnN);
+            });
     }
     _shortcutMapper->doDialog();
 }

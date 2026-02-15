@@ -224,11 +224,17 @@ class DocumentMap;
 class FunctionListPanel;
 class FileBrowser;
 struct QuoteParams;
+#ifdef NPP_LINUX
+namespace QtControls { namespace MainWindow { class MainWindow; } }
+#endif
 
 class Notepad_plus final
 {
 friend class Notepad_plus_Window;
 friend class FileManager;
+#ifdef NPP_LINUX
+friend class QtControls::MainWindow::MainWindow;
+#endif
 
 public:
 	Notepad_plus();
@@ -475,6 +481,7 @@ public:
 	void fullScreenToggle();
 	void postItToggle();
 	void distractionFreeToggle();
+	void alwaysOnTopToggle();
 	int otherView();
 	int switchEditViewTo(int gid);
 	void activateDoc(size_t pos);

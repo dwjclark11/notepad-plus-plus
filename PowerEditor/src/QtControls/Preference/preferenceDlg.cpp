@@ -853,6 +853,7 @@ void DarkModeSubDlg::saveSettings()
 bool DarkModeSubDlg::applySettings()
 {
     saveSettings();
+    emit darkModeChanged(_darkModeEnabled);
     return true;
 }
 

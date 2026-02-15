@@ -16,6 +16,7 @@
 #include "../Integration/IPCParseTest.h"
 #include "../Integration/FindReplaceDlgInitTest.h"
 #include "../Integration/Phase5RegressionTest.h"
+#include "../Integration/Phase6FinalGapRegressionTest.h"
 
 // This file provides a main() function for IntegrationTests executable
 // that runs integration tests
@@ -41,6 +42,7 @@ int main(int argc, char *argv[])
     result |= QTest::qExec(new Tests::IPCParseTest(), argc, argv);
     result |= QTest::qExec(new Tests::FindReplaceDlgInitTest(), argc, argv);
     result |= QTest::qExec(new Tests::Phase5RegressionTest(), argc, argv);
+    result |= QTest::qExec(new Tests::Phase6FinalGapRegressionTest(), argc, argv);
 
     Tests::TestEnvironment::getInstance().cleanup();
 
