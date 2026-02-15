@@ -602,6 +602,11 @@ ELSEIF(UNIX AND NOT APPLE)
 		./MISC/PluginsManager/PluginsManagerLinux.cpp
 	)
 
+	# Plugin API message dispatch (NPPM_* message relay for Linux)
+	list(APPEND src_files
+		./NppPluginMessages.cpp
+	)
+
 	# MISC - Exception handling
 	# Note: MiniDumper.cpp and Win32Exception.cpp are excluded from Linux build
 	# as they use Windows-specific APIs (shlwapi.h, Windows crash dump generation,
@@ -628,9 +633,9 @@ ELSEIF(UNIX AND NOT APPLE)
 	# - ScintillaEditView.cpp - Windows Scintilla integration
 	# - SmartHighlighter.cpp - Windows-specific
 	# - UserDefineDialog.cpp - Windows dialog (Qt alternative: QtControls/UserDefineDialog/)
-	# - xmlMatchedTagsHighlighter.cpp - Windows-specific
 	list(APPEND src_files
 		./ScintillaComponent/ScintillaCtrls.cpp
+		./ScintillaComponent/xmlMatchedTagsHighlighter.cpp
 	)
 
 	# ============================================================================

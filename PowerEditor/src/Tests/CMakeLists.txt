@@ -147,6 +147,8 @@ set(QTCONTROLS_TEST_SOURCES
     QtControls/ToolBarTest.h
     QtControls/TabSignalRaceTest.cpp
     QtControls/TabSignalRaceTest.h
+    QtControls/PreferenceSubPageTest.cpp
+    QtControls/PreferenceSubPageTest.h
 )
 
 # Integration Tests
@@ -217,6 +219,7 @@ if(UNIX AND NOT APPLE)
         ${CMAKE_SOURCE_DIR}/QtControls/RunDlg/RunDlg.cpp
         ${CMAKE_SOURCE_DIR}/QtControls/AboutDlg/AboutDlg.cpp
         ${CMAKE_SOURCE_DIR}/QtControls/ToolBar/ToolBar.cpp
+        ${CMAKE_SOURCE_DIR}/QtControls/Preference/preferenceDlg.cpp
     )
 
     # Stubs for pre-existing linker errors (RunDlg deps on NppParameters/Buffer/ScintillaEditView)
@@ -259,7 +262,10 @@ add_executable(IntegrationTests
     Integration/IPCParseTest.h
     Integration/FindReplaceDlgInitTest.cpp
     Integration/FindReplaceDlgInitTest.h
+    Integration/Phase5RegressionTest.cpp
+    Integration/Phase5RegressionTest.h
     Integration/Stubs/NppParametersStub.cpp
+    Integration/Stubs/CommandHandlerStub.cpp
 )
 
 target_include_directories(IntegrationTests PRIVATE ${TEST_INCLUDE_DIRS})

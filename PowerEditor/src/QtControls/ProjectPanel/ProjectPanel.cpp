@@ -1153,6 +1153,19 @@ void ProjectPanel::setBackgroundColor(const QColor& color)
     }
 }
 
+QStringList ProjectPanel::getAllFilePaths() const
+{
+    QStringList files;
+    for (const auto& pair : _itemPaths)
+    {
+        if (!pair.second.isEmpty() && QFile::exists(pair.second))
+        {
+            files.append(pair.second);
+        }
+    }
+    return files;
+}
+
 void ProjectPanel::setForegroundColor(const QColor& color)
 {
     if (_treeView && _treeView->getTreeWidget()) {

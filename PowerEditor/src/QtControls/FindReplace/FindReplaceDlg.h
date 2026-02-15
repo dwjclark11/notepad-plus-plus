@@ -14,6 +14,7 @@
 #include <vector>
 #include <functional>
 #include <QString>
+#include <QStringList>
 
 // Windows-compatible type definitions (must match Windows version)
 enum DIALOG_TYPE {FIND_DLG, REPLACE_DLG, FINDINFILES_DLG, FINDINPROJECTS_DLG, MARK_DLG};
@@ -153,6 +154,7 @@ public:
     bool findAllInCurrentDoc();
     bool findAllInOpenDocs();
     bool findAllInFiles();
+    bool findInProjects();
 
     // Internal search processing (used by FindIncrementDlg)
     bool processFindNext(const QString& text, const FindOptions& options);
@@ -176,11 +178,13 @@ public:
     using GetOpenBuffersFunc = std::function<std::vector<BufferInfo>()>;
     using ActivateBufferFunc = std::function<bool(void* bufferID)>;
     using GetActiveFilePathFunc = std::function<QString()>;
+    using GetProjectFilesFunc = std::function<QStringList(int panelIndex)>;
 
     // Set callbacks from parent (Notepad_plus)
     void setGetOpenBuffersCallback(GetOpenBuffersFunc cb) { _getOpenBuffersCb = cb; }
     void setActivateBufferCallback(ActivateBufferFunc cb) { _activateBufferCb = cb; }
     void setGetActiveFilePathCallback(GetActiveFilePathFunc cb) { _getActiveFilePathCb = cb; }
+    void setGetProjectFilesCallback(GetProjectFilesFunc cb) { _getProjectFilesCb = cb; }
 
     // Finder panel management
     void setFinderPanel(FinderPanel* panel) { _pFinderPanel = panel; }
@@ -216,6 +220,7 @@ public slots:
     void onReplaceAllClicked();
     void onReplaceAllInOpenDocsClicked();
     void onFindAllClicked();
+    void onFindAllInOpenDocsClicked();
     void onCountClicked();
     void onMarkAllClicked();
     void onClearMarksClicked();
@@ -285,6 +290,7 @@ private:
     QPushButton* _replaceAllButton = nullptr;
     QPushButton* _replaceAllInOpenDocsButton = nullptr;
     QPushButton* _findAllButton = nullptr;
+    QPushButton* _findAllInOpenDocsButton = nullptr;
     QPushButton* _countButton = nullptr;
     QPushButton* _markAllButton = nullptr;
     QPushButton* _clearMarksButton = nullptr;
@@ -307,6 +313,7 @@ private:
     GetOpenBuffersFunc _getOpenBuffersCb;
     ActivateBufferFunc _activateBufferCb;
     GetActiveFilePathFunc _getActiveFilePathCb;
+    GetProjectFilesFunc _getProjectFilesCb;
 
     // Finder panel
     FinderPanel* _pFinderPanel = nullptr;
@@ -315,6 +322,7 @@ private:
     void createFindTab();
     void createReplaceTab();
     void createFindInFilesTab();
+    void createFindInProjectsTab();
     void createMarkTab();
 
     void loadHistory();

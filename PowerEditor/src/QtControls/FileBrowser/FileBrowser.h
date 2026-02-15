@@ -89,6 +89,9 @@ public slots:
     void onRenameFile();
     void onFindInFiles();
 
+signals:
+    void fileOpenRequested(const QString& filePath);
+
 protected:
     void setupUI();
     void connectSignals();

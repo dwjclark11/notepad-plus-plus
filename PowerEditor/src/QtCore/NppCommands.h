@@ -109,8 +109,18 @@ enum CommandID {
     CMD_EDIT_SORTLINES_LEXICO_CI_DESC = 42081,
     CMD_EDIT_SORTLINES_REVERSE = 42083,
     CMD_EDIT_BEGINENDSELECT_COLUMNMODE = 42089,
+    CMD_EDIT_PROPERCASE_FORCE = 42067,
+    CMD_EDIT_PROPERCASE_BLEND = 42068,
+    CMD_EDIT_SENTENCECASE_FORCE = 42069,
+    CMD_EDIT_SENTENCECASE_BLEND = 42070,
+    CMD_EDIT_INVERTCASE = 42071,
+    CMD_EDIT_RANDOMCASE = 42072,
+    CMD_EDIT_TOGGLEREADONLY = 42028,
     CMD_EDIT_SORTLINES_LENGTH_ASC = 42104,
     CMD_EDIT_SORTLINES_LENGTH_DESC = 42105,
+    CMD_EDIT_INSERT_DATETIME_SHORT = 42084,
+    CMD_EDIT_INSERT_DATETIME_LONG = 42085,
+    CMD_EDIT_INSERT_DATETIME_CUSTOMIZED = 42086,
 
     // Search commands (IDM_SEARCH = 43000)
     CMD_SEARCH_FIND = 43001,
@@ -341,6 +351,12 @@ public:
     void editLineDown();
     void editUpperCase();
     void editLowerCase();
+    void editProperCaseForce();
+    void editProperCaseBlend();
+    void editSentenceCaseForce();
+    void editSentenceCaseBlend();
+    void editInvertCase();
+    void editRandomCase();
     void editToggleComment();
     void editBlockComment();
     void editBlockCommentSet();
@@ -367,6 +383,9 @@ public:
     void editCopyAllPaths();
     void editColumnMode();
     void editColumnModeTip();
+    void editInsertDateTimeShort();
+    void editInsertDateTimeLong();
+    void editInsertDateTimeCustomized();
 
     // Search commands
     void searchFind();

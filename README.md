@@ -23,9 +23,12 @@ comprehensive Platform Abstraction Layer.
 ### Linux Features
 
 - **Native Qt6 Application**: No Wine or emulation required
+- **Near-Complete Feature Parity**: ~145 features working, all P0/P1/P2 items resolved
+- **Full Plugin System**: 118+ NPPM_* API messages, plugin loading/admin, 26 lifecycle notifications
+- **Complete Preferences**: All 24 settings pages matching the Windows version
+- **Advanced Editing**: Auto-indent (basic/C-like/Python), auto-close HTML tags, 8 case conversion modes, synchronized scrolling, incremental search, XML tag matching, bookmark operations, 5 style token highlights
 - **XDG Compliance**: Follows Linux desktop standards
-- **KDE Plasma Integration**: Enhanced support for KDE desktop
-- **Plugin Support**: Growing compatibility with Notepad++ plugins
+- **KDE Plasma Integration**: Enhanced support for KDE desktop (themes, fonts, icons)
 - **Multiple Installation Methods**: Package manager, Flatpak, AppImage, or build from source
 
 ### Quick Start for Linux

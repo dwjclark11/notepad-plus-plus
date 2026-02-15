@@ -16,6 +16,7 @@
 
 #include <QXmlStreamWriter>
 #include <QXmlStreamReader>
+#include <QStringList>
 
 // Forward declarations
 class QTreeWidget;
@@ -106,6 +107,9 @@ public:
 
     // Set workspace file path
     void setWorkspaceFilePath(const QString& filePath) { _workspaceFile = filePath; }
+
+    // Get all file paths in the project (for Find in Projects)
+    QStringList getAllFilePaths() const;
 
     // Check if save is needed before closing
     bool checkIfNeedSave();

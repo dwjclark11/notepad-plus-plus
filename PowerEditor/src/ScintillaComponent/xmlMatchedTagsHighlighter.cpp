@@ -22,7 +22,13 @@
 
 #include "xmlMatchedTagsHighlighter.h"
 #include "ScintillaEditView.h"
+#ifdef _WIN32
 #include <shlwapi.h>
+#else
+#include <cstring>
+#include <algorithm>
+#include <cwctype>
+#endif
 
 using namespace std;
 
@@ -572,7 +578,26 @@ XmlMatchedTagsHighlighter::FindResult XmlMatchedTagsHighlighter::findText(const 
 	search.chrg.cpMax = static_cast<Sci_Position>(end);
 
 	LangType lang = (_pEditView->getCurrentBuffer())->getLangType();
+#ifdef _WIN32
 	if (lang == L_XML || (lang == L_HTML && _wcsicmp(PathFindExtension((_pEditView->getCurrentBuffer())->getFileName()), L".xhtml") == 0))
+#else
+	bool isXhtml = false;
+	{
+		const wchar_t* fileName = (_pEditView->getCurrentBuffer())->getFileName();
+		if (fileName)
+		{
+			std::wstring name(fileName);
+			auto dotPos = name.rfind(L'.');
+			if (dotPos != std::wstring::npos)
+			{
+				std::wstring ext = name.substr(dotPos);
+				std::transform(ext.begin(), ext.end(), ext.begin(), towlower);
+				isXhtml = (ext == L".xhtml");
+			}
+		}
+	}
+	if (lang == L_XML || (lang == L_HTML && isXhtml))
+#endif
 		flags = flags | SCFIND_MATCHCASE;
 
 	intptr_t result = _pEditView->execute(SCI_FINDTEXTFULL, flags, reinterpret_cast<LPARAM>(&search));

@@ -717,13 +717,6 @@ void FileBrowser::onFindInFiles()
 
 void FileBrowser::openFile(const QString& filePath)
 {
-    if (_ppEditView && *_ppEditView) {
-        // TODO: Send message to main window to open file
-        // For now, emit a signal that the main window can connect to
-        // This would typically use Scintilla's file opening mechanism
-    }
-
-    // Alternative: Use QDesktopServices for files we can't open internally
     QFileInfo info(filePath);
     if (info.suffix().compare("exe", Qt::CaseInsensitive) == 0 ||
         info.suffix().compare("bin", Qt::CaseInsensitive) == 0) {
@@ -731,7 +724,7 @@ void FileBrowser::openFile(const QString& filePath)
         return;
     }
 
-    // Signal to main window would go here
+    emit fileOpenRequested(filePath);
 }
 
 void FileBrowser::openContainingFolder(const QString& filePath)
@@ -871,11 +864,19 @@ bool FileBrowser::selectCurrentEditingFile()
         return false;
     }
 
-    // TODO: Get current file path from ScintillaEditView
-    // This would need to be implemented based on how the edit view tracks file paths
-    // For now, placeholder implementation
+    ScintillaEditView* editView = *_ppEditView;
+    Buffer* buf = editView->getCurrentBuffer();
+    if (!buf || buf->isUntitled()) {
+        return false;
+    }
 
-    return false;
+    QString filePath = QString::fromStdWString(buf->getFullPathName());
+    if (filePath.isEmpty()) {
+        return false;
+    }
+
+    navigateToFile(filePath);
+    return true;
 }
 
 bool FileBrowser::selectItemFromPath(const QString& itemPath)

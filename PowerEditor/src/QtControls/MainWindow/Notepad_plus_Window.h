@@ -172,6 +172,13 @@ private slots:
     void onFileSaveAll();
     void onFileClose();
     void onFileCloseAll();
+    void onFileCloseAllButCurrent();
+    void onFileCloseAllButPinned();
+    void onFileCloseAllToLeft();
+    void onFileCloseAllToRight();
+    void onFileCloseAllUnchanged();
+    void onFilePrint();
+    void onFilePrintNow();
     void onFileExit();
 
     // Edit menu
@@ -183,6 +190,10 @@ private slots:
     void onEditDelete();
     void onEditSelectAll();
     void onEditInsertDateTime();
+    void onEditInsertDateTimeShort();
+    void onEditInsertDateTimeLong();
+    void onEditInsertDateTimeCustomized();
+    void onEditToggleReadOnly();
     void onEditInsertFullPath();
     void onEditInsertFileName();
     void onEditInsertDirPath();

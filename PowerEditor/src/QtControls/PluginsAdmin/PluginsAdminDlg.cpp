@@ -9,6 +9,8 @@
 #include "PluginsAdminDlg.h"
 #include "../../MISC/PluginsManager/PluginsManager.h"
 #include "../../WinControls/PluginsAdmin/pluginsAdminRes.h"
+#include "../../Parameters.h"
+#include "../../resource.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QGridLayout>
@@ -21,10 +23,18 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QProgressDialog>
 #include <QtCore/QFile>
+#include <QtCore/QDir>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonArray>
+#include <QtCore/QProcess>
+#include <QtCore/QStandardPaths>
+#include <QtCore/QCryptographicHash>
 #include <QtGui/QResizeEvent>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
+#include <QtNetwork/QNetworkRequest>
+#include <filesystem>
 
 namespace QtControls {
 
@@ -311,25 +321,70 @@ const PluginViewList* PluginsAdminDlg::getCurrentList() const
 
 bool PluginsAdminDlg::initFromJson()
 {
-    // TODO: Load plugin list from JSON file
-    // This is a placeholder implementation
+    // Determine plugin list path
+    if (_pluginListFullPath.empty())
+    {
+        NppParameters& nppParam = NppParameters::getInstance();
+        std::wstring confDir = nppParam.getUserPluginConfDir();
+        _pluginListFullPath = confDir + L"/pl/nppPluginList.json";
+    }
 
-    // Example JSON parsing structure:
-    // QFile file(QString::fromStdWString(_pluginListFullPath));
-    // if (!file.open(QIODevice::ReadOnly)) return false;
-    //
-    // QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    // QJsonObject root = doc.object();
-    // QJsonArray plugins = root["plugins"].toArray();
-    //
-    // for (const auto& plugin : plugins) {
-    //     QJsonObject obj = plugin.toObject();
-    //     auto* pi = new PluginUpdateInfo();
-    //     pi->_folderName = obj["folderName"].toString().toStdWString();
-    //     pi->_displayName = obj["displayName"].toString().toStdWString();
-    //     // ... parse other fields
-    //     _availableList.pushBack(pi);
-    // }
+    QFile file(QString::fromStdWString(_pluginListFullPath));
+    if (!file.open(QIODevice::ReadOnly))
+        return false;
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
+    file.close();
+
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+        return false;
+
+    QJsonObject root = doc.object();
+
+    // Read version
+    if (root.contains("version"))
+        _pluginListVersion = root["version"].toString().toStdWString();
+
+    // Parse plugin array
+    QJsonArray plugins = root["npp-plugins"].toArray();
+    for (const auto& pluginVal : plugins)
+    {
+        QJsonObject obj = pluginVal.toObject();
+
+        auto* pi = new PluginUpdateInfo();
+
+        pi->_folderName = obj["folder-name"].toString().toStdWString();
+        pi->_displayName = obj["display-name"].toString().toStdWString();
+        pi->_author = obj["author"].toString().toStdWString();
+        pi->_description = obj["description"].toString().toStdWString();
+        pi->_id = obj["id"].toString().toStdWString();
+        pi->_repository = obj["repository"].toString().toStdWString();
+        pi->_homepage = obj["homepage"].toString().toStdWString();
+
+        if (obj.contains("version"))
+        {
+            std::wstring verStr = obj["version"].toString().toStdWString();
+            pi->_version = Version(verStr);
+        }
+
+        if (obj.contains("npp-compatible-versions"))
+        {
+            QString compatStr = obj["npp-compatible-versions"].toString();
+            QStringList parts = compatStr.split('-');
+            if (parts.size() == 2)
+            {
+                pi->_nppCompatibleVersions.first = Version(parts[0].toStdWString());
+                pi->_nppCompatibleVersions.second = Version(parts[1].toStdWString());
+            }
+        }
+
+        _availableList.pushBack(pi);
+    }
+
+    // Update version label
+    if (_versionNumberLabel && !_pluginListVersion.empty())
+        _versionNumberLabel->setText(QString::fromStdWString(_pluginListVersion));
 
     return true;
 }
@@ -475,11 +530,17 @@ std::wstring PluginsAdminDlg::getPluginListVerStr() const
 
 void PluginsAdminDlg::collectNppCurrentStatusInfos()
 {
-    // TODO: Collect Notepad++ current status information
-    // This includes:
-    // - Admin mode status
-    // - Installation path (Program Files vs user directory)
-    // - AppData plugins allowed
+    if (!_nppCurrentStatus)
+        return;
+
+    NppParameters& nppParam = NppParameters::getInstance();
+
+    // On Linux, there is no admin mode or Program Files concept
+    _nppCurrentStatus->_isAdminMode = (geteuid() == 0);
+    _nppCurrentStatus->_isInProgramFiles = false;
+    _nppCurrentStatus->_isAppDataPluginsAllowed = true;
+    _nppCurrentStatus->_nppInstallPath = nppParam.getNppPath();
+    _nppCurrentStatus->_appdataPath = nppParam.getAppDataNppDir();
 }
 
 bool PluginsAdminDlg::searchInPlugins(bool isNextMode)
@@ -559,60 +620,308 @@ long PluginsAdminDlg::searchInDescsFromCurrentSel(const PluginViewList& inWhichL
 
 bool PluginsAdminDlg::initAvailablePluginsViewFromList()
 {
-    // Initialize available plugins view from loaded list
-    return true;
+    // The available list is populated during initFromJson().
+    // This method ensures the UI is refreshed after all data loading.
+    return _availableList.nbItem() > 0;
 }
 
 bool PluginsAdminDlg::initIncompatiblePluginList()
 {
-    // Build list of incompatible plugins based on version checks
     _incompatibleList.clear();
 
-    // TODO: Check each plugin's compatibility with current Notepad++ version
-    // and add incompatible ones to _incompatibleList
+    // Get the current Notepad++ version for compatibility checks
+    Version nppVer(VERSION_INTERNAL_VALUE);
+
+    // Scan plugin directory for .so files that failed to load
+    NppParameters& nppParam = NppParameters::getInstance();
+    std::wstring pluginDir = nppParam.getPluginRootDir();
+
+    std::filesystem::path pluginPath(
+        std::string(pluginDir.begin(), pluginDir.end()));
+
+    if (!std::filesystem::exists(pluginPath))
+        return true;
+
+    for (const auto& entry : std::filesystem::directory_iterator(pluginPath))
+    {
+        if (!entry.is_directory())
+            continue;
+
+        // Look for .so files in each plugin subdirectory
+        for (const auto& fileEntry : std::filesystem::directory_iterator(entry.path()))
+        {
+            if (fileEntry.path().extension() != ".so")
+                continue;
+
+            std::wstring fileName(fileEntry.path().filename().wstring());
+            std::wstring fullPath(fileEntry.path().wstring());
+
+            // Check if this plugin is already loaded
+            if (_pPluginsManager && _pPluginsManager->isPluginLoaded(fileName.c_str()))
+                continue;
+
+            // This .so exists but is not loaded -- it may be incompatible
+            auto* pui = new PluginUpdateInfo(fullPath, fileName);
+
+            // Check against available list for version compatibility info
+            std::wstring folderName = entry.path().filename().wstring();
+            int availIdx = -1;
+            PluginUpdateInfo* availInfo = _availableList.findPluginInfoFromFolderName(
+                folderName, availIdx);
+
+            if (availInfo)
+            {
+                // Check if plugin is compatible with current Notepad++ version
+                if (!availInfo->_nppCompatibleVersions.first.empty() &&
+                    !nppVer.isCompatibleTo(availInfo->_nppCompatibleVersions.first,
+                                           availInfo->_nppCompatibleVersions.second))
+                {
+                    pui->_displayName = availInfo->_displayName;
+                    pui->_description = availInfo->_description;
+                    pui->_author = availInfo->_author;
+                    _incompatibleList.pushBack(pui);
+                    continue;
+                }
+            }
+
+            // Plugin not loaded but no incompatibility info -- still add
+            _incompatibleList.pushBack(pui);
+        }
+    }
 
     return true;
 }
 
 bool PluginsAdminDlg::loadFromPluginInfos()
 {
-    // Load installed plugins from PluginsManager
-    if (!_pPluginsManager) {
+    if (!_pPluginsManager)
         return false;
-    }
 
     _installedList.clear();
 
-    // TODO: Iterate through loaded plugins and add to _installedList
-    // This would involve getting the list from _pPluginsManager
+    // Iterate through loaded plugins and cross-reference with available list
+    for (const auto& dll : _pPluginsManager->getLoadedDlls())
+    {
+        // Extract folder name (plugin name without .so extension)
+        std::wstring folderName = dll._displayName;
+
+        int listIndex = -1;
+        PluginUpdateInfo* foundInfo = _availableList.findPluginInfoFromFolderName(folderName, listIndex);
+
+        if (!foundInfo)
+        {
+            // Plugin not in the available list -- create entry from file info
+            auto* pui = new PluginUpdateInfo(dll._fullFilePath, dll._fileName);
+            _installedList.pushBack(pui);
+        }
+        else
+        {
+            // Plugin found in available list -- merge info
+            auto* pui = new PluginUpdateInfo(*foundInfo);
+            pui->_fullFilePath = dll._fullFilePath;
+            pui->_version.setVersionFrom(dll._fullFilePath);
+            _installedList.pushBack(pui);
+
+            // Hide from available list since it is already installed
+            _availableList.hideFromListIndex(listIndex);
+
+            // If installed version is older, add to update list
+            if (pui->_version < foundInfo->_version)
+            {
+                auto* pui2 = new PluginUpdateInfo(*foundInfo);
+                _updateList.pushBack(pui2);
+            }
+        }
+    }
 
     return true;
 }
 
 bool PluginsAdminDlg::checkUpdates()
 {
-    // Check for available updates by comparing installed versions
-    // with available versions
-    _updateList.clear();
+    // Updates are populated during loadFromPluginInfos() when an installed
+    // plugin version is older than the available version. This method handles
+    // any additional cross-referencing with incompatible plugins.
+    for (size_t j = 0, nb = _incompatibleList.nbItem(); j < nb; ++j)
+    {
+        const PluginUpdateInfo* incompatPlugin = _incompatibleList.getPluginInfoFromUiIndex(j);
+        if (!incompatPlugin)
+            continue;
 
-    // TODO: Compare versions and populate _updateList
+        int listIndex = -1;
+        PluginUpdateInfo* foundAvail = _availableList.findPluginInfoFromFolderName(
+            incompatPlugin->_folderName, listIndex);
+
+        if (foundAvail && foundAvail->_version > incompatPlugin->_version)
+        {
+            _availableList.hideFromListIndex(listIndex);
+            auto* pui = new PluginUpdateInfo(*foundAvail);
+            _updateList.pushBack(pui);
+        }
+    }
 
     return true;
 }
 
 bool PluginsAdminDlg::exitToInstallRemovePlugins(Operation op, const std::vector<PluginUpdateInfo*>& puis)
 {
-    Q_UNUSED(op)
-    Q_UNUSED(puis)
+    NppParameters& nppParam = NppParameters::getInstance();
+    std::wstring pluginRootDir = nppParam.getPluginRootDir();
+    QString pluginDir = QString::fromStdWString(pluginRootDir);
 
-    // TODO: Implement the actual installation/update/removal process
-    // This may involve:
-    // 1. Creating a batch script or external process
-    // 2. Closing Notepad++
-    // 3. Performing the operations
-    // 4. Restarting Notepad++
+    // Ensure plugin directory exists
+    QDir().mkpath(pluginDir);
 
-    return true;
+    int successCount = 0;
+    int failCount = 0;
+
+    QProgressDialog progress(this);
+    progress.setWindowTitle(tr("Plugin Admin"));
+    progress.setMinimum(0);
+    progress.setMaximum(static_cast<int>(puis.size()));
+    progress.setModal(true);
+
+    for (int idx = 0; idx < static_cast<int>(puis.size()); ++idx)
+    {
+        const PluginUpdateInfo* pi = puis[idx];
+
+        if (op == pa_remove)
+        {
+            // Remove: delete the plugin's folder from the plugins directory
+            progress.setLabelText(tr("Removing %1...").arg(QString::fromStdWString(pi->_displayName)));
+            progress.setValue(idx);
+
+            if (progress.wasCanceled())
+                break;
+
+            std::wstring folderName = pi->_folderName;
+            if (folderName.empty())
+            {
+                // Derive folder name from display name (remove .so extension)
+                auto lastDot = pi->_displayName.find_last_of(L'.');
+                folderName = (lastDot != std::wstring::npos)
+                    ? pi->_displayName.substr(0, lastDot)
+                    : pi->_displayName;
+            }
+
+            QString targetDir = pluginDir + "/" + QString::fromStdWString(folderName);
+            QDir dir(targetDir);
+            if (dir.exists())
+            {
+                if (dir.removeRecursively())
+                    ++successCount;
+                else
+                    ++failCount;
+            }
+            else
+            {
+                ++failCount;
+            }
+        }
+        else if (op == pa_install || op == pa_update)
+        {
+            // Install/Update: download from repository and extract
+            progress.setLabelText(
+                tr("%1 %2...")
+                    .arg(op == pa_install ? tr("Installing") : tr("Updating"))
+                    .arg(QString::fromStdWString(pi->_displayName)));
+            progress.setValue(idx);
+
+            if (progress.wasCanceled())
+                break;
+
+            if (pi->_repository.empty())
+            {
+                ++failCount;
+                continue;
+            }
+
+            // Build the download URL
+            // Repository format: https://github.com/user/repo/releases/download/vX.Y/plugin.zip
+            QString repoUrl = QString::fromStdWString(pi->_repository);
+            QString pluginId = QString::fromStdWString(pi->_id);
+
+            // Download the plugin archive
+            QString tmpDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+            QString archivePath = tmpDir + "/npp_plugin_" + pluginId + ".zip";
+
+            // Use curl for downloading (widely available on Linux)
+            QProcess downloadProc;
+            downloadProc.start("curl", {"-fsSL", "-o", archivePath, repoUrl});
+            downloadProc.waitForFinished(60000);
+
+            if (downloadProc.exitCode() != 0)
+            {
+                ++failCount;
+                continue;
+            }
+
+            // Verify the downloaded file exists
+            if (!QFile::exists(archivePath))
+            {
+                ++failCount;
+                continue;
+            }
+
+            // For update: clean old files first
+            std::wstring folderName = pi->_folderName;
+            if (folderName.empty())
+            {
+                auto lastDot = pi->_displayName.find_last_of(L'.');
+                folderName = (lastDot != std::wstring::npos)
+                    ? pi->_displayName.substr(0, lastDot)
+                    : pi->_displayName;
+            }
+
+            QString targetDir = pluginDir + "/" + QString::fromStdWString(folderName);
+
+            if (op == pa_update)
+            {
+                QDir dir(targetDir);
+                if (dir.exists())
+                    dir.removeRecursively();
+            }
+
+            QDir().mkpath(targetDir);
+
+            // Extract the archive using unzip
+            QProcess extractProc;
+            extractProc.start("unzip", {"-o", archivePath, "-d", targetDir});
+            extractProc.waitForFinished(30000);
+
+            if (extractProc.exitCode() == 0)
+                ++successCount;
+            else
+                ++failCount;
+
+            // Clean up the temp archive
+            QFile::remove(archivePath);
+        }
+    }
+
+    progress.setValue(static_cast<int>(puis.size()));
+
+    // Show results summary
+    QString message;
+    if (failCount == 0)
+    {
+        message = tr("All operations completed successfully (%1 plugins).\n"
+                      "Please restart Notepad++ for changes to take effect.")
+                      .arg(successCount);
+        QMessageBox::information(this, tr("Plugin Admin"), message);
+    }
+    else
+    {
+        message = tr("Operations completed: %1 succeeded, %2 failed.\n"
+                      "Please restart Notepad++ for changes to take effect.")
+                      .arg(successCount).arg(failCount);
+        QMessageBox::warning(this, tr("Plugin Admin"), message);
+    }
+
+    // Refresh the lists
+    updateList();
+
+    return failCount == 0;
 }
 
 bool PluginsAdminDlg::run_dlgProc(QEvent* event)

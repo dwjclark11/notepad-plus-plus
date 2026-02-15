@@ -40,11 +40,18 @@ namespace QtControls {
 // Forward declarations for all sub-dialogs
 // ============================================================================
 class GeneralSubDlg;
+class ToolbarSubDlg;
+class TabbarSubDlg;
 class EditingSubDlg;
+class Editing2SubDlg;
+class DarkModeSubDlg;
+class MarginsBorderEdgeSubDlg;
 class NewDocumentSubDlg;
 class DefaultDirectorySubDlg;
 class RecentFilesHistorySubDlg;
+class FileAssocSubDlg;
 class LanguageSubDlg;
+class IndentationSubDlg;
 class HighlightingSubDlg;
 class PrintSubDlg;
 class SearchingSubDlg;
@@ -52,6 +59,7 @@ class BackupSubDlg;
 class AutoCompletionSubDlg;
 class MultiInstanceSubDlg;
 class DelimiterSubDlg;
+class PerformanceSubDlg;
 class CloudLinkSubDlg;
 class SearchEngineSubDlg;
 class MISCSubDlg;
@@ -108,6 +116,106 @@ private:
     bool _menuBarShow = true;
     bool _hideMenuRightShortcuts = false;
     QString _currentLanguage = "English";
+};
+
+// ============================================================================
+// ToolbarSubDlg - Toolbar settings (icon set, size, color)
+// ============================================================================
+class ToolbarSubDlg : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit ToolbarSubDlg(QWidget* parent = nullptr);
+    ~ToolbarSubDlg() override = default;
+
+    void loadSettings();
+    void saveSettings();
+    bool applySettings();
+
+private slots:
+    void onToolbarHideToggled(bool checked);
+    void onIconSetChanged(int index);
+    void onIconColorChanged(int index);
+
+private:
+    void setupUI();
+    void connectSignals();
+
+    // UI Components
+    QGroupBox* _toolbarGroup = nullptr;
+    QCheckBox* _hideToolbarCheck = nullptr;
+
+    QGroupBox* _iconSetGroup = nullptr;
+    QComboBox* _iconSetCombo = nullptr;
+
+    QGroupBox* _iconColorGroup = nullptr;
+    QComboBox* _iconColorCombo = nullptr;
+
+    // Settings
+    bool _toolbarShow = true;
+    int _iconSet = 0; // 0=small, 1=large, 2=small2, 3=large2, 4=standard
+    int _iconColor = 0; // 0=default, 1=red, 2=green, 3=blue, 4=purple, 5=cyan, 6=olive, 7=yellow
+};
+
+// ============================================================================
+// TabbarSubDlg - Tab bar settings (appearance, behavior)
+// ============================================================================
+class TabbarSubDlg : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit TabbarSubDlg(QWidget* parent = nullptr);
+    ~TabbarSubDlg() override = default;
+
+    void loadSettings();
+    void saveSettings();
+    bool applySettings();
+
+private slots:
+    void onReduceToggled(bool checked);
+    void onLockToggled(bool checked);
+    void onDrawTopBarToggled(bool checked);
+    void onDrawInactiveToggled(bool checked);
+    void onShowCloseButtonToggled(bool checked);
+    void onDoubleClickCloseToggled(bool checked);
+    void onMultiLineToggled(bool checked);
+    void onVerticalToggled(bool checked);
+    void onHideTabBarToggled(bool checked);
+    void onShowPinButtonToggled(bool checked);
+    void onQuitOnEmptyToggled(bool checked);
+
+private:
+    void setupUI();
+    void connectSignals();
+
+    // UI Components
+    QGroupBox* _lookFeelGroup = nullptr;
+    QCheckBox* _reduceCheck = nullptr;
+    QCheckBox* _lockCheck = nullptr;
+    QCheckBox* _drawTopBarCheck = nullptr;
+    QCheckBox* _drawInactiveCheck = nullptr;
+
+    QGroupBox* _behaviorGroup = nullptr;
+    QCheckBox* _showCloseButtonCheck = nullptr;
+    QCheckBox* _doubleClickCloseCheck = nullptr;
+    QCheckBox* _multiLineCheck = nullptr;
+    QCheckBox* _verticalCheck = nullptr;
+    QCheckBox* _hideTabBarCheck = nullptr;
+    QCheckBox* _showPinButtonCheck = nullptr;
+    QCheckBox* _quitOnEmptyCheck = nullptr;
+
+    // Settings
+    bool _reduce = false;
+    bool _lock = false;
+    bool _drawTopBar = false;
+    bool _drawInactive = false;
+    bool _showCloseButton = true;
+    bool _doubleClickClose = false;
+    bool _multiLine = false;
+    bool _vertical = false;
+    bool _hideTabBar = false;
+    bool _showPinButton = false;
+    bool _quitOnEmpty = false;
 };
 
 // ============================================================================
@@ -184,6 +292,164 @@ private:
     bool _rightClickKeepsSelection = false;
     bool _lineCopyCutWithoutSelection = false;
     int _lineWrapMethod = 0; // 0=default, 1=aligned, 2=indent
+};
+
+// ============================================================================
+// Editing2SubDlg - NPC display, Unicode control chars, CR/LF display
+// ============================================================================
+class Editing2SubDlg : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit Editing2SubDlg(QWidget* parent = nullptr);
+    ~Editing2SubDlg() override = default;
+
+    void loadSettings();
+    void saveSettings();
+    bool applySettings();
+
+private slots:
+    void onNpcModeChanged(int index);
+    void onNpcCustomColorToggled(bool checked);
+    void onNpcIncludeCcUniEolToggled(bool checked);
+    void onNpcNoInputC0Toggled(bool checked);
+    void onCrlfDisplayModeChanged(int index);
+    void onCrlfCustomColorToggled(bool checked);
+
+private:
+    void setupUI();
+    void connectSignals();
+
+    // UI Components - Non-Printing Characters
+    QGroupBox* _npcGroup = nullptr;
+    QLabel* _npcModeLabel = nullptr;
+    QComboBox* _npcModeCombo = nullptr;
+    QCheckBox* _npcCustomColorCheck = nullptr;
+    QCheckBox* _npcIncludeCcUniEolCheck = nullptr;
+    QCheckBox* _npcNoInputC0Check = nullptr;
+
+    // UI Components - CR/LF Display
+    QGroupBox* _crlfGroup = nullptr;
+    QLabel* _crlfModeLabel = nullptr;
+    QComboBox* _crlfModeCombo = nullptr;
+    QCheckBox* _crlfCustomColorCheck = nullptr;
+
+    // Settings
+    int _npcMode = 0; // 0=abbreviation, 1=codepoint
+    bool _npcCustomColor = false;
+    bool _npcIncludeCcUniEol = false;
+    bool _npcNoInputC0 = false;
+    int _crlfDisplayMode = 0; // 0=round corner, 1=plain text
+    bool _crlfCustomColor = false;
+};
+
+// ============================================================================
+// DarkModeSubDlg - Dark mode / theme settings
+// ============================================================================
+class DarkModeSubDlg : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit DarkModeSubDlg(QWidget* parent = nullptr);
+    ~DarkModeSubDlg() override = default;
+
+    void loadSettings();
+    void saveSettings();
+    bool applySettings();
+
+private slots:
+    void onDarkModeToggled(bool checked);
+    void onThemeChanged(int index);
+
+private:
+    void setupUI();
+    void connectSignals();
+
+    // UI Components
+    QGroupBox* _darkModeGroup = nullptr;
+    QCheckBox* _enableDarkModeCheck = nullptr;
+
+    QGroupBox* _themeGroup = nullptr;
+    QLabel* _themeLabel = nullptr;
+    QComboBox* _themeCombo = nullptr;
+
+    // Settings
+    bool _darkModeEnabled = false;
+    int _themeIndex = 0;
+};
+
+// ============================================================================
+// MarginsBorderEdgeSubDlg - Margins, border, vertical edge
+// ============================================================================
+class MarginsBorderEdgeSubDlg : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit MarginsBorderEdgeSubDlg(QWidget* parent = nullptr);
+    ~MarginsBorderEdgeSubDlg() override = default;
+
+    void loadSettings();
+    void saveSettings();
+    bool applySettings();
+
+private slots:
+    void onBorderWidthChanged(int value);
+    void onPaddingLeftChanged(int value);
+    void onPaddingRightChanged(int value);
+    void onDistractionFreeChanged(int value);
+    void onFolderMarkStyleChanged(int index);
+    void onBookmarkMarginToggled(bool checked);
+    void onChangeHistoryMarginToggled(bool checked);
+    void onVerticalEdgeToggled(bool checked);
+    void onVerticalEdgeColumnsChanged(const QString& text);
+
+private:
+    void setupUI();
+    void connectSignals();
+
+    // UI Components - Margins
+    QGroupBox* _marginsGroup = nullptr;
+    QCheckBox* _bookmarkMarginCheck = nullptr;
+    QCheckBox* _changeHistoryMarginCheck = nullptr;
+    QLabel* _folderMarkStyleLabel = nullptr;
+    QComboBox* _folderMarkStyleCombo = nullptr;
+
+    // UI Components - Border
+    QGroupBox* _borderGroup = nullptr;
+    QLabel* _borderWidthLabel = nullptr;
+    QSlider* _borderWidthSlider = nullptr;
+    QLabel* _borderWidthValue = nullptr;
+
+    // UI Components - Padding
+    QGroupBox* _paddingGroup = nullptr;
+    QLabel* _paddingLeftLabel = nullptr;
+    QSlider* _paddingLeftSlider = nullptr;
+    QLabel* _paddingLeftValue = nullptr;
+    QLabel* _paddingRightLabel = nullptr;
+    QSlider* _paddingRightSlider = nullptr;
+    QLabel* _paddingRightValue = nullptr;
+
+    // UI Components - Distraction Free
+    QLabel* _distractionFreeLabel = nullptr;
+    QSlider* _distractionFreeSlider = nullptr;
+    QLabel* _distractionFreeValue = nullptr;
+
+    // UI Components - Vertical Edge
+    QGroupBox* _verticalEdgeGroup = nullptr;
+    QCheckBox* _verticalEdgeCheck = nullptr;
+    QLabel* _verticalEdgeColumnsLabel = nullptr;
+    QLineEdit* _verticalEdgeColumnsEdit = nullptr;
+
+    // Settings
+    int _borderWidth = 2;
+    int _paddingLeft = 0;
+    int _paddingRight = 0;
+    int _distractionFree = 3;
+    int _folderMarkStyle = 0; // 0=simple, 1=arrow, 2=circle, 3=box, 4=none
+    bool _bookmarkMargin = true;
+    bool _changeHistoryMargin = false;
+    bool _verticalEdge = false;
+    QString _verticalEdgeColumns;
 };
 
 // ============================================================================
@@ -305,6 +571,43 @@ private:
 };
 
 // ============================================================================
+// FileAssocSubDlg - File association / MIME type settings (Linux)
+// ============================================================================
+class FileAssocSubDlg : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit FileAssocSubDlg(QWidget* parent = nullptr);
+    ~FileAssocSubDlg() override = default;
+
+    void loadSettings();
+    void saveSettings();
+    bool applySettings();
+
+private slots:
+    void onExtensionSelected(int index);
+    void onRegisterClicked();
+    void onUnregisterClicked();
+
+private:
+    void setupUI();
+    void connectSignals();
+    void populateExtensions();
+
+    // UI Components
+    QGroupBox* _fileAssocGroup = nullptr;
+    QLabel* _supportedExtLabel = nullptr;
+    QListWidget* _extensionList = nullptr;
+    QLabel* _registeredExtLabel = nullptr;
+    QListWidget* _registeredList = nullptr;
+    QPushButton* _registerButton = nullptr;
+    QPushButton* _unregisterButton = nullptr;
+
+    // Settings
+    QStringList _registeredExtensions;
+};
+
+// ============================================================================
 // LanguageSubDlg - Language-specific settings
 // ============================================================================
 class LanguageSubDlg : public QWidget {
@@ -341,6 +644,54 @@ private:
     int _selectedLanguage = 0;
     int _tabSize = 4;
     bool _replaceBySpace = false;
+};
+
+// ============================================================================
+// IndentationSubDlg - Auto-indent and tab settings
+// ============================================================================
+class IndentationSubDlg : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit IndentationSubDlg(QWidget* parent = nullptr);
+    ~IndentationSubDlg() override = default;
+
+    void loadSettings();
+    void saveSettings();
+    bool applySettings();
+
+private slots:
+    void onTabSizeChanged(int value);
+    void onReplaceBySpaceToggled(bool checked);
+    void onBackspaceUnindentToggled(bool checked);
+    void onAutoIndentModeChanged(int index);
+    void onTabSettingLanguageChanged(int index);
+
+private:
+    void setupUI();
+    void connectSignals();
+    void populateLanguageList();
+
+    // UI Components - Tab Settings
+    QGroupBox* _tabSettingsGroup = nullptr;
+    QLabel* _tabSizeLabel = nullptr;
+    QSpinBox* _tabSizeSpin = nullptr;
+    QCheckBox* _replaceBySpaceCheck = nullptr;
+    QCheckBox* _backspaceUnindentCheck = nullptr;
+
+    QGroupBox* _tabPerLanguageGroup = nullptr;
+    QListWidget* _tabSettingLanguageList = nullptr;
+
+    // UI Components - Auto-Indent
+    QGroupBox* _autoIndentGroup = nullptr;
+    QComboBox* _autoIndentCombo = nullptr;
+    QLabel* _autoIndentLabel = nullptr;
+
+    // Settings
+    int _tabSize = 4;
+    bool _replaceBySpace = false;
+    bool _backspaceUnindent = false;
+    int _autoIndentMode = 2; // 0=none, 1=basic, 2=advanced
 };
 
 // ============================================================================
@@ -685,6 +1036,58 @@ private:
 };
 
 // ============================================================================
+// PerformanceSubDlg - Large file restrictions
+// ============================================================================
+class PerformanceSubDlg : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit PerformanceSubDlg(QWidget* parent = nullptr);
+    ~PerformanceSubDlg() override = default;
+
+    void loadSettings();
+    void saveSettings();
+    bool applySettings();
+
+private slots:
+    void onLargeFileRestrictionToggled(bool checked);
+    void onFileSizeChanged(int value);
+    void onAllowBraceMatchToggled(bool checked);
+    void onAllowAutoCompletionToggled(bool checked);
+    void onAllowSmartHiliteToggled(bool checked);
+    void onAllowClickableLinkToggled(bool checked);
+    void onDeactivateWordWrapToggled(bool checked);
+
+private:
+    void setupUI();
+    void connectSignals();
+    void updateEnabledState();
+
+    // UI Components
+    QGroupBox* _performanceGroup = nullptr;
+    QCheckBox* _enableRestrictionCheck = nullptr;
+    QLabel* _fileSizeLabel = nullptr;
+    QSpinBox* _fileSizeSpin = nullptr;
+    QLabel* _fileSizeUnitLabel = nullptr;
+
+    QGroupBox* _restrictionsGroup = nullptr;
+    QCheckBox* _allowBraceMatchCheck = nullptr;
+    QCheckBox* _allowAutoCompletionCheck = nullptr;
+    QCheckBox* _allowSmartHiliteCheck = nullptr;
+    QCheckBox* _allowClickableLinkCheck = nullptr;
+    QCheckBox* _deactivateWordWrapCheck = nullptr;
+
+    // Settings
+    bool _largeFileRestrictionEnabled = true;
+    int _largeFileSizeMB = 200;
+    bool _allowBraceMatch = false;
+    bool _allowAutoCompletion = false;
+    bool _allowSmartHilite = false;
+    bool _allowClickableLink = false;
+    bool _deactivateWordWrap = true;
+};
+
+// ============================================================================
 // CloudLinkSubDlg - Cloud/OneDrive settings
 // ============================================================================
 class CloudLinkSubDlg : public QWidget {
@@ -847,13 +1250,20 @@ private:
     QPushButton* _cancelButton = nullptr;
     QPushButton* _applyButton = nullptr;
 
-    // Sub-page instances
+    // Sub-page instances (order matches Windows PreferenceDlg)
     GeneralSubDlg* _generalPage = nullptr;
+    ToolbarSubDlg* _toolbarPage = nullptr;
+    TabbarSubDlg* _tabbarPage = nullptr;
     EditingSubDlg* _editingPage = nullptr;
+    Editing2SubDlg* _editing2Page = nullptr;
+    DarkModeSubDlg* _darkModePage = nullptr;
+    MarginsBorderEdgeSubDlg* _marginsBorderEdgePage = nullptr;
     NewDocumentSubDlg* _newDocumentPage = nullptr;
     DefaultDirectorySubDlg* _defaultDirectoryPage = nullptr;
     RecentFilesHistorySubDlg* _recentFilesHistoryPage = nullptr;
+    FileAssocSubDlg* _fileAssocPage = nullptr;
     LanguageSubDlg* _languagePage = nullptr;
+    IndentationSubDlg* _indentationPage = nullptr;
     HighlightingSubDlg* _highlightingPage = nullptr;
     PrintSubDlg* _printPage = nullptr;
     SearchingSubDlg* _searchingPage = nullptr;
@@ -861,6 +1271,7 @@ private:
     AutoCompletionSubDlg* _autoCompletionPage = nullptr;
     MultiInstanceSubDlg* _multiInstancePage = nullptr;
     DelimiterSubDlg* _delimiterPage = nullptr;
+    PerformanceSubDlg* _performancePage = nullptr;
     CloudLinkSubDlg* _cloudLinkPage = nullptr;
     SearchEngineSubDlg* _searchEnginePage = nullptr;
     MISCSubDlg* _miscPage = nullptr;

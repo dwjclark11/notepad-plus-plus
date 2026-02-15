@@ -1050,8 +1050,19 @@ inline void CheckDlgButton(HWND, int, UINT) {}
 inline UINT IsDlgButtonChecked(HWND, int) { return 0; }
 inline void CheckRadioButton(HWND, int, int, int) {}
 inline LRESULT SendDlgItemMessage(HWND, int, UINT, WPARAM, LPARAM) { return 0; }
-inline LRESULT SendMessage(HWND, UINT, WPARAM, LPARAM) { return 0; }
-inline LRESULT SendMessageW(HWND, UINT, WPARAM, LPARAM) { return 0; }
+
+// Plugin message dispatcher - routes NPPM_* messages to Notepad_plus::handlePluginMessage()
+// Defined in NppPluginMessages.cpp, registered by MainWindow::initPlugins()
+extern LRESULT nppPluginMessageDispatcher_sendMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+inline LRESULT SendMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	return nppPluginMessageDispatcher_sendMessage(hwnd, msg, wParam, lParam);
+}
+inline LRESULT SendMessageW(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	return nppPluginMessageDispatcher_sendMessage(hwnd, msg, wParam, lParam);
+}
 
 // Window information functions
 inline int GetClassNameW(HWND, wchar_t* className, int maxCount) {

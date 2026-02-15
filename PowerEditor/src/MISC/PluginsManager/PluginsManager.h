@@ -94,9 +94,12 @@ struct LoadedDllInfo
 	{}
 };
 
+namespace QtControls { class PluginsAdminDlg; }
+
 class PluginsManager
 {
 friend class PluginsAdminDlg;
+friend class QtControls::PluginsAdminDlg;
 public:
 	PluginsManager() : _dynamicIDAlloc(ID_PLUGINS_CMD_DYNAMIC, ID_PLUGINS_CMD_DYNAMIC_LIMIT),
 					   _markerAlloc(MARKER_PLUGINS, MARKER_PLUGINS_LIMIT),
@@ -143,6 +146,13 @@ public:
 		return nullptr;
 	}
 	const std::vector<PluginCommand>& getPluginCommands() const { return _pluginsCommands; }
+
+	bool isPluginLoaded(const wchar_t* fn) const {
+		return std::any_of(_loadedDlls.begin(), _loadedDlls.end(),
+			[&fn](const auto& dll) { return ::_wcsicmp(fn, dll._fileName.c_str()) == 0; });
+	}
+
+	const std::vector<LoadedDllInfo>& getLoadedDlls() const { return _loadedDlls; }
 #endif
 
 private:

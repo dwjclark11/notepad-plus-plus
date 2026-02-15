@@ -158,6 +158,266 @@ void GeneralSubDlg::onLanguageChanged(int index)
 }
 
 // ============================================================================
+// ToolbarSubDlg Implementation
+// ============================================================================
+ToolbarSubDlg::ToolbarSubDlg(QWidget* parent)
+    : QWidget(parent)
+{
+    setupUI();
+    connectSignals();
+    loadSettings();
+}
+
+void ToolbarSubDlg::setupUI()
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+
+    // Toolbar visibility
+    _toolbarGroup = new QGroupBox(tr("Toolbar"), this);
+    auto* toolbarLayout = new QVBoxLayout(_toolbarGroup);
+
+    _hideToolbarCheck = new QCheckBox(tr("Hide toolbar"), _toolbarGroup);
+    toolbarLayout->addWidget(_hideToolbarCheck);
+
+    mainLayout->addWidget(_toolbarGroup);
+
+    // Icon set
+    _iconSetGroup = new QGroupBox(tr("Icon Set"), this);
+    auto* iconSetLayout = new QHBoxLayout(_iconSetGroup);
+
+    auto* iconSetLabel = new QLabel(tr("Icon size:"), _iconSetGroup);
+    iconSetLayout->addWidget(iconSetLabel);
+
+    _iconSetCombo = new QComboBox(_iconSetGroup);
+    _iconSetCombo->addItem(tr("Small icons"));
+    _iconSetCombo->addItem(tr("Large icons"));
+    _iconSetCombo->addItem(tr("Small icons (set 2)"));
+    _iconSetCombo->addItem(tr("Large icons (set 2)"));
+    _iconSetCombo->addItem(tr("Standard icons"));
+    iconSetLayout->addWidget(_iconSetCombo);
+    iconSetLayout->addStretch();
+
+    mainLayout->addWidget(_iconSetGroup);
+
+    // Icon color
+    _iconColorGroup = new QGroupBox(tr("Icon Color"), this);
+    auto* iconColorLayout = new QHBoxLayout(_iconColorGroup);
+
+    auto* colorLabel = new QLabel(tr("Color:"), _iconColorGroup);
+    iconColorLayout->addWidget(colorLabel);
+
+    _iconColorCombo = new QComboBox(_iconColorGroup);
+    _iconColorCombo->addItem(tr("Default"));
+    _iconColorCombo->addItem(tr("Red"));
+    _iconColorCombo->addItem(tr("Green"));
+    _iconColorCombo->addItem(tr("Blue"));
+    _iconColorCombo->addItem(tr("Purple"));
+    _iconColorCombo->addItem(tr("Cyan"));
+    _iconColorCombo->addItem(tr("Olive"));
+    _iconColorCombo->addItem(tr("Yellow"));
+    iconColorLayout->addWidget(_iconColorCombo);
+    iconColorLayout->addStretch();
+
+    mainLayout->addWidget(_iconColorGroup);
+    mainLayout->addStretch();
+}
+
+void ToolbarSubDlg::connectSignals()
+{
+    connect(_hideToolbarCheck, &QCheckBox::toggled, this, &ToolbarSubDlg::onToolbarHideToggled);
+    connect(_iconSetCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ToolbarSubDlg::onIconSetChanged);
+    connect(_iconColorCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ToolbarSubDlg::onIconColorChanged);
+}
+
+void ToolbarSubDlg::loadSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    _toolbarShow = settings.readBool(L"Toolbar", L"Show", true);
+    _iconSet = settings.readInt(L"Toolbar", L"IconSet", 0);
+    _iconColor = settings.readInt(L"Toolbar", L"IconColor", 0);
+
+    _hideToolbarCheck->setChecked(!_toolbarShow);
+    _iconSetCombo->setCurrentIndex(_iconSet);
+    _iconColorCombo->setCurrentIndex(_iconColor);
+}
+
+void ToolbarSubDlg::saveSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    settings.writeBool(L"Toolbar", L"Show", _toolbarShow);
+    settings.writeInt(L"Toolbar", L"IconSet", _iconSet);
+    settings.writeInt(L"Toolbar", L"IconColor", _iconColor);
+}
+
+bool ToolbarSubDlg::applySettings()
+{
+    saveSettings();
+    return true;
+}
+
+void ToolbarSubDlg::onToolbarHideToggled(bool checked)
+{
+    _toolbarShow = !checked;
+}
+
+void ToolbarSubDlg::onIconSetChanged(int index)
+{
+    _iconSet = index;
+}
+
+void ToolbarSubDlg::onIconColorChanged(int index)
+{
+    _iconColor = index;
+}
+
+// ============================================================================
+// TabbarSubDlg Implementation
+// ============================================================================
+TabbarSubDlg::TabbarSubDlg(QWidget* parent)
+    : QWidget(parent)
+{
+    setupUI();
+    connectSignals();
+    loadSettings();
+}
+
+void TabbarSubDlg::setupUI()
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+
+    // Look & Feel
+    _lookFeelGroup = new QGroupBox(tr("Look && Feel"), this);
+    auto* lookFeelLayout = new QVBoxLayout(_lookFeelGroup);
+
+    _reduceCheck = new QCheckBox(tr("Reduce tab bar"), _lookFeelGroup);
+    lookFeelLayout->addWidget(_reduceCheck);
+
+    _lockCheck = new QCheckBox(tr("Lock (disable dragging)"), _lookFeelGroup);
+    lookFeelLayout->addWidget(_lockCheck);
+
+    _drawTopBarCheck = new QCheckBox(tr("Draw colored top bar on active tab"), _lookFeelGroup);
+    lookFeelLayout->addWidget(_drawTopBarCheck);
+
+    _drawInactiveCheck = new QCheckBox(tr("Draw inactive tabs"), _lookFeelGroup);
+    lookFeelLayout->addWidget(_drawInactiveCheck);
+
+    mainLayout->addWidget(_lookFeelGroup);
+
+    // Behavior
+    _behaviorGroup = new QGroupBox(tr("Behavior"), this);
+    auto* behaviorLayout = new QVBoxLayout(_behaviorGroup);
+
+    _showCloseButtonCheck = new QCheckBox(tr("Show close button on each tab"), _behaviorGroup);
+    behaviorLayout->addWidget(_showCloseButtonCheck);
+
+    _showPinButtonCheck = new QCheckBox(tr("Show pin button on each tab"), _behaviorGroup);
+    behaviorLayout->addWidget(_showPinButtonCheck);
+
+    _doubleClickCloseCheck = new QCheckBox(tr("Double-click to close tab"), _behaviorGroup);
+    behaviorLayout->addWidget(_doubleClickCloseCheck);
+
+    _multiLineCheck = new QCheckBox(tr("Multi-line tabs"), _behaviorGroup);
+    behaviorLayout->addWidget(_multiLineCheck);
+
+    _verticalCheck = new QCheckBox(tr("Vertical tabs"), _behaviorGroup);
+    behaviorLayout->addWidget(_verticalCheck);
+
+    _hideTabBarCheck = new QCheckBox(tr("Hide tab bar"), _behaviorGroup);
+    behaviorLayout->addWidget(_hideTabBarCheck);
+
+    _quitOnEmptyCheck = new QCheckBox(tr("Quit on closing last tab"), _behaviorGroup);
+    behaviorLayout->addWidget(_quitOnEmptyCheck);
+
+    mainLayout->addWidget(_behaviorGroup);
+    mainLayout->addStretch();
+}
+
+void TabbarSubDlg::connectSignals()
+{
+    connect(_reduceCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onReduceToggled);
+    connect(_lockCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onLockToggled);
+    connect(_drawTopBarCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onDrawTopBarToggled);
+    connect(_drawInactiveCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onDrawInactiveToggled);
+    connect(_showCloseButtonCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onShowCloseButtonToggled);
+    connect(_showPinButtonCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onShowPinButtonToggled);
+    connect(_doubleClickCloseCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onDoubleClickCloseToggled);
+    connect(_multiLineCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onMultiLineToggled);
+    connect(_verticalCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onVerticalToggled);
+    connect(_hideTabBarCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onHideTabBarToggled);
+    connect(_quitOnEmptyCheck, &QCheckBox::toggled, this, &TabbarSubDlg::onQuitOnEmptyToggled);
+}
+
+void TabbarSubDlg::loadSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    _reduce = settings.readBool(L"TabBar", L"Reduce", false);
+    _lock = settings.readBool(L"TabBar", L"Lock", false);
+    _drawTopBar = settings.readBool(L"TabBar", L"DrawTopBar", false);
+    _drawInactive = settings.readBool(L"TabBar", L"DrawInactive", false);
+    _showCloseButton = settings.readBool(L"TabBar", L"ShowCloseButton", true);
+    _showPinButton = settings.readBool(L"TabBar", L"ShowPinButton", false);
+    _doubleClickClose = settings.readBool(L"TabBar", L"DoubleClickClose", false);
+    _multiLine = settings.readBool(L"TabBar", L"MultiLine", false);
+    _vertical = settings.readBool(L"TabBar", L"Vertical", false);
+    _hideTabBar = settings.readBool(L"TabBar", L"Hide", false);
+    _quitOnEmpty = settings.readBool(L"TabBar", L"QuitOnEmpty", false);
+
+    _reduceCheck->setChecked(_reduce);
+    _lockCheck->setChecked(_lock);
+    _drawTopBarCheck->setChecked(_drawTopBar);
+    _drawInactiveCheck->setChecked(_drawInactive);
+    _showCloseButtonCheck->setChecked(_showCloseButton);
+    _showPinButtonCheck->setChecked(_showPinButton);
+    _doubleClickCloseCheck->setChecked(_doubleClickClose);
+    _multiLineCheck->setChecked(_multiLine);
+    _verticalCheck->setChecked(_vertical);
+    _hideTabBarCheck->setChecked(_hideTabBar);
+    _quitOnEmptyCheck->setChecked(_quitOnEmpty);
+}
+
+void TabbarSubDlg::saveSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    settings.writeBool(L"TabBar", L"Reduce", _reduce);
+    settings.writeBool(L"TabBar", L"Lock", _lock);
+    settings.writeBool(L"TabBar", L"DrawTopBar", _drawTopBar);
+    settings.writeBool(L"TabBar", L"DrawInactive", _drawInactive);
+    settings.writeBool(L"TabBar", L"ShowCloseButton", _showCloseButton);
+    settings.writeBool(L"TabBar", L"ShowPinButton", _showPinButton);
+    settings.writeBool(L"TabBar", L"DoubleClickClose", _doubleClickClose);
+    settings.writeBool(L"TabBar", L"MultiLine", _multiLine);
+    settings.writeBool(L"TabBar", L"Vertical", _vertical);
+    settings.writeBool(L"TabBar", L"Hide", _hideTabBar);
+    settings.writeBool(L"TabBar", L"QuitOnEmpty", _quitOnEmpty);
+}
+
+bool TabbarSubDlg::applySettings()
+{
+    saveSettings();
+    return true;
+}
+
+void TabbarSubDlg::onReduceToggled(bool checked) { _reduce = checked; }
+void TabbarSubDlg::onLockToggled(bool checked) { _lock = checked; }
+void TabbarSubDlg::onDrawTopBarToggled(bool checked) { _drawTopBar = checked; }
+void TabbarSubDlg::onDrawInactiveToggled(bool checked) { _drawInactive = checked; }
+void TabbarSubDlg::onShowCloseButtonToggled(bool checked) { _showCloseButton = checked; }
+void TabbarSubDlg::onShowPinButtonToggled(bool checked) { _showPinButton = checked; }
+void TabbarSubDlg::onDoubleClickCloseToggled(bool checked) { _doubleClickClose = checked; }
+void TabbarSubDlg::onMultiLineToggled(bool checked) { _multiLine = checked; }
+void TabbarSubDlg::onVerticalToggled(bool checked) { _vertical = checked; }
+void TabbarSubDlg::onHideTabBarToggled(bool checked) { _hideTabBar = checked; }
+void TabbarSubDlg::onQuitOnEmptyToggled(bool checked) { _quitOnEmpty = checked; }
+
+// ============================================================================
 // EditingSubDlg Implementation
 // ============================================================================
 EditingSubDlg::EditingSubDlg(QWidget* parent)
@@ -395,6 +655,431 @@ void EditingSubDlg::initScintParam()
 {
     // Additional initialization if needed
 }
+
+// ============================================================================
+// Editing2SubDlg Implementation
+// ============================================================================
+Editing2SubDlg::Editing2SubDlg(QWidget* parent)
+    : QWidget(parent)
+{
+    setupUI();
+    connectSignals();
+    loadSettings();
+}
+
+void Editing2SubDlg::setupUI()
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+
+    // Non-Printing Characters
+    _npcGroup = new QGroupBox(tr("Non-Printing Characters"), this);
+    auto* npcLayout = new QVBoxLayout(_npcGroup);
+
+    auto* npcModeLayout = new QHBoxLayout();
+    _npcModeLabel = new QLabel(tr("Appearance:"), _npcGroup);
+    npcModeLayout->addWidget(_npcModeLabel);
+
+    _npcModeCombo = new QComboBox(_npcGroup);
+    _npcModeCombo->addItem(tr("Abbreviation"));
+    _npcModeCombo->addItem(tr("Codepoint"));
+    npcModeLayout->addWidget(_npcModeCombo);
+    npcModeLayout->addStretch();
+    npcLayout->addLayout(npcModeLayout);
+
+    _npcCustomColorCheck = new QCheckBox(tr("Use custom color"), _npcGroup);
+    npcLayout->addWidget(_npcCustomColorCheck);
+
+    _npcIncludeCcUniEolCheck = new QCheckBox(tr("Include C0/C1 control and Unicode EOL characters"), _npcGroup);
+    npcLayout->addWidget(_npcIncludeCcUniEolCheck);
+
+    _npcNoInputC0Check = new QCheckBox(tr("Do not input C0 control characters"), _npcGroup);
+    npcLayout->addWidget(_npcNoInputC0Check);
+
+    mainLayout->addWidget(_npcGroup);
+
+    // CR/LF Display
+    _crlfGroup = new QGroupBox(tr("CR/LF Display"), this);
+    auto* crlfLayout = new QVBoxLayout(_crlfGroup);
+
+    auto* crlfModeLayout = new QHBoxLayout();
+    _crlfModeLabel = new QLabel(tr("Style:"), _crlfGroup);
+    crlfModeLayout->addWidget(_crlfModeLabel);
+
+    _crlfModeCombo = new QComboBox(_crlfGroup);
+    _crlfModeCombo->addItem(tr("Round corner"));
+    _crlfModeCombo->addItem(tr("Plain text"));
+    crlfModeLayout->addWidget(_crlfModeCombo);
+    crlfModeLayout->addStretch();
+    crlfLayout->addLayout(crlfModeLayout);
+
+    _crlfCustomColorCheck = new QCheckBox(tr("Use custom color"), _crlfGroup);
+    crlfLayout->addWidget(_crlfCustomColorCheck);
+
+    mainLayout->addWidget(_crlfGroup);
+    mainLayout->addStretch();
+}
+
+void Editing2SubDlg::connectSignals()
+{
+    connect(_npcModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Editing2SubDlg::onNpcModeChanged);
+    connect(_npcCustomColorCheck, &QCheckBox::toggled, this, &Editing2SubDlg::onNpcCustomColorToggled);
+    connect(_npcIncludeCcUniEolCheck, &QCheckBox::toggled, this, &Editing2SubDlg::onNpcIncludeCcUniEolToggled);
+    connect(_npcNoInputC0Check, &QCheckBox::toggled, this, &Editing2SubDlg::onNpcNoInputC0Toggled);
+    connect(_crlfModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Editing2SubDlg::onCrlfDisplayModeChanged);
+    connect(_crlfCustomColorCheck, &QCheckBox::toggled, this, &Editing2SubDlg::onCrlfCustomColorToggled);
+}
+
+void Editing2SubDlg::loadSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    _npcMode = settings.readInt(L"Editing2", L"NpcMode", 0);
+    _npcCustomColor = settings.readBool(L"Editing2", L"NpcCustomColor", false);
+    _npcIncludeCcUniEol = settings.readBool(L"Editing2", L"NpcIncludeCcUniEol", false);
+    _npcNoInputC0 = settings.readBool(L"Editing2", L"NpcNoInputC0", false);
+    _crlfDisplayMode = settings.readInt(L"Editing2", L"CrlfDisplayMode", 0);
+    _crlfCustomColor = settings.readBool(L"Editing2", L"CrlfCustomColor", false);
+
+    _npcModeCombo->setCurrentIndex(_npcMode);
+    _npcCustomColorCheck->setChecked(_npcCustomColor);
+    _npcIncludeCcUniEolCheck->setChecked(_npcIncludeCcUniEol);
+    _npcNoInputC0Check->setChecked(_npcNoInputC0);
+    _crlfModeCombo->setCurrentIndex(_crlfDisplayMode);
+    _crlfCustomColorCheck->setChecked(_crlfCustomColor);
+}
+
+void Editing2SubDlg::saveSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    settings.writeInt(L"Editing2", L"NpcMode", _npcMode);
+    settings.writeBool(L"Editing2", L"NpcCustomColor", _npcCustomColor);
+    settings.writeBool(L"Editing2", L"NpcIncludeCcUniEol", _npcIncludeCcUniEol);
+    settings.writeBool(L"Editing2", L"NpcNoInputC0", _npcNoInputC0);
+    settings.writeInt(L"Editing2", L"CrlfDisplayMode", _crlfDisplayMode);
+    settings.writeBool(L"Editing2", L"CrlfCustomColor", _crlfCustomColor);
+}
+
+bool Editing2SubDlg::applySettings()
+{
+    saveSettings();
+    return true;
+}
+
+void Editing2SubDlg::onNpcModeChanged(int index) { _npcMode = index; }
+void Editing2SubDlg::onNpcCustomColorToggled(bool checked) { _npcCustomColor = checked; }
+void Editing2SubDlg::onNpcIncludeCcUniEolToggled(bool checked) { _npcIncludeCcUniEol = checked; }
+void Editing2SubDlg::onNpcNoInputC0Toggled(bool checked) { _npcNoInputC0 = checked; }
+void Editing2SubDlg::onCrlfDisplayModeChanged(int index) { _crlfDisplayMode = index; }
+void Editing2SubDlg::onCrlfCustomColorToggled(bool checked) { _crlfCustomColor = checked; }
+
+// ============================================================================
+// DarkModeSubDlg Implementation
+// ============================================================================
+DarkModeSubDlg::DarkModeSubDlg(QWidget* parent)
+    : QWidget(parent)
+{
+    setupUI();
+    connectSignals();
+    loadSettings();
+}
+
+void DarkModeSubDlg::setupUI()
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+
+    // Dark Mode
+    _darkModeGroup = new QGroupBox(tr("Dark Mode"), this);
+    auto* darkModeLayout = new QVBoxLayout(_darkModeGroup);
+
+    _enableDarkModeCheck = new QCheckBox(tr("Enable dark mode"), _darkModeGroup);
+    darkModeLayout->addWidget(_enableDarkModeCheck);
+
+    mainLayout->addWidget(_darkModeGroup);
+
+    // Theme
+    _themeGroup = new QGroupBox(tr("Theme"), this);
+    auto* themeLayout = new QHBoxLayout(_themeGroup);
+
+    _themeLabel = new QLabel(tr("Theme:"), _themeGroup);
+    themeLayout->addWidget(_themeLabel);
+
+    _themeCombo = new QComboBox(_themeGroup);
+    _themeCombo->addItem(tr("Default Dark"));
+    _themeCombo->addItem(tr("Dark Black"));
+    _themeCombo->addItem(tr("Dark Red"));
+    _themeCombo->addItem(tr("Dark Green"));
+    _themeCombo->addItem(tr("Dark Blue"));
+    _themeCombo->addItem(tr("Dark Purple"));
+    _themeCombo->addItem(tr("Dark Cyan"));
+    _themeCombo->addItem(tr("Dark Olive"));
+    _themeCombo->addItem(tr("Customized"));
+    themeLayout->addWidget(_themeCombo);
+    themeLayout->addStretch();
+
+    mainLayout->addWidget(_themeGroup);
+    mainLayout->addStretch();
+}
+
+void DarkModeSubDlg::connectSignals()
+{
+    connect(_enableDarkModeCheck, &QCheckBox::toggled, this, &DarkModeSubDlg::onDarkModeToggled);
+    connect(_themeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &DarkModeSubDlg::onThemeChanged);
+}
+
+void DarkModeSubDlg::loadSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    _darkModeEnabled = settings.readBool(L"DarkMode", L"Enabled", false);
+    _themeIndex = settings.readInt(L"DarkMode", L"Theme", 0);
+
+    _enableDarkModeCheck->setChecked(_darkModeEnabled);
+    _themeCombo->setCurrentIndex(_themeIndex);
+}
+
+void DarkModeSubDlg::saveSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    settings.writeBool(L"DarkMode", L"Enabled", _darkModeEnabled);
+    settings.writeInt(L"DarkMode", L"Theme", _themeIndex);
+}
+
+bool DarkModeSubDlg::applySettings()
+{
+    saveSettings();
+    return true;
+}
+
+void DarkModeSubDlg::onDarkModeToggled(bool checked) { _darkModeEnabled = checked; }
+void DarkModeSubDlg::onThemeChanged(int index) { _themeIndex = index; }
+
+// ============================================================================
+// MarginsBorderEdgeSubDlg Implementation
+// ============================================================================
+MarginsBorderEdgeSubDlg::MarginsBorderEdgeSubDlg(QWidget* parent)
+    : QWidget(parent)
+{
+    setupUI();
+    connectSignals();
+    loadSettings();
+}
+
+void MarginsBorderEdgeSubDlg::setupUI()
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+
+    // Margins
+    _marginsGroup = new QGroupBox(tr("Margins"), this);
+    auto* marginsLayout = new QVBoxLayout(_marginsGroup);
+
+    _bookmarkMarginCheck = new QCheckBox(tr("Show bookmark margin"), _marginsGroup);
+    marginsLayout->addWidget(_bookmarkMarginCheck);
+
+    _changeHistoryMarginCheck = new QCheckBox(tr("Show change history margin"), _marginsGroup);
+    marginsLayout->addWidget(_changeHistoryMarginCheck);
+
+    auto* folderStyleLayout = new QHBoxLayout();
+    _folderMarkStyleLabel = new QLabel(tr("Folder mark style:"), _marginsGroup);
+    folderStyleLayout->addWidget(_folderMarkStyleLabel);
+
+    _folderMarkStyleCombo = new QComboBox(_marginsGroup);
+    _folderMarkStyleCombo->addItem(tr("Simple"));
+    _folderMarkStyleCombo->addItem(tr("Arrow"));
+    _folderMarkStyleCombo->addItem(tr("Circle"));
+    _folderMarkStyleCombo->addItem(tr("Box"));
+    _folderMarkStyleCombo->addItem(tr("None"));
+    folderStyleLayout->addWidget(_folderMarkStyleCombo);
+    folderStyleLayout->addStretch();
+    marginsLayout->addLayout(folderStyleLayout);
+
+    mainLayout->addWidget(_marginsGroup);
+
+    // Border
+    _borderGroup = new QGroupBox(tr("Border Width"), this);
+    auto* borderLayout = new QHBoxLayout(_borderGroup);
+
+    _borderWidthLabel = new QLabel(tr("Width:"), _borderGroup);
+    borderLayout->addWidget(_borderWidthLabel);
+
+    _borderWidthSlider = new QSlider(Qt::Horizontal, _borderGroup);
+    _borderWidthSlider->setRange(0, 5);
+    _borderWidthSlider->setPageStep(1);
+    borderLayout->addWidget(_borderWidthSlider);
+
+    _borderWidthValue = new QLabel("2", _borderGroup);
+    _borderWidthValue->setMinimumWidth(20);
+    borderLayout->addWidget(_borderWidthValue);
+
+    mainLayout->addWidget(_borderGroup);
+
+    // Padding
+    _paddingGroup = new QGroupBox(tr("Padding"), this);
+    auto* paddingLayout = new QGridLayout(_paddingGroup);
+
+    _paddingLeftLabel = new QLabel(tr("Left:"), _paddingGroup);
+    paddingLayout->addWidget(_paddingLeftLabel, 0, 0);
+
+    _paddingLeftSlider = new QSlider(Qt::Horizontal, _paddingGroup);
+    _paddingLeftSlider->setRange(0, 30);
+    _paddingLeftSlider->setPageStep(1);
+    paddingLayout->addWidget(_paddingLeftSlider, 0, 1);
+
+    _paddingLeftValue = new QLabel("0", _paddingGroup);
+    _paddingLeftValue->setMinimumWidth(20);
+    paddingLayout->addWidget(_paddingLeftValue, 0, 2);
+
+    _paddingRightLabel = new QLabel(tr("Right:"), _paddingGroup);
+    paddingLayout->addWidget(_paddingRightLabel, 1, 0);
+
+    _paddingRightSlider = new QSlider(Qt::Horizontal, _paddingGroup);
+    _paddingRightSlider->setRange(0, 30);
+    _paddingRightSlider->setPageStep(1);
+    paddingLayout->addWidget(_paddingRightSlider, 1, 1);
+
+    _paddingRightValue = new QLabel("0", _paddingGroup);
+    _paddingRightValue->setMinimumWidth(20);
+    paddingLayout->addWidget(_paddingRightValue, 1, 2);
+
+    _distractionFreeLabel = new QLabel(tr("Distraction Free:"), _paddingGroup);
+    paddingLayout->addWidget(_distractionFreeLabel, 2, 0);
+
+    _distractionFreeSlider = new QSlider(Qt::Horizontal, _paddingGroup);
+    _distractionFreeSlider->setRange(1, 9);
+    _distractionFreeSlider->setPageStep(1);
+    paddingLayout->addWidget(_distractionFreeSlider, 2, 1);
+
+    _distractionFreeValue = new QLabel("3", _paddingGroup);
+    _distractionFreeValue->setMinimumWidth(20);
+    paddingLayout->addWidget(_distractionFreeValue, 2, 2);
+
+    mainLayout->addWidget(_paddingGroup);
+
+    // Vertical Edge
+    _verticalEdgeGroup = new QGroupBox(tr("Vertical Edge"), this);
+    auto* verticalEdgeLayout = new QVBoxLayout(_verticalEdgeGroup);
+
+    _verticalEdgeCheck = new QCheckBox(tr("Show vertical edge"), _verticalEdgeGroup);
+    verticalEdgeLayout->addWidget(_verticalEdgeCheck);
+
+    auto* columnsLayout = new QHBoxLayout();
+    _verticalEdgeColumnsLabel = new QLabel(tr("Column position(s):"), _verticalEdgeGroup);
+    columnsLayout->addWidget(_verticalEdgeColumnsLabel);
+
+    _verticalEdgeColumnsEdit = new QLineEdit(_verticalEdgeGroup);
+    _verticalEdgeColumnsEdit->setPlaceholderText(tr("e.g. 80 120"));
+    columnsLayout->addWidget(_verticalEdgeColumnsEdit);
+    verticalEdgeLayout->addLayout(columnsLayout);
+
+    mainLayout->addWidget(_verticalEdgeGroup);
+    mainLayout->addStretch();
+}
+
+void MarginsBorderEdgeSubDlg::connectSignals()
+{
+    connect(_borderWidthSlider, &QSlider::valueChanged, this, &MarginsBorderEdgeSubDlg::onBorderWidthChanged);
+    connect(_paddingLeftSlider, &QSlider::valueChanged, this, &MarginsBorderEdgeSubDlg::onPaddingLeftChanged);
+    connect(_paddingRightSlider, &QSlider::valueChanged, this, &MarginsBorderEdgeSubDlg::onPaddingRightChanged);
+    connect(_distractionFreeSlider, &QSlider::valueChanged, this, &MarginsBorderEdgeSubDlg::onDistractionFreeChanged);
+    connect(_folderMarkStyleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MarginsBorderEdgeSubDlg::onFolderMarkStyleChanged);
+    connect(_bookmarkMarginCheck, &QCheckBox::toggled, this, &MarginsBorderEdgeSubDlg::onBookmarkMarginToggled);
+    connect(_changeHistoryMarginCheck, &QCheckBox::toggled, this, &MarginsBorderEdgeSubDlg::onChangeHistoryMarginToggled);
+    connect(_verticalEdgeCheck, &QCheckBox::toggled, this, &MarginsBorderEdgeSubDlg::onVerticalEdgeToggled);
+    connect(_verticalEdgeColumnsEdit, &QLineEdit::textChanged, this, &MarginsBorderEdgeSubDlg::onVerticalEdgeColumnsChanged);
+}
+
+void MarginsBorderEdgeSubDlg::loadSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    _borderWidth = settings.readInt(L"MarginsBorderEdge", L"BorderWidth", 2);
+    _paddingLeft = settings.readInt(L"MarginsBorderEdge", L"PaddingLeft", 0);
+    _paddingRight = settings.readInt(L"MarginsBorderEdge", L"PaddingRight", 0);
+    _distractionFree = settings.readInt(L"MarginsBorderEdge", L"DistractionFree", 3);
+    _folderMarkStyle = settings.readInt(L"MarginsBorderEdge", L"FolderMarkStyle", 0);
+    _bookmarkMargin = settings.readBool(L"MarginsBorderEdge", L"BookmarkMargin", true);
+    _changeHistoryMargin = settings.readBool(L"MarginsBorderEdge", L"ChangeHistoryMargin", false);
+    _verticalEdge = settings.readBool(L"MarginsBorderEdge", L"VerticalEdge", false);
+    _verticalEdgeColumns = QString::fromStdWString(settings.readString(L"MarginsBorderEdge", L"VerticalEdgeColumns", L""));
+
+    _borderWidthSlider->setValue(_borderWidth);
+    _borderWidthValue->setText(QString::number(_borderWidth));
+    _paddingLeftSlider->setValue(_paddingLeft);
+    _paddingLeftValue->setText(QString::number(_paddingLeft));
+    _paddingRightSlider->setValue(_paddingRight);
+    _paddingRightValue->setText(QString::number(_paddingRight));
+    _distractionFreeSlider->setValue(_distractionFree);
+    _distractionFreeValue->setText(QString::number(_distractionFree));
+    _folderMarkStyleCombo->setCurrentIndex(_folderMarkStyle);
+    _bookmarkMarginCheck->setChecked(_bookmarkMargin);
+    _changeHistoryMarginCheck->setChecked(_changeHistoryMargin);
+    _verticalEdgeCheck->setChecked(_verticalEdge);
+    _verticalEdgeColumnsEdit->setText(_verticalEdgeColumns);
+}
+
+void MarginsBorderEdgeSubDlg::saveSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    settings.writeInt(L"MarginsBorderEdge", L"BorderWidth", _borderWidth);
+    settings.writeInt(L"MarginsBorderEdge", L"PaddingLeft", _paddingLeft);
+    settings.writeInt(L"MarginsBorderEdge", L"PaddingRight", _paddingRight);
+    settings.writeInt(L"MarginsBorderEdge", L"DistractionFree", _distractionFree);
+    settings.writeInt(L"MarginsBorderEdge", L"FolderMarkStyle", _folderMarkStyle);
+    settings.writeBool(L"MarginsBorderEdge", L"BookmarkMargin", _bookmarkMargin);
+    settings.writeBool(L"MarginsBorderEdge", L"ChangeHistoryMargin", _changeHistoryMargin);
+    settings.writeBool(L"MarginsBorderEdge", L"VerticalEdge", _verticalEdge);
+    settings.writeString(L"MarginsBorderEdge", L"VerticalEdgeColumns", _verticalEdgeColumns.toStdWString());
+}
+
+bool MarginsBorderEdgeSubDlg::applySettings()
+{
+    saveSettings();
+    return true;
+}
+
+void MarginsBorderEdgeSubDlg::onBorderWidthChanged(int value)
+{
+    _borderWidth = value;
+    _borderWidthValue->setText(QString::number(value));
+}
+
+void MarginsBorderEdgeSubDlg::onPaddingLeftChanged(int value)
+{
+    _paddingLeft = value;
+    _paddingLeftValue->setText(QString::number(value));
+}
+
+void MarginsBorderEdgeSubDlg::onPaddingRightChanged(int value)
+{
+    _paddingRight = value;
+    _paddingRightValue->setText(QString::number(value));
+}
+
+void MarginsBorderEdgeSubDlg::onDistractionFreeChanged(int value)
+{
+    _distractionFree = value;
+    _distractionFreeValue->setText(QString::number(value));
+}
+
+void MarginsBorderEdgeSubDlg::onFolderMarkStyleChanged(int index) { _folderMarkStyle = index; }
+void MarginsBorderEdgeSubDlg::onBookmarkMarginToggled(bool checked) { _bookmarkMargin = checked; }
+void MarginsBorderEdgeSubDlg::onChangeHistoryMarginToggled(bool checked) { _changeHistoryMargin = checked; }
+
+void MarginsBorderEdgeSubDlg::onVerticalEdgeToggled(bool checked)
+{
+    _verticalEdge = checked;
+    _verticalEdgeColumnsEdit->setEnabled(checked);
+}
+
+void MarginsBorderEdgeSubDlg::onVerticalEdgeColumnsChanged(const QString& text) { _verticalEdgeColumns = text; }
 
 // ============================================================================
 // NewDocumentSubDlg Implementation
@@ -726,6 +1411,143 @@ void RecentFilesHistorySubDlg::onDontCheckAtStartupToggled(bool checked)
 }
 
 // ============================================================================
+// FileAssocSubDlg Implementation
+// ============================================================================
+FileAssocSubDlg::FileAssocSubDlg(QWidget* parent)
+    : QWidget(parent)
+{
+    setupUI();
+    connectSignals();
+    loadSettings();
+}
+
+void FileAssocSubDlg::setupUI()
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+
+    _fileAssocGroup = new QGroupBox(tr("File Associations"), this);
+    auto* assocLayout = new QHBoxLayout(_fileAssocGroup);
+
+    // Left side - supported extensions
+    auto* leftLayout = new QVBoxLayout();
+    _supportedExtLabel = new QLabel(tr("Supported extensions:"), _fileAssocGroup);
+    leftLayout->addWidget(_supportedExtLabel);
+
+    _extensionList = new QListWidget(_fileAssocGroup);
+    leftLayout->addWidget(_extensionList);
+
+    assocLayout->addLayout(leftLayout);
+
+    // Middle - buttons
+    auto* buttonLayout = new QVBoxLayout();
+    buttonLayout->addStretch();
+    _registerButton = new QPushButton(tr(">>"), _fileAssocGroup);
+    _registerButton->setFixedWidth(40);
+    buttonLayout->addWidget(_registerButton);
+
+    _unregisterButton = new QPushButton(tr("<<"), _fileAssocGroup);
+    _unregisterButton->setFixedWidth(40);
+    buttonLayout->addWidget(_unregisterButton);
+    buttonLayout->addStretch();
+
+    assocLayout->addLayout(buttonLayout);
+
+    // Right side - registered extensions
+    auto* rightLayout = new QVBoxLayout();
+    _registeredExtLabel = new QLabel(tr("Registered extensions:"), _fileAssocGroup);
+    rightLayout->addWidget(_registeredExtLabel);
+
+    _registeredList = new QListWidget(_fileAssocGroup);
+    rightLayout->addWidget(_registeredList);
+
+    assocLayout->addLayout(rightLayout);
+
+    mainLayout->addWidget(_fileAssocGroup);
+    mainLayout->addStretch();
+
+    populateExtensions();
+}
+
+void FileAssocSubDlg::connectSignals()
+{
+    connect(_registerButton, &QPushButton::clicked, this, &FileAssocSubDlg::onRegisterClicked);
+    connect(_unregisterButton, &QPushButton::clicked, this, &FileAssocSubDlg::onUnregisterClicked);
+    connect(_extensionList, &QListWidget::currentRowChanged, this, &FileAssocSubDlg::onExtensionSelected);
+}
+
+void FileAssocSubDlg::populateExtensions()
+{
+    QStringList extensions;
+    extensions << ".txt" << ".log" << ".ini" << ".cfg" << ".conf"
+               << ".xml" << ".html" << ".htm" << ".css" << ".js"
+               << ".json" << ".yaml" << ".yml" << ".md" << ".py"
+               << ".c" << ".cpp" << ".h" << ".hpp" << ".java"
+               << ".cs" << ".php" << ".rb" << ".rs" << ".go"
+               << ".sh" << ".bash" << ".sql" << ".lua" << ".pl"
+               << ".ts" << ".tsx" << ".jsx" << ".vue" << ".svelte";
+    _extensionList->addItems(extensions);
+}
+
+void FileAssocSubDlg::loadSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    QString registered = QString::fromStdWString(settings.readString(L"FileAssoc", L"RegisteredExtensions", L""));
+    _registeredExtensions = registered.split(';', Qt::SkipEmptyParts);
+
+    _registeredList->clear();
+    _registeredList->addItems(_registeredExtensions);
+}
+
+void FileAssocSubDlg::saveSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    settings.writeString(L"FileAssoc", L"RegisteredExtensions", _registeredExtensions.join(';').toStdWString());
+}
+
+bool FileAssocSubDlg::applySettings()
+{
+    saveSettings();
+    return true;
+}
+
+void FileAssocSubDlg::onExtensionSelected(int /*index*/)
+{
+    // Enable/disable register button based on selection
+}
+
+void FileAssocSubDlg::onRegisterClicked()
+{
+    auto* item = _extensionList->currentItem();
+    if (!item)
+        return;
+
+    QString ext = item->text();
+    if (!_registeredExtensions.contains(ext))
+    {
+        _registeredExtensions.append(ext);
+        _registeredList->addItem(ext);
+    }
+}
+
+void FileAssocSubDlg::onUnregisterClicked()
+{
+    int row = _registeredList->currentRow();
+    if (row < 0)
+        return;
+
+    auto* item = _registeredList->takeItem(row);
+    if (item)
+    {
+        _registeredExtensions.removeAll(item->text());
+        delete item;
+    }
+}
+
+// ============================================================================
 // LanguageSubDlg Implementation
 // ============================================================================
 LanguageSubDlg::LanguageSubDlg(QWidget* parent)
@@ -837,6 +1659,138 @@ void LanguageSubDlg::onTabSizeChanged(int value)
 void LanguageSubDlg::onReplaceBySpaceToggled(bool checked)
 {
     _replaceBySpace = checked;
+}
+
+// ============================================================================
+// IndentationSubDlg Implementation
+// ============================================================================
+IndentationSubDlg::IndentationSubDlg(QWidget* parent)
+    : QWidget(parent)
+{
+    setupUI();
+    connectSignals();
+    loadSettings();
+}
+
+void IndentationSubDlg::setupUI()
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+
+    // Tab Settings
+    _tabSettingsGroup = new QGroupBox(tr("Tab Settings"), this);
+    auto* tabLayout = new QVBoxLayout(_tabSettingsGroup);
+
+    auto* tabSizeLayout = new QHBoxLayout();
+    _tabSizeLabel = new QLabel(tr("Tab size:"), _tabSettingsGroup);
+    tabSizeLayout->addWidget(_tabSizeLabel);
+
+    _tabSizeSpin = new QSpinBox(_tabSettingsGroup);
+    _tabSizeSpin->setRange(1, 16);
+    _tabSizeSpin->setValue(4);
+    tabSizeLayout->addWidget(_tabSizeSpin);
+    tabSizeLayout->addStretch();
+    tabLayout->addLayout(tabSizeLayout);
+
+    _replaceBySpaceCheck = new QCheckBox(tr("Replace by space"), _tabSettingsGroup);
+    tabLayout->addWidget(_replaceBySpaceCheck);
+
+    _backspaceUnindentCheck = new QCheckBox(tr("Backspace unindent"), _tabSettingsGroup);
+    tabLayout->addWidget(_backspaceUnindentCheck);
+
+    mainLayout->addWidget(_tabSettingsGroup);
+
+    // Per-language tab settings
+    _tabPerLanguageGroup = new QGroupBox(tr("Per-Language Tab Settings"), this);
+    auto* perLangLayout = new QVBoxLayout(_tabPerLanguageGroup);
+
+    _tabSettingLanguageList = new QListWidget(_tabPerLanguageGroup);
+    _tabSettingLanguageList->setMaximumHeight(150);
+    perLangLayout->addWidget(_tabSettingLanguageList);
+    populateLanguageList();
+
+    mainLayout->addWidget(_tabPerLanguageGroup);
+
+    // Auto-Indent
+    _autoIndentGroup = new QGroupBox(tr("Auto-Indent"), this);
+    auto* autoIndentLayout = new QHBoxLayout(_autoIndentGroup);
+
+    _autoIndentLabel = new QLabel(tr("Mode:"), _autoIndentGroup);
+    autoIndentLayout->addWidget(_autoIndentLabel);
+
+    _autoIndentCombo = new QComboBox(_autoIndentGroup);
+    _autoIndentCombo->addItem(tr("None"));
+    _autoIndentCombo->addItem(tr("Basic"));
+    _autoIndentCombo->addItem(tr("Advanced (C-like languages and Python)"));
+    autoIndentLayout->addWidget(_autoIndentCombo);
+    autoIndentLayout->addStretch();
+
+    mainLayout->addWidget(_autoIndentGroup);
+    mainLayout->addStretch();
+}
+
+void IndentationSubDlg::connectSignals()
+{
+    connect(_tabSizeSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &IndentationSubDlg::onTabSizeChanged);
+    connect(_replaceBySpaceCheck, &QCheckBox::toggled, this, &IndentationSubDlg::onReplaceBySpaceToggled);
+    connect(_backspaceUnindentCheck, &QCheckBox::toggled, this, &IndentationSubDlg::onBackspaceUnindentToggled);
+    connect(_autoIndentCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &IndentationSubDlg::onAutoIndentModeChanged);
+    connect(_tabSettingLanguageList, &QListWidget::currentRowChanged, this, &IndentationSubDlg::onTabSettingLanguageChanged);
+}
+
+void IndentationSubDlg::populateLanguageList()
+{
+    _tabSettingLanguageList->addItem(tr("[Default]"));
+    QStringList languages;
+    languages << "C" << "C++" << "Java" << "C#" << "Python" << "JavaScript"
+              << "TypeScript" << "PHP" << "Rust" << "Go" << "Ruby" << "Perl"
+              << "HTML" << "XML" << "CSS" << "SQL" << "Bash" << "Makefile"
+              << "Lua" << "JSON" << "YAML" << "Markdown";
+    _tabSettingLanguageList->addItems(languages);
+    _tabSettingLanguageList->setCurrentRow(0);
+}
+
+void IndentationSubDlg::loadSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    _tabSize = settings.readInt(L"Indentation", L"TabSize", 4);
+    _replaceBySpace = settings.readBool(L"Indentation", L"ReplaceBySpace", false);
+    _backspaceUnindent = settings.readBool(L"Indentation", L"BackspaceUnindent", false);
+    _autoIndentMode = settings.readInt(L"Indentation", L"AutoIndentMode", 2);
+
+    _tabSizeSpin->setValue(_tabSize);
+    _replaceBySpaceCheck->setChecked(_replaceBySpace);
+    _backspaceUnindentCheck->setChecked(_backspaceUnindent);
+    _autoIndentCombo->setCurrentIndex(_autoIndentMode);
+}
+
+void IndentationSubDlg::saveSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    settings.writeInt(L"Indentation", L"TabSize", _tabSize);
+    settings.writeBool(L"Indentation", L"ReplaceBySpace", _replaceBySpace);
+    settings.writeBool(L"Indentation", L"BackspaceUnindent", _backspaceUnindent);
+    settings.writeInt(L"Indentation", L"AutoIndentMode", _autoIndentMode);
+}
+
+bool IndentationSubDlg::applySettings()
+{
+    saveSettings();
+    return true;
+}
+
+void IndentationSubDlg::onTabSizeChanged(int value) { _tabSize = value; }
+void IndentationSubDlg::onReplaceBySpaceToggled(bool checked) { _replaceBySpace = checked; }
+void IndentationSubDlg::onBackspaceUnindentToggled(bool checked) { _backspaceUnindent = checked; }
+void IndentationSubDlg::onAutoIndentModeChanged(int index) { _autoIndentMode = index; }
+
+void IndentationSubDlg::onTabSettingLanguageChanged(int /*index*/)
+{
+    // When a specific language is selected from the list, we could load
+    // per-language tab settings. For now, we use the default settings.
 }
 
 // ============================================================================
@@ -1868,6 +2822,146 @@ void DelimiterSubDlg::onDefaultWordCharsToggled(bool checked)
 }
 
 // ============================================================================
+// PerformanceSubDlg Implementation
+// ============================================================================
+PerformanceSubDlg::PerformanceSubDlg(QWidget* parent)
+    : QWidget(parent)
+{
+    setupUI();
+    connectSignals();
+    loadSettings();
+}
+
+void PerformanceSubDlg::setupUI()
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+
+    // Performance / Large File Restriction
+    _performanceGroup = new QGroupBox(tr("Large File Restriction"), this);
+    auto* perfLayout = new QVBoxLayout(_performanceGroup);
+
+    _enableRestrictionCheck = new QCheckBox(tr("Enable large file restriction"), _performanceGroup);
+    perfLayout->addWidget(_enableRestrictionCheck);
+
+    auto* fileSizeLayout = new QHBoxLayout();
+    _fileSizeLabel = new QLabel(tr("File size threshold:"), _performanceGroup);
+    fileSizeLayout->addWidget(_fileSizeLabel);
+
+    _fileSizeSpin = new QSpinBox(_performanceGroup);
+    _fileSizeSpin->setRange(1, 4096);
+    _fileSizeSpin->setValue(200);
+    fileSizeLayout->addWidget(_fileSizeSpin);
+
+    _fileSizeUnitLabel = new QLabel(tr("MB"), _performanceGroup);
+    fileSizeLayout->addWidget(_fileSizeUnitLabel);
+    fileSizeLayout->addStretch();
+    perfLayout->addLayout(fileSizeLayout);
+
+    mainLayout->addWidget(_performanceGroup);
+
+    // Feature restrictions
+    _restrictionsGroup = new QGroupBox(tr("Allowed Features for Large Files"), this);
+    auto* restrictLayout = new QVBoxLayout(_restrictionsGroup);
+
+    _allowBraceMatchCheck = new QCheckBox(tr("Allow brace matching"), _restrictionsGroup);
+    restrictLayout->addWidget(_allowBraceMatchCheck);
+
+    _allowAutoCompletionCheck = new QCheckBox(tr("Allow auto-completion"), _restrictionsGroup);
+    restrictLayout->addWidget(_allowAutoCompletionCheck);
+
+    _allowSmartHiliteCheck = new QCheckBox(tr("Allow smart highlighting"), _restrictionsGroup);
+    restrictLayout->addWidget(_allowSmartHiliteCheck);
+
+    _allowClickableLinkCheck = new QCheckBox(tr("Allow clickable links"), _restrictionsGroup);
+    restrictLayout->addWidget(_allowClickableLinkCheck);
+
+    _deactivateWordWrapCheck = new QCheckBox(tr("Deactivate word wrap globally"), _restrictionsGroup);
+    restrictLayout->addWidget(_deactivateWordWrapCheck);
+
+    mainLayout->addWidget(_restrictionsGroup);
+    mainLayout->addStretch();
+}
+
+void PerformanceSubDlg::connectSignals()
+{
+    connect(_enableRestrictionCheck, &QCheckBox::toggled, this, &PerformanceSubDlg::onLargeFileRestrictionToggled);
+    connect(_fileSizeSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &PerformanceSubDlg::onFileSizeChanged);
+    connect(_allowBraceMatchCheck, &QCheckBox::toggled, this, &PerformanceSubDlg::onAllowBraceMatchToggled);
+    connect(_allowAutoCompletionCheck, &QCheckBox::toggled, this, &PerformanceSubDlg::onAllowAutoCompletionToggled);
+    connect(_allowSmartHiliteCheck, &QCheckBox::toggled, this, &PerformanceSubDlg::onAllowSmartHiliteToggled);
+    connect(_allowClickableLinkCheck, &QCheckBox::toggled, this, &PerformanceSubDlg::onAllowClickableLinkToggled);
+    connect(_deactivateWordWrapCheck, &QCheckBox::toggled, this, &PerformanceSubDlg::onDeactivateWordWrapToggled);
+}
+
+void PerformanceSubDlg::loadSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    _largeFileRestrictionEnabled = settings.readBool(L"Performance", L"LargeFileRestriction", true);
+    _largeFileSizeMB = settings.readInt(L"Performance", L"LargeFileSizeMB", 200);
+    _allowBraceMatch = settings.readBool(L"Performance", L"AllowBraceMatch", false);
+    _allowAutoCompletion = settings.readBool(L"Performance", L"AllowAutoCompletion", false);
+    _allowSmartHilite = settings.readBool(L"Performance", L"AllowSmartHilite", false);
+    _allowClickableLink = settings.readBool(L"Performance", L"AllowClickableLink", false);
+    _deactivateWordWrap = settings.readBool(L"Performance", L"DeactivateWordWrap", true);
+
+    _enableRestrictionCheck->setChecked(_largeFileRestrictionEnabled);
+    _fileSizeSpin->setValue(_largeFileSizeMB);
+    _allowBraceMatchCheck->setChecked(_allowBraceMatch);
+    _allowAutoCompletionCheck->setChecked(_allowAutoCompletion);
+    _allowSmartHiliteCheck->setChecked(_allowSmartHilite);
+    _allowClickableLinkCheck->setChecked(_allowClickableLink);
+    _deactivateWordWrapCheck->setChecked(_deactivateWordWrap);
+
+    updateEnabledState();
+}
+
+void PerformanceSubDlg::saveSettings()
+{
+    PlatformLayer::ISettings& settings = PlatformLayer::ISettings::getInstance();
+
+    settings.writeBool(L"Performance", L"LargeFileRestriction", _largeFileRestrictionEnabled);
+    settings.writeInt(L"Performance", L"LargeFileSizeMB", _largeFileSizeMB);
+    settings.writeBool(L"Performance", L"AllowBraceMatch", _allowBraceMatch);
+    settings.writeBool(L"Performance", L"AllowAutoCompletion", _allowAutoCompletion);
+    settings.writeBool(L"Performance", L"AllowSmartHilite", _allowSmartHilite);
+    settings.writeBool(L"Performance", L"AllowClickableLink", _allowClickableLink);
+    settings.writeBool(L"Performance", L"DeactivateWordWrap", _deactivateWordWrap);
+}
+
+bool PerformanceSubDlg::applySettings()
+{
+    saveSettings();
+    return true;
+}
+
+void PerformanceSubDlg::updateEnabledState()
+{
+    bool enabled = _largeFileRestrictionEnabled;
+    _fileSizeSpin->setEnabled(enabled);
+    _allowBraceMatchCheck->setEnabled(enabled);
+    _allowAutoCompletionCheck->setEnabled(enabled);
+    _allowSmartHiliteCheck->setEnabled(enabled);
+    _allowClickableLinkCheck->setEnabled(enabled);
+    _deactivateWordWrapCheck->setEnabled(enabled);
+}
+
+void PerformanceSubDlg::onLargeFileRestrictionToggled(bool checked)
+{
+    _largeFileRestrictionEnabled = checked;
+    updateEnabledState();
+}
+
+void PerformanceSubDlg::onFileSizeChanged(int value) { _largeFileSizeMB = value; }
+void PerformanceSubDlg::onAllowBraceMatchToggled(bool checked) { _allowBraceMatch = checked; }
+void PerformanceSubDlg::onAllowAutoCompletionToggled(bool checked) { _allowAutoCompletion = checked; }
+void PerformanceSubDlg::onAllowSmartHiliteToggled(bool checked) { _allowSmartHilite = checked; }
+void PerformanceSubDlg::onAllowClickableLinkToggled(bool checked) { _allowClickableLink = checked; }
+void PerformanceSubDlg::onDeactivateWordWrapToggled(bool checked) { _deactivateWordWrap = checked; }
+
+// ============================================================================
 // CloudLinkSubDlg Implementation
 // ============================================================================
 CloudLinkSubDlg::CloudLinkSubDlg(QWidget* parent)
@@ -2285,14 +3379,34 @@ void PreferenceDlg::setupUI()
 
 void PreferenceDlg::createSubPages()
 {
-    // Create all sub-pages and add them to the stacked widget
+    // Create all sub-pages in Windows order (24 pages total)
     _generalPage = new GeneralSubDlg(_pagesStack);
     _pagesStack->addWidget(_generalPage);
-    _categories.append(CategoryInfo(tr("General"), "General", _generalPage));
+    _categories.append(CategoryInfo(tr("General"), "Global", _generalPage));
+
+    _toolbarPage = new ToolbarSubDlg(_pagesStack);
+    _pagesStack->addWidget(_toolbarPage);
+    _categories.append(CategoryInfo(tr("Toolbar"), "Toolbar", _toolbarPage));
+
+    _tabbarPage = new TabbarSubDlg(_pagesStack);
+    _pagesStack->addWidget(_tabbarPage);
+    _categories.append(CategoryInfo(tr("Tab Bar"), "Tabbar", _tabbarPage));
 
     _editingPage = new EditingSubDlg(_pagesStack);
     _pagesStack->addWidget(_editingPage);
-    _categories.append(CategoryInfo(tr("Editing"), "Editing", _editingPage));
+    _categories.append(CategoryInfo(tr("Editing 1"), "Scintillas", _editingPage));
+
+    _editing2Page = new Editing2SubDlg(_pagesStack);
+    _pagesStack->addWidget(_editing2Page);
+    _categories.append(CategoryInfo(tr("Editing 2"), "Scintillas2", _editing2Page));
+
+    _darkModePage = new DarkModeSubDlg(_pagesStack);
+    _pagesStack->addWidget(_darkModePage);
+    _categories.append(CategoryInfo(tr("Dark Mode"), "DarkMode", _darkModePage));
+
+    _marginsBorderEdgePage = new MarginsBorderEdgeSubDlg(_pagesStack);
+    _pagesStack->addWidget(_marginsBorderEdgePage);
+    _categories.append(CategoryInfo(tr("Margins/Border/Edge"), "MarginsBorderEdge", _marginsBorderEdgePage));
 
     _newDocumentPage = new NewDocumentSubDlg(_pagesStack);
     _pagesStack->addWidget(_newDocumentPage);
@@ -2306,9 +3420,17 @@ void PreferenceDlg::createSubPages()
     _pagesStack->addWidget(_recentFilesHistoryPage);
     _categories.append(CategoryInfo(tr("Recent Files History"), "RecentFilesHistory", _recentFilesHistoryPage));
 
+    _fileAssocPage = new FileAssocSubDlg(_pagesStack);
+    _pagesStack->addWidget(_fileAssocPage);
+    _categories.append(CategoryInfo(tr("File Association"), "FileAssoc", _fileAssocPage));
+
     _languagePage = new LanguageSubDlg(_pagesStack);
     _pagesStack->addWidget(_languagePage);
     _categories.append(CategoryInfo(tr("Language"), "Language", _languagePage));
+
+    _indentationPage = new IndentationSubDlg(_pagesStack);
+    _pagesStack->addWidget(_indentationPage);
+    _categories.append(CategoryInfo(tr("Indentation"), "Indentation", _indentationPage));
 
     _highlightingPage = new HighlightingSubDlg(_pagesStack);
     _pagesStack->addWidget(_highlightingPage);
@@ -2332,11 +3454,15 @@ void PreferenceDlg::createSubPages()
 
     _multiInstancePage = new MultiInstanceSubDlg(_pagesStack);
     _pagesStack->addWidget(_multiInstancePage);
-    _categories.append(CategoryInfo(tr("Multi-Instance"), "MultiInstance", _multiInstancePage));
+    _categories.append(CategoryInfo(tr("Multi-Instance & Date"), "MultiInstance", _multiInstancePage));
 
     _delimiterPage = new DelimiterSubDlg(_pagesStack);
     _pagesStack->addWidget(_delimiterPage);
     _categories.append(CategoryInfo(tr("Delimiter"), "Delimiter", _delimiterPage));
+
+    _performancePage = new PerformanceSubDlg(_pagesStack);
+    _pagesStack->addWidget(_performancePage);
+    _categories.append(CategoryInfo(tr("Performance"), "Performance", _performancePage));
 
     _cloudLinkPage = new CloudLinkSubDlg(_pagesStack);
     _pagesStack->addWidget(_cloudLinkPage);
@@ -2348,7 +3474,7 @@ void PreferenceDlg::createSubPages()
 
     _miscPage = new MISCSubDlg(_pagesStack);
     _pagesStack->addWidget(_miscPage);
-    _categories.append(CategoryInfo(tr("MISC"), "MISC", _miscPage));
+    _categories.append(CategoryInfo(tr("MISC."), "MISC", _miscPage));
 
     // Populate category list
     for (const auto& category : _categories) {
@@ -2366,11 +3492,18 @@ void PreferenceDlg::loadSettings()
 {
     // Load settings for all pages
     if (_generalPage) _generalPage->loadSettings();
+    if (_toolbarPage) _toolbarPage->loadSettings();
+    if (_tabbarPage) _tabbarPage->loadSettings();
     if (_editingPage) _editingPage->loadSettings();
+    if (_editing2Page) _editing2Page->loadSettings();
+    if (_darkModePage) _darkModePage->loadSettings();
+    if (_marginsBorderEdgePage) _marginsBorderEdgePage->loadSettings();
     if (_newDocumentPage) _newDocumentPage->loadSettings();
     if (_defaultDirectoryPage) _defaultDirectoryPage->loadSettings();
     if (_recentFilesHistoryPage) _recentFilesHistoryPage->loadSettings();
+    if (_fileAssocPage) _fileAssocPage->loadSettings();
     if (_languagePage) _languagePage->loadSettings();
+    if (_indentationPage) _indentationPage->loadSettings();
     if (_highlightingPage) _highlightingPage->loadSettings();
     if (_printPage) _printPage->loadSettings();
     if (_searchingPage) _searchingPage->loadSettings();
@@ -2378,6 +3511,7 @@ void PreferenceDlg::loadSettings()
     if (_autoCompletionPage) _autoCompletionPage->loadSettings();
     if (_multiInstancePage) _multiInstancePage->loadSettings();
     if (_delimiterPage) _delimiterPage->loadSettings();
+    if (_performancePage) _performancePage->loadSettings();
     if (_cloudLinkPage) _cloudLinkPage->loadSettings();
     if (_searchEnginePage) _searchEnginePage->loadSettings();
     if (_miscPage) _miscPage->loadSettings();
@@ -2389,11 +3523,18 @@ bool PreferenceDlg::saveSettings()
     bool success = true;
 
     if (_generalPage && !_generalPage->applySettings()) success = false;
+    if (_toolbarPage && !_toolbarPage->applySettings()) success = false;
+    if (_tabbarPage && !_tabbarPage->applySettings()) success = false;
     if (_editingPage && !_editingPage->applySettings()) success = false;
+    if (_editing2Page && !_editing2Page->applySettings()) success = false;
+    if (_darkModePage && !_darkModePage->applySettings()) success = false;
+    if (_marginsBorderEdgePage && !_marginsBorderEdgePage->applySettings()) success = false;
     if (_newDocumentPage && !_newDocumentPage->applySettings()) success = false;
     if (_defaultDirectoryPage && !_defaultDirectoryPage->applySettings()) success = false;
     if (_recentFilesHistoryPage && !_recentFilesHistoryPage->applySettings()) success = false;
+    if (_fileAssocPage && !_fileAssocPage->applySettings()) success = false;
     if (_languagePage && !_languagePage->applySettings()) success = false;
+    if (_indentationPage && !_indentationPage->applySettings()) success = false;
     if (_highlightingPage && !_highlightingPage->applySettings()) success = false;
     if (_printPage && !_printPage->applySettings()) success = false;
     if (_searchingPage && !_searchingPage->applySettings()) success = false;
@@ -2401,6 +3542,7 @@ bool PreferenceDlg::saveSettings()
     if (_autoCompletionPage && !_autoCompletionPage->applySettings()) success = false;
     if (_multiInstancePage && !_multiInstancePage->applySettings()) success = false;
     if (_delimiterPage && !_delimiterPage->applySettings()) success = false;
+    if (_performancePage && !_performancePage->applySettings()) success = false;
     if (_cloudLinkPage && !_cloudLinkPage->applySettings()) success = false;
     if (_searchEnginePage && !_searchEnginePage->applySettings()) success = false;
     if (_miscPage && !_miscPage->applySettings()) success = false;

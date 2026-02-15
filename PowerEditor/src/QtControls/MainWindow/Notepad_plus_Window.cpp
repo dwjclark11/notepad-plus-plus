@@ -34,6 +34,7 @@
 #include "../../QtCore/Buffer.h"
 #include "../DocTabView/DocTabView.h"
 #include "../../ScintillaComponent/AutoCompletion.h"
+#include "../../ScintillaComponent/xmlMatchedTagsHighlighter.h"
 #include "ScintillaEditBase.h"
 
 #include <QApplication>
@@ -54,7 +55,12 @@
 #include <QDesktopServices>
 #include <QDebug>
 #include <QDateTime>
+#include <QLocale>
 #include <QClipboard>
+
+// Plugin message dispatcher (defined in NppPluginMessages.cpp, global namespace)
+extern void nppPluginMessageDispatcher_register(Notepad_plus* pNpp);
+extern void nppPluginMessageDispatcher_unregister();
 
 namespace QtControls {
 
@@ -162,6 +168,13 @@ bool MainWindow::init(Notepad_plus* pNotepad_plus)
                 case IDM_FILE_SAVEALL: onFileSaveAll(); break;
                 case IDM_FILE_CLOSE: onFileClose(); break;
                 case IDM_FILE_CLOSEALL: onFileCloseAll(); break;
+                case IDM_FILE_CLOSEALL_BUT_CURRENT: onFileCloseAllButCurrent(); break;
+                case IDM_FILE_CLOSEALL_BUT_PINNED: onFileCloseAllButPinned(); break;
+                case IDM_FILE_CLOSEALL_TOLEFT: onFileCloseAllToLeft(); break;
+                case IDM_FILE_CLOSEALL_TORIGHT: onFileCloseAllToRight(); break;
+                case IDM_FILE_CLOSEALL_UNCHANGED: onFileCloseAllUnchanged(); break;
+                case IDM_FILE_PRINT: onFilePrint(); break;
+                case IDM_FILE_PRINTNOW: onFilePrintNow(); break;
                 case IDM_FILE_EXIT: onFileExit(); break;
 
                 // Edit commands
@@ -172,6 +185,10 @@ bool MainWindow::init(Notepad_plus* pNotepad_plus)
                 case IDM_EDIT_PASTE: onEditPaste(); break;
                 case IDM_EDIT_DELETE: onEditDelete(); break;
                 case IDM_EDIT_SELECTALL: onEditSelectAll(); break;
+                case IDM_EDIT_TOGGLEREADONLY: onEditToggleReadOnly(); break;
+                case IDM_EDIT_INSERT_DATETIME_SHORT: onEditInsertDateTimeShort(); break;
+                case IDM_EDIT_INSERT_DATETIME_LONG: onEditInsertDateTimeLong(); break;
+                case IDM_EDIT_INSERT_DATETIME_CUSTOMIZED: onEditInsertDateTimeCustomized(); break;
 
                 // Search commands
                 case IDM_SEARCH_FIND: onSearchFind(); break;
@@ -457,6 +474,7 @@ void MainWindow::connectSignals()
             if (mainSciWidget) {
                 connect(mainSciWidget, &ScintillaEditBase::charAdded, this, [this](int ch) {
                     if (!_pNotepad_plus) return;
+                    _pNotepad_plus->maintainIndentation(static_cast<wchar_t>(ch));
                     AutoCompletion* autoC = _pNotepad_plus->getAutoCompleteMain();
                     if (autoC) {
                         autoC->update(ch);
@@ -470,6 +488,7 @@ void MainWindow::connectSignals()
             if (subSciWidget) {
                 connect(subSciWidget, &ScintillaEditBase::charAdded, this, [this](int ch) {
                     if (!_pNotepad_plus) return;
+                    _pNotepad_plus->maintainIndentation(static_cast<wchar_t>(ch));
                     AutoCompletion* autoC = _pNotepad_plus->getAutoCompleteSub();
                     if (autoC) {
                         autoC->update(ch);
@@ -519,6 +538,13 @@ void MainWindow::createDockWindows()
     _dockingManager->addPanel("fileBrowser", _fileBrowser->getWidget(),
                                DockingManager::DockArea::Left, tr("Folder as Workspace"));
 
+    // Connect file browser's open request to file opening
+    connect(_fileBrowser, &FileBrowser::fileOpenRequested, this, [this](const QString& filePath) {
+        if (_pNotepad_plus) {
+            _pNotepad_plus->doOpen(filePath.toStdWString());
+        }
+    });
+
     // Connect Scintilla painted() signals to Document Map scroll sync
     if (_documentMap && _pNotepad_plus)
     {
@@ -544,6 +570,55 @@ void MainWindow::createDockWindows()
                         _documentMap, &DocumentMap::onMainEditorScrolled);
             }
         }
+    }
+
+    // Connect Scintilla updateUi signals for sync scroll and XML tag matching
+    if (_pNotepad_plus)
+    {
+        ScintillaEditView* mainEditView = _pNotepad_plus->getMainEditView();
+        ScintillaEditView* subEditView = _pNotepad_plus->getSubEditView();
+
+        auto connectUpdateUi = [this](ScintillaEditView* editView) {
+            if (!editView || !editView->getWidget())
+                return;
+            auto* sciWidget = qobject_cast<ScintillaEditBase*>(editView->getWidget());
+            if (!sciWidget)
+                return;
+
+            connect(sciWidget, &ScintillaEditBase::updateUi, this,
+                [this, editView](Scintilla::Update updated) {
+                    if (!_pNotepad_plus)
+                        return;
+
+                    // Synchronized scrolling
+                    int updateFlags = static_cast<int>(updated);
+                    if ((updateFlags & SC_UPDATE_V_SCROLL) || (updateFlags & SC_UPDATE_H_SCROLL))
+                    {
+                        if (_pNotepad_plus->getSyncInfo().doSync())
+                        {
+                            _pNotepad_plus->doSynScroll(editView);
+                        }
+                    }
+
+                    // XML tag matching on cursor movement
+                    if (updateFlags & SC_UPDATE_SELECTION)
+                    {
+                        const NppGUI& nppGui = NppParameters::getInstance().getNppGUI();
+                        if (nppGui._enableTagsMatchHilite)
+                        {
+                            ScintillaEditView* activeView = _pNotepad_plus->getCurrentEditView();
+                            if (activeView == editView)
+                            {
+                                XmlMatchedTagsHighlighter xmlTagMatchHiliter(activeView);
+                                xmlTagMatchHiliter.tagMatch(nppGui._enableTagAttrsHilite);
+                            }
+                        }
+                    }
+                });
+        };
+
+        connectUpdateUi(mainEditView);
+        connectUpdateUi(subEditView);
     }
 
     // Initially hide all panels
@@ -690,11 +765,35 @@ void MainWindow::createFileMenu()
     // Close All
     _fileMenu->addAction(tr("Clos&e All"), this, &MainWindow::onFileCloseAll);
 
+    // Close Multiple Tabs submenu
+    auto* closeMultipleMenu = _fileMenu->addMenu(tr("Close Multiple Tabs"));
+    auto* closeAllButCurrentAction = closeMultipleMenu->addAction(tr("Close All But Active Document"), this, &MainWindow::onFileCloseAllButCurrent);
+    closeAllButCurrentAction->setProperty("commandId", IDM_FILE_CLOSEALL_BUT_CURRENT);
+    auto* closeAllButPinnedAction = closeMultipleMenu->addAction(tr("Close All But Pinned Documents"), this, &MainWindow::onFileCloseAllButPinned);
+    closeAllButPinnedAction->setProperty("commandId", IDM_FILE_CLOSEALL_BUT_PINNED);
+    auto* closeAllToLeftAction = closeMultipleMenu->addAction(tr("Close All to the Left"), this, &MainWindow::onFileCloseAllToLeft);
+    closeAllToLeftAction->setProperty("commandId", IDM_FILE_CLOSEALL_TOLEFT);
+    auto* closeAllToRightAction = closeMultipleMenu->addAction(tr("Close All to the Right"), this, &MainWindow::onFileCloseAllToRight);
+    closeAllToRightAction->setProperty("commandId", IDM_FILE_CLOSEALL_TORIGHT);
+    auto* closeAllUnchangedAction = closeMultipleMenu->addAction(tr("Close All Unchanged"), this, &MainWindow::onFileCloseAllUnchanged);
+    closeAllUnchangedAction->setProperty("commandId", IDM_FILE_CLOSEALL_UNCHANGED);
+
     _fileMenu->addSeparator();
 
     // Recent files submenu
     _recentFilesMenu = _fileMenu->addMenu(tr("Recent Files"));
     connect(_recentFilesMenu, &QMenu::aboutToShow, this, &MainWindow::onRecentFilesMenuAboutToShow);
+
+    _fileMenu->addSeparator();
+
+    // Print
+    auto* printAction = _fileMenu->addAction(tr("&Print..."), this, &MainWindow::onFilePrint);
+    printAction->setShortcut(QKeySequence::Print);
+    printAction->setProperty("commandId", IDM_FILE_PRINT);
+
+    // Print Now
+    auto* printNowAction = _fileMenu->addAction(tr("Print No&w"), this, &MainWindow::onFilePrintNow);
+    printNowAction->setProperty("commandId", IDM_FILE_PRINTNOW);
 
     _fileMenu->addSeparator();
 
@@ -743,7 +842,13 @@ void MainWindow::createEditMenu()
 
     // Insert submenu
     auto* insertMenu = _editMenu->addMenu(tr("Insert"));
-    insertMenu->addAction(tr("Current Date and Time"), this, &MainWindow::onEditInsertDateTime);
+    auto* dateTimeShortAction = insertMenu->addAction(tr("Date and Time - Short"), this, &MainWindow::onEditInsertDateTimeShort);
+    dateTimeShortAction->setProperty("commandId", IDM_EDIT_INSERT_DATETIME_SHORT);
+    auto* dateTimeLongAction = insertMenu->addAction(tr("Date and Time - Long"), this, &MainWindow::onEditInsertDateTimeLong);
+    dateTimeLongAction->setProperty("commandId", IDM_EDIT_INSERT_DATETIME_LONG);
+    auto* dateTimeCustomAction = insertMenu->addAction(tr("Date and Time - Customized"), this, &MainWindow::onEditInsertDateTimeCustomized);
+    dateTimeCustomAction->setProperty("commandId", IDM_EDIT_INSERT_DATETIME_CUSTOMIZED);
+    insertMenu->addSeparator();
     insertMenu->addAction(tr("Full File Path"), this, &MainWindow::onEditInsertFullPath);
     insertMenu->addAction(tr("File Name"), this, &MainWindow::onEditInsertFileName);
     insertMenu->addAction(tr("Current Directory"), this, &MainWindow::onEditInsertDirPath);
@@ -764,6 +869,13 @@ void MainWindow::createEditMenu()
     convertMenu->addAction(tr("Uppercase"), this, &MainWindow::onEditUpperCase);
     convertMenu->addAction(tr("Lowercase"), this, &MainWindow::onEditLowerCase);
     convertMenu->addAction(tr("Title Case"), this, &MainWindow::onEditTitleCase);
+
+    _editMenu->addSeparator();
+
+    // Read-Only toggle
+    auto* readOnlyAction = _editMenu->addAction(tr("Set Read-Only"), this, &MainWindow::onEditToggleReadOnly);
+    readOnlyAction->setCheckable(true);
+    readOnlyAction->setProperty("commandId", IDM_EDIT_TOGGLEREADONLY);
 }
 
 void MainWindow::createSearchMenu()
@@ -1970,6 +2082,9 @@ void MainWindow::closeEvent(QCloseEvent* event)
         // Notify plugins of final shutdown
         scnN.nmhdr.code = NPPN_SHUTDOWN;
         pluginsManager.notify(&scnN);
+
+        // Unregister the plugin message dispatcher
+        ::nppPluginMessageDispatcher_unregister();
     }
 
     saveSettings();
@@ -2142,6 +2257,55 @@ void MainWindow::onFileCloseAll()
     }
 }
 
+void MainWindow::onFileCloseAllButCurrent()
+{
+    if (_pNotepad_plus) {
+        _pNotepad_plus->fileCloseAllButCurrent();
+    }
+}
+
+void MainWindow::onFileCloseAllButPinned()
+{
+    if (_pNotepad_plus) {
+        _pNotepad_plus->fileCloseAllButPinned();
+    }
+}
+
+void MainWindow::onFileCloseAllToLeft()
+{
+    if (_pNotepad_plus) {
+        _pNotepad_plus->fileCloseAllToLeft();
+    }
+}
+
+void MainWindow::onFileCloseAllToRight()
+{
+    if (_pNotepad_plus) {
+        _pNotepad_plus->fileCloseAllToRight();
+    }
+}
+
+void MainWindow::onFileCloseAllUnchanged()
+{
+    if (_pNotepad_plus) {
+        _pNotepad_plus->fileCloseAllUnchanged();
+    }
+}
+
+void MainWindow::onFilePrint()
+{
+    if (_pNotepad_plus) {
+        _pNotepad_plus->filePrint(true);
+    }
+}
+
+void MainWindow::onFilePrintNow()
+{
+    if (_pNotepad_plus) {
+        _pNotepad_plus->filePrint(false);
+    }
+}
+
 void MainWindow::onFileExit()
 {
     close();
@@ -2284,6 +2448,94 @@ void MainWindow::onEditInsertDateTime()
             QString dateTime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
             view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(dateTime.toUtf8().constData()));
         }
+    }
+}
+
+void MainWindow::onEditInsertDateTimeShort()
+{
+    if (!_pNotepad_plus) return;
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    QDateTime now = QDateTime::currentDateTime();
+    QLocale locale;
+    QString dateStr = locale.toString(now.date(), QLocale::ShortFormat);
+    QString timeStr = locale.toString(now.time(), QLocale::ShortFormat);
+
+    QString dateTimeStr;
+    const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+    if (nppGUI._dateTimeReverseDefaultOrder)
+        dateTimeStr = dateStr + " " + timeStr;
+    else
+        dateTimeStr = timeStr + " " + dateStr;
+
+    view->execute(SCI_BEGINUNDOACTION);
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(""));
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(dateTimeStr.toUtf8().constData()));
+    view->execute(SCI_ENDUNDOACTION);
+}
+
+void MainWindow::onEditInsertDateTimeLong()
+{
+    if (!_pNotepad_plus) return;
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    QDateTime now = QDateTime::currentDateTime();
+    QLocale locale;
+    QString dateStr = locale.toString(now.date(), QLocale::LongFormat);
+    QString timeStr = locale.toString(now.time(), QLocale::ShortFormat);
+
+    QString dateTimeStr;
+    const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+    if (nppGUI._dateTimeReverseDefaultOrder)
+        dateTimeStr = dateStr + " " + timeStr;
+    else
+        dateTimeStr = timeStr + " " + dateStr;
+
+    view->execute(SCI_BEGINUNDOACTION);
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(""));
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(dateTimeStr.toUtf8().constData()));
+    view->execute(SCI_ENDUNDOACTION);
+}
+
+void MainWindow::onEditInsertDateTimeCustomized()
+{
+    if (!_pNotepad_plus) return;
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (!view) return;
+
+    QDateTime now = QDateTime::currentDateTime();
+    const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+
+    // Convert Windows-style format to Qt format
+    QString format = QString::fromStdWString(nppGUI._dateTimeFormat);
+    // Convert Windows 'tt' (AM/PM) to Qt 'AP'
+    format.replace("tt", "AP");
+    format.replace("t", "A");
+
+    QString dateTimeStr = now.toString(format);
+
+    view->execute(SCI_BEGINUNDOACTION);
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(""));
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<sptr_t>(dateTimeStr.toUtf8().constData()));
+    view->execute(SCI_ENDUNDOACTION);
+}
+
+void MainWindow::onEditToggleReadOnly()
+{
+    if (!_pNotepad_plus) return;
+    Buffer* buf = _pNotepad_plus->getCurrentBuffer();
+    if (!buf) return;
+
+    bool newReadOnly = !buf->isUserReadOnly();
+    buf->setUserReadOnly(newReadOnly);
+
+    // Update Scintilla read-only state
+    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+    if (view)
+    {
+        view->execute(SCI_SETREADONLY, newReadOnly ? 1 : 0);
     }
 }
 
@@ -2928,6 +3180,9 @@ void MainWindow::initPlugins()
 
     // Initialize plugin manager
     _pNotepad_plus->getPluginsManager().init(nppData);
+
+    // Register the plugin message dispatcher so plugins can call SendMessage()
+    ::nppPluginMessageDispatcher_register(_pNotepad_plus);
 
     // Load plugins from the plugins directory
     NppParameters& nppParam = NppParameters::getInstance();

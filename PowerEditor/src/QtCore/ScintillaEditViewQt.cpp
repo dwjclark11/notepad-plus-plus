@@ -41,6 +41,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <random>
 #include <unordered_set>
 #include <iostream>
 #include <cctype>
@@ -966,7 +967,7 @@ void ScintillaEditView::changeCase(wchar_t* strWToConvert, const int& nbChars, c
         {
             for (int i = 0; i < nbChars; ++i)
             {
-                strWToConvert[i] = static_cast<wchar_t>(toupper(strWToConvert[i]));
+                strWToConvert[i] = static_cast<wchar_t>(towupper(strWToConvert[i]));
             }
             break;
         }
@@ -974,7 +975,7 @@ void ScintillaEditView::changeCase(wchar_t* strWToConvert, const int& nbChars, c
         {
             for (int i = 0; i < nbChars; ++i)
             {
-                strWToConvert[i] = static_cast<wchar_t>(tolower(strWToConvert[i]));
+                strWToConvert[i] = static_cast<wchar_t>(towlower(strWToConvert[i]));
             }
             break;
         }
@@ -985,18 +986,74 @@ void ScintillaEditView::changeCase(wchar_t* strWToConvert, const int& nbChars, c
             bool newWord = true;
             for (int i = 0; i < nbChars; ++i)
             {
-                if (iswspace(strWToConvert[i]) || ispunct(strWToConvert[i]))
+                if (iswspace(strWToConvert[i]) || iswpunct(strWToConvert[i]))
                 {
                     newWord = true;
                 }
                 else if (newWord)
                 {
-                    strWToConvert[i] = static_cast<wchar_t>(toupper(strWToConvert[i]));
+                    strWToConvert[i] = static_cast<wchar_t>(towupper(strWToConvert[i]));
                     newWord = false;
                 }
                 else if (caseToConvert == PROPERCASE_FORCE)
                 {
-                    strWToConvert[i] = static_cast<wchar_t>(tolower(strWToConvert[i]));
+                    strWToConvert[i] = static_cast<wchar_t>(towlower(strWToConvert[i]));
+                }
+            }
+            break;
+        }
+        case SENTENCECASE_FORCE:
+        case SENTENCECASE_BLEND:
+        {
+            // Sentence case: capitalize first letter after sentence-ending punctuation
+            bool newSentence = true;
+            for (int i = 0; i < nbChars; ++i)
+            {
+                if (strWToConvert[i] == L'.' || strWToConvert[i] == L'!' ||
+                    strWToConvert[i] == L'?' || strWToConvert[i] == L'\r' ||
+                    strWToConvert[i] == L'\n')
+                {
+                    newSentence = true;
+                }
+                else if (iswspace(strWToConvert[i]))
+                {
+                    // Skip whitespace after punctuation
+                }
+                else if (newSentence)
+                {
+                    strWToConvert[i] = static_cast<wchar_t>(towupper(strWToConvert[i]));
+                    newSentence = false;
+                }
+                else if (caseToConvert == SENTENCECASE_FORCE)
+                {
+                    strWToConvert[i] = static_cast<wchar_t>(towlower(strWToConvert[i]));
+                }
+            }
+            break;
+        }
+        case INVERTCASE:
+        {
+            for (int i = 0; i < nbChars; ++i)
+            {
+                if (iswupper(strWToConvert[i]))
+                    strWToConvert[i] = static_cast<wchar_t>(towlower(strWToConvert[i]));
+                else if (iswlower(strWToConvert[i]))
+                    strWToConvert[i] = static_cast<wchar_t>(towupper(strWToConvert[i]));
+            }
+            break;
+        }
+        case RANDOMCASE:
+        {
+            std::mt19937 rng(std::random_device{}());
+            std::uniform_int_distribution<int> dist(0, 1);
+            for (int i = 0; i < nbChars; ++i)
+            {
+                if (iswalpha(strWToConvert[i]))
+                {
+                    if (dist(rng))
+                        strWToConvert[i] = static_cast<wchar_t>(towupper(strWToConvert[i]));
+                    else
+                        strWToConvert[i] = static_cast<wchar_t>(towlower(strWToConvert[i]));
                 }
             }
             break;
@@ -3197,6 +3254,92 @@ void ScintillaEditView::init(QWidget* parent)
                     return;
                 }
                 break;
+            }
+
+            case '>':
+            {
+                if (!matchedPairConf._doHtmlXmlTag)
+                    break;
+
+                Buffer* curBuf = getCurrentBuffer();
+                if (!curBuf)
+                    break;
+
+                LangType lang = curBuf->getLangType();
+                if (lang != L_HTML && lang != L_XML)
+                    break;
+
+                bool isHTML = (lang == L_HTML);
+
+                // Skip if caret is within scripting language in HTML
+                if (isHTML)
+                {
+                    size_t style = execute(SCI_GETSTYLEAT, caretPos);
+                    if (style >= SCE_HJ_START)
+                        break;
+                }
+
+                char prev = (caretPos >= 2) ? static_cast<char>(execute(SCI_GETCHARAT, caretPos - 2)) : '\0';
+                char prevprev = (caretPos >= 3) ? static_cast<char>(execute(SCI_GETCHARAT, caretPos - 3)) : '\0';
+
+                // Closing a comment "-->", self-closing "/>" ignored
+                if ((prevprev == '-' && prev == '-') || prev == '/')
+                    break;
+
+                int flags = SCFIND_REGEXP | SCFIND_POSIX;
+                execute(SCI_SETSEARCHFLAGS, flags);
+                execute(SCI_SETTARGETRANGE, caretPos, 0);
+
+                const char tag2find[] = "<[^\\s>]*";
+                intptr_t targetStart = execute(SCI_SEARCHINTARGET, strlen(tag2find), reinterpret_cast<LPARAM>(tag2find));
+                if (targetStart < 0)
+                    break;
+
+                intptr_t targetEnd = execute(SCI_GETTARGETEND);
+                intptr_t foundTextLen = targetEnd - targetStart;
+                if (foundTextLen < 2) // "<>" ignored
+                    break;
+
+                static constexpr size_t closeTagMaxLen = 256;
+                if (foundTextLen > static_cast<intptr_t>(closeTagMaxLen) - 4) // buffer too small
+                    break;
+
+                char tagHead[closeTagMaxLen]{};
+                getText(tagHead, targetStart, targetEnd);
+
+                if (tagHead[1] == '/' || tagHead[1] == '?')
+                    break;
+                if (std::strncmp(tagHead, "<!--", 4) == 0)
+                    break;
+
+                if (isHTML)
+                {
+                    static constexpr const char* voidElements[] = {
+                        "area", "base", "br", "col", "embed", "hr", "img", "input",
+                        "keygen", "link", "meta", "param", "source", "track", "wbr",
+                        "!doctype"
+                    };
+                    bool isVoid = false;
+                    for (const char* ve : voidElements)
+                    {
+                        if (strncasecmp(tagHead + 1, ve, std::strlen(ve)) == 0)
+                        {
+                            isVoid = true;
+                            break;
+                        }
+                    }
+                    if (isVoid)
+                        break;
+                }
+
+                char closeTag[closeTagMaxLen]{};
+                closeTag[0] = '<';
+                closeTag[1] = '/';
+                getText(closeTag + 2, targetStart + 1, targetEnd);
+                closeTag[foundTextLen + 1] = '>';
+                closeTag[foundTextLen + 2] = '\0';
+                execute(SCI_INSERTTEXT, caretPos, reinterpret_cast<LPARAM>(closeTag));
+                return;
             }
 
             default:

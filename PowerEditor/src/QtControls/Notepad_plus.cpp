@@ -1229,12 +1229,32 @@ void Notepad_plus::notifyBufferChanged(Buffer* buffer, int mask)
 
 void Notepad_plus::launchFileBrowser(const std::vector<std::wstring>& folders, const std::wstring& selectedItemPath, bool fromScratch)
 {
-    Q_UNUSED(folders);
-    Q_UNUSED(selectedItemPath);
     Q_UNUSED(fromScratch);
 
-    // TODO: Implement file browser panel launch
-    // This would show the file browser panel with the specified folders
+    // Get the MainWindow via the edit view's widget hierarchy
+    QWidget* w = _mainEditView.getWidget();
+    if (!w) return;
+    QWidget* topLevel = w->window();
+    auto* mainWin = qobject_cast<QtControls::MainWindow::MainWindow*>(topLevel);
+    if (!mainWin) return;
+
+    // Show the file browser panel
+    mainWin->showPanel("fileBrowser", true);
+
+    auto* fileBrowser = mainWin->getFileBrowser();
+    if (!fileBrowser) return;
+
+    // Add root folders
+    for (const auto& folder : folders)
+    {
+        fileBrowser->addRootFolder(QString::fromStdWString(folder));
+    }
+
+    // Navigate to selected item if specified
+    if (!selectedItemPath.empty())
+    {
+        fileBrowser->navigateToFile(QString::fromStdWString(selectedItemPath));
+    }
 }
 
 // ============================================================================
@@ -2371,12 +2391,85 @@ void Notepad_plus::showCcUniEol(bool show)
 
 void Notepad_plus::toggleSyncScrollV()
 {
-    _syncInfo._isSynScrollV = !_syncInfo._isSynScrollV;
+	_syncInfo._isSynScrollV = !_syncInfo._isSynScrollV;
+	if (_syncInfo._isSynScrollV)
+	{
+		intptr_t mainCurrentLine = _mainEditView.execute(SCI_GETFIRSTVISIBLELINE);
+		intptr_t subCurrentLine = _subEditView.execute(SCI_GETFIRSTVISIBLELINE);
+		_syncInfo._line = mainCurrentLine - subCurrentLine;
+	}
 }
 
 void Notepad_plus::toggleSyncScrollH()
 {
-    _syncInfo._isSynScrollH = !_syncInfo._isSynScrollH;
+	_syncInfo._isSynScrollH = !_syncInfo._isSynScrollH;
+	if (_syncInfo._isSynScrollH)
+	{
+		intptr_t mxoffset = _mainEditView.execute(SCI_GETXOFFSET);
+		intptr_t pixel = _mainEditView.execute(SCI_TEXTWIDTH, STYLE_DEFAULT, reinterpret_cast<LPARAM>("P"));
+		intptr_t mainColumn = mxoffset / pixel;
+
+		intptr_t sxoffset = _subEditView.execute(SCI_GETXOFFSET);
+		pixel = _subEditView.execute(SCI_TEXTWIDTH, STYLE_DEFAULT, reinterpret_cast<LPARAM>("P"));
+		intptr_t subColumn = sxoffset / pixel;
+		_syncInfo._column = mainColumn - subColumn;
+	}
+}
+
+void Notepad_plus::doSynScroll(ScintillaEditView* whichView)
+{
+	intptr_t column = 0;
+	intptr_t line = 0;
+	ScintillaEditView* pView = nullptr;
+
+	if (whichView == &_mainEditView)
+	{
+		if (_syncInfo._isSynScrollV)
+		{
+			intptr_t mainCurrentLine = _mainEditView.execute(SCI_GETFIRSTVISIBLELINE);
+			intptr_t subCurrentLine = _subEditView.execute(SCI_GETFIRSTVISIBLELINE);
+			line = mainCurrentLine - _syncInfo._line - subCurrentLine;
+		}
+		if (_syncInfo._isSynScrollH)
+		{
+			intptr_t mxoffset = _mainEditView.execute(SCI_GETXOFFSET);
+			intptr_t pixel = _mainEditView.execute(SCI_TEXTWIDTH, STYLE_DEFAULT, reinterpret_cast<LPARAM>("P"));
+			intptr_t mainColumn = mxoffset / pixel;
+
+			intptr_t sxoffset = _subEditView.execute(SCI_GETXOFFSET);
+			pixel = _subEditView.execute(SCI_TEXTWIDTH, STYLE_DEFAULT, reinterpret_cast<LPARAM>("P"));
+			intptr_t subColumn = sxoffset / pixel;
+			column = mainColumn - _syncInfo._column - subColumn;
+		}
+		pView = &_subEditView;
+	}
+	else if (whichView == &_subEditView)
+	{
+		if (_syncInfo._isSynScrollV)
+		{
+			intptr_t mainCurrentLine = _mainEditView.execute(SCI_GETFIRSTVISIBLELINE);
+			intptr_t subCurrentLine = _subEditView.execute(SCI_GETFIRSTVISIBLELINE);
+			line = subCurrentLine + _syncInfo._line - mainCurrentLine;
+		}
+		if (_syncInfo._isSynScrollH)
+		{
+			intptr_t mxoffset = _mainEditView.execute(SCI_GETXOFFSET);
+			intptr_t pixel = _mainEditView.execute(SCI_TEXTWIDTH, STYLE_DEFAULT, reinterpret_cast<LPARAM>("P"));
+			intptr_t mainColumn = mxoffset / pixel;
+
+			intptr_t sxoffset = _subEditView.execute(SCI_GETXOFFSET);
+			pixel = _subEditView.execute(SCI_TEXTWIDTH, STYLE_DEFAULT, reinterpret_cast<LPARAM>("P"));
+			intptr_t subColumn = sxoffset / pixel;
+			column = subColumn + _syncInfo._column - mainColumn;
+		}
+		pView = &_mainEditView;
+	}
+	else
+	{
+		return;
+	}
+
+	pView->scroll(column, line);
 }
 
 // ============================================================================
@@ -2539,6 +2632,51 @@ void Notepad_plus::showFindReplaceDlg(int dialogType)
     if (!_findReplaceDlg.isCreated())
     {
         _findReplaceDlg.init(&_pEditView);
+
+        // Set up callbacks for multi-document search operations
+        _findReplaceDlg.setGetOpenBuffersCallback([this]() -> std::vector<NppFindReplace::FindReplaceDlg::BufferInfo> {
+            std::vector<NppFindReplace::FindReplaceDlg::BufferInfo> buffers;
+            for (size_t i = 0; i < _mainDocTab.nbItem(); ++i)
+            {
+                BufferID id = _mainDocTab.getBufferByIndex(i);
+                QtCore::Buffer* buf = MainFileManager.getBufferByID(id);
+                if (buf)
+                {
+                    buffers.push_back({static_cast<void*>(id), buf->getFilePath()});
+                }
+            }
+            return buffers;
+        });
+
+        _findReplaceDlg.setActivateBufferCallback([this](void* bufferID) -> bool {
+            return activateBuffer(static_cast<BufferID>(bufferID), currentView());
+        });
+
+        _findReplaceDlg.setGetActiveFilePathCallback([this]() -> QString {
+            if (!_pEditView) return QString();
+            BufferID id = _pEditView->getCurrentBufferID();
+            QtCore::Buffer* buf = MainFileManager.getBufferByID(id);
+            if (buf)
+            {
+                return buf->getFilePath();
+            }
+            return QString();
+        });
+
+        _findReplaceDlg.setGetProjectFilesCallback([this](int panelIndex) -> QStringList {
+            auto* mainWin = getMainWindow(_mainEditView);
+            if (!mainWin) return {};
+            // Currently only one project panel is supported on Linux
+            if (panelIndex == 1)
+            {
+                auto* panel = mainWin->getProjectPanel();
+                if (panel)
+                {
+                    return panel->getAllFilePaths();
+                }
+            }
+            return {};
+        });
     }
 
     // Map dialog type to DIALOG_TYPE enum
@@ -2696,18 +2834,23 @@ bool Notepad_plus::goToNextIndicator(int indicID2Search, bool isWrap) const
 
     _pEditView->execute(SCI_SETINDICATORCURRENT, indicID2Search);
 
-    // Search forward for the indicator
-    intptr_t pos = currentPos;
+    // Use SCI_INDICATOREND to efficiently skip to next indicator boundary
+    intptr_t pos = currentPos + 1;
     while (pos < endPos)
     {
         intptr_t value = _pEditView->execute(SCI_INDICATORVALUEAT, indicID2Search, pos);
         if (value > 0)
         {
-            // Found indicator - jump to it
-            _pEditView->execute(SCI_GOTOPOS, pos);
+            // Found indicator - jump to its start
+            intptr_t indicStart = _pEditView->execute(SCI_INDICATORSTART, indicID2Search, pos);
+            _pEditView->execute(SCI_GOTOPOS, indicStart);
             return true;
         }
-        pos++;
+        // Jump to end of current non-indicator region
+        intptr_t nextBoundary = _pEditView->execute(SCI_INDICATOREND, indicID2Search, pos);
+        if (nextBoundary <= pos)
+            break;
+        pos = nextBoundary;
     }
 
     // Wrap around if enabled
@@ -2719,10 +2862,14 @@ bool Notepad_plus::goToNextIndicator(int indicID2Search, bool isWrap) const
             intptr_t value = _pEditView->execute(SCI_INDICATORVALUEAT, indicID2Search, pos);
             if (value > 0)
             {
-                _pEditView->execute(SCI_GOTOPOS, pos);
+                intptr_t indicStart = _pEditView->execute(SCI_INDICATORSTART, indicID2Search, pos);
+                _pEditView->execute(SCI_GOTOPOS, indicStart);
                 return true;
             }
-            pos++;
+            intptr_t nextBoundary = _pEditView->execute(SCI_INDICATOREND, indicID2Search, pos);
+            if (nextBoundary <= pos)
+                break;
+            pos = nextBoundary;
         }
     }
 
@@ -2738,18 +2885,28 @@ bool Notepad_plus::goToPreviousIndicator(int indicID2Search, bool isWrap) const
 
     _pEditView->execute(SCI_SETINDICATORCURRENT, indicID2Search);
 
-    // Search backward for the indicator
-    intptr_t pos = currentPos;
+    // Search backward for the indicator using SCI_INDICATORSTART
+    intptr_t pos = currentPos - 1;
     while (pos >= 0)
     {
         intptr_t value = _pEditView->execute(SCI_INDICATORVALUEAT, indicID2Search, pos);
         if (value > 0)
         {
-            // Found indicator - jump to it
-            _pEditView->execute(SCI_GOTOPOS, pos);
+            // Found indicator - jump to its start
+            intptr_t indicStart = _pEditView->execute(SCI_INDICATORSTART, indicID2Search, pos);
+            _pEditView->execute(SCI_GOTOPOS, indicStart);
             return true;
         }
-        pos--;
+        // Jump backwards to start of current non-indicator region
+        intptr_t prevBoundary = _pEditView->execute(SCI_INDICATORSTART, indicID2Search, pos);
+        if (prevBoundary >= pos)
+        {
+            --pos;
+        }
+        else
+        {
+            pos = prevBoundary - 1;
+        }
     }
 
     // Wrap around if enabled
@@ -2762,10 +2919,19 @@ bool Notepad_plus::goToPreviousIndicator(int indicID2Search, bool isWrap) const
             intptr_t value = _pEditView->execute(SCI_INDICATORVALUEAT, indicID2Search, pos);
             if (value > 0)
             {
-                _pEditView->execute(SCI_GOTOPOS, pos);
+                intptr_t indicStart = _pEditView->execute(SCI_INDICATORSTART, indicID2Search, pos);
+                _pEditView->execute(SCI_GOTOPOS, indicStart);
                 return true;
             }
-            pos--;
+            intptr_t prevBoundary = _pEditView->execute(SCI_INDICATORSTART, indicID2Search, pos);
+            if (prevBoundary >= pos)
+            {
+                --pos;
+            }
+            else
+            {
+                pos = prevBoundary - 1;
+            }
         }
     }
 
@@ -3918,6 +4084,300 @@ bool Notepad_plus::loadSession(Session& session, bool isSnapshotMode, const wcha
     checkSyncState();
 
     return allSessionFilesLoaded;
+}
+
+bool Notepad_plus::isConditionExprLine(intptr_t lineNumber)
+{
+	if (lineNumber < 0 || lineNumber > _pEditView->execute(SCI_GETLINECOUNT))
+		return false;
+
+	auto startPos = _pEditView->execute(SCI_POSITIONFROMLINE, lineNumber);
+	auto endPos = _pEditView->execute(SCI_GETLINEENDPOSITION, lineNumber);
+	_pEditView->execute(SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_POSIX);
+	_pEditView->execute(SCI_SETTARGETRANGE, startPos, endPos);
+
+	const char ifElseForWhileExpr[] = "((else[ \t]+)?if|for|while)[ \t]*[(].*[)][ \t]*|else[ \t]*";
+
+	auto posFound = _pEditView->execute(SCI_SEARCHINTARGET, strlen(ifElseForWhileExpr), reinterpret_cast<LPARAM>(ifElseForWhileExpr));
+	if (posFound >= 0)
+	{
+		auto end = _pEditView->execute(SCI_GETTARGETEND);
+		if (end == endPos)
+			return true;
+	}
+
+	return false;
+}
+
+intptr_t Notepad_plus::findMachedBracePos(size_t startPos, size_t endPos, char targetSymbol, char matchedSymbol)
+{
+	if (startPos == endPos)
+		return -1;
+
+	if (startPos > endPos) // backward
+	{
+		int balance = 0;
+		for (intptr_t i = startPos; i >= static_cast<intptr_t>(endPos); --i)
+		{
+			char aChar = static_cast<char>(_pEditView->execute(SCI_GETCHARAT, i));
+			if (aChar == targetSymbol)
+			{
+				if (balance == 0)
+					return i;
+				--balance;
+			}
+			else if (aChar == matchedSymbol)
+			{
+				++balance;
+			}
+		}
+	}
+	else // forward
+	{
+	}
+	return -1;
+}
+
+void Notepad_plus::maintainIndentation(wchar_t ch)
+{
+	const NppGUI& nppGui = NppParameters::getInstance().getNppGUI();
+	if (nppGui._maintainIndent == autoIndent_none)
+		return;
+
+	intptr_t eolMode = _pEditView->execute(SCI_GETEOLMODE);
+	intptr_t curLine = _pEditView->getCurrentLineNumber();
+	intptr_t prevLine = curLine - 1;
+	intptr_t indentAmountPrevLine = 0;
+	intptr_t tabWidth = _pEditView->execute(SCI_GETTABWIDTH);
+
+	// Do not alter indentation if we were at the beginning of the line and we pressed Enter
+	if ((((eolMode == SC_EOL_CRLF || eolMode == SC_EOL_LF) && ch == '\n') ||
+		(eolMode == SC_EOL_CR && ch == '\r')) && prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
+		return;
+
+	LangType type = _pEditView->getCurrentBuffer()->getLangType();
+	ExternalLexerAutoIndentMode autoIndentMode = ExternalLexerAutoIndentMode::Standard;
+
+	// For external languages, query for custom auto-indentation functionality
+	if (type >= L_EXTERNAL)
+	{
+		NppParameters& nppParam = NppParameters::getInstance();
+		autoIndentMode = nppParam.getELCFromIndex(type - L_EXTERNAL)->_autoIndentMode;
+		if (autoIndentMode == ExternalLexerAutoIndentMode::Custom)
+			return;
+	}
+
+	if (nppGui._maintainIndent == autoIndent_basic) // Basic indentation mode only
+	{
+		if (((eolMode == SC_EOL_CRLF || eolMode == SC_EOL_LF) && ch == '\n') ||
+			(eolMode == SC_EOL_CR && ch == '\r'))
+		{
+			// Search the non-empty previous line
+			while (prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
+				prevLine--;
+
+			if (prevLine >= 0)
+			{
+				indentAmountPrevLine = _pEditView->getLineIndent(prevLine);
+			}
+
+			if (indentAmountPrevLine > 0)
+			{
+				_pEditView->setLineIndent(curLine, indentAmountPrevLine);
+			}
+		}
+
+		return;
+	}
+
+	// else nppGui._maintainIndent == autoIndent_advanced
+
+	if (type == L_C || type == L_CPP || type == L_JAVA || type == L_CS || type == L_OBJC ||
+		type == L_PHP || type == L_JS_EMBEDDED || type == L_JAVASCRIPT || type == L_JSP || type == L_CSS || type == L_PERL ||
+		type == L_RUST || type == L_POWERSHELL || type == L_JSON || type == L_JSON5 || type == L_TYPESCRIPT || type == L_GOLANG || type == L_SWIFT ||
+		autoIndentMode == ExternalLexerAutoIndentMode::C_Like)
+	{
+		if (((eolMode == SC_EOL_CRLF || eolMode == SC_EOL_LF) && ch == '\n') ||
+			(eolMode == SC_EOL_CR && ch == '\r'))
+		{
+			// Search the non-empty previous line
+			while (prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
+				prevLine--;
+
+			// Get previous line's Indent
+			if (prevLine >= 0)
+			{
+				indentAmountPrevLine = _pEditView->getLineIndent(prevLine);
+			}
+
+			// get previous char from current line
+			intptr_t prevPos = _pEditView->execute(SCI_GETCURRENTPOS) - (eolMode == SC_EOL_CRLF ? 3 : 2);
+			UCHAR prevChar = (UCHAR)_pEditView->execute(SCI_GETCHARAT, prevPos);
+			auto curPos = _pEditView->execute(SCI_GETCURRENTPOS);
+			UCHAR nextChar = (UCHAR)_pEditView->execute(SCI_GETCHARAT, curPos);
+
+			if (prevChar == '{')
+			{
+				if (nextChar == '}')
+				{
+					const char *eolChars;
+					if (eolMode == SC_EOL_CRLF)
+						eolChars = "\r\n";
+					else if (eolMode == SC_EOL_LF)
+						eolChars = "\n";
+					else
+						eolChars = "\r";
+
+					_pEditView->execute(SCI_INSERTTEXT, _pEditView->execute(SCI_GETCURRENTPOS), reinterpret_cast<LPARAM>(eolChars));
+					_pEditView->setLineIndent(curLine + 1, indentAmountPrevLine);
+				}
+				_pEditView->setLineIndent(curLine, indentAmountPrevLine + tabWidth);
+			}
+			else if (nextChar == '{')
+			{
+				_pEditView->setLineIndent(curLine, indentAmountPrevLine);
+			}
+			// These languages do not support single line control structures without braces.
+			else if (type == L_PERL || type == L_RUST || type == L_POWERSHELL || type == L_JSON || type == L_JSON5)
+			{
+				_pEditView->setLineIndent(curLine, indentAmountPrevLine);
+			}
+			else if (isConditionExprLine(prevLine))
+			{
+				_pEditView->setLineIndent(curLine, indentAmountPrevLine + tabWidth);
+			}
+			else
+			{
+				if (indentAmountPrevLine > 0)
+				{
+					if (prevLine > 0 && isConditionExprLine(prevLine - 1))
+						_pEditView->setLineIndent(curLine, indentAmountPrevLine - tabWidth);
+					else
+						_pEditView->setLineIndent(curLine, indentAmountPrevLine);
+				}
+			}
+		}
+		else if (ch == '{')
+		{
+			// if no character in front of {, aligned with prev line's indentation
+			auto startPos = _pEditView->execute(SCI_POSITIONFROMLINE, curLine);
+			LRESULT endPos = _pEditView->execute(SCI_GETCURRENTPOS);
+
+			for (LRESULT i = endPos - 2; i > 0 && i >= startPos; --i)
+			{
+				UCHAR aChar = (UCHAR)_pEditView->execute(SCI_GETCHARAT, i);
+				if (aChar != ' ' && aChar != '\t')
+					return;
+			}
+
+			// Search the non-empty previous line
+			while (prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
+				prevLine--;
+
+			// Get previous line's Indent
+			if (prevLine >= 0)
+			{
+				indentAmountPrevLine = _pEditView->getLineIndent(prevLine);
+
+				auto startPos2 = _pEditView->execute(SCI_POSITIONFROMLINE, prevLine);
+				auto endPos2 = _pEditView->execute(SCI_GETLINEENDPOSITION, prevLine);
+				_pEditView->execute(SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_POSIX);
+				_pEditView->execute(SCI_SETTARGETRANGE, startPos2, endPos2);
+
+				const char braceExpr[] = "[ \t]*\\{.*";
+
+				intptr_t posFound = _pEditView->execute(SCI_SEARCHINTARGET, strlen(braceExpr), reinterpret_cast<LPARAM>(braceExpr));
+				if (posFound >= 0)
+				{
+					auto end = _pEditView->execute(SCI_GETTARGETEND);
+					if (end == endPos2)
+						indentAmountPrevLine += tabWidth;
+				}
+			}
+
+			_pEditView->setLineIndent(curLine, indentAmountPrevLine);
+		}
+		else if (ch == '}')
+		{
+			// Look backward for the pair {
+			intptr_t startPos = _pEditView->execute(SCI_GETCURRENTPOS);
+			if (startPos != 0)
+				startPos -= 1;
+			intptr_t posFound = findMachedBracePos(startPos - 1, 0, '{', '}');
+
+			// if no { found, do nothing
+			if (posFound == -1)
+				return;
+
+			// if { is in the same line, do nothing
+			intptr_t matchedPairLine = _pEditView->execute(SCI_LINEFROMPOSITION, posFound);
+			if (matchedPairLine == curLine)
+				return;
+
+			// { is in another line, get its indentation
+			indentAmountPrevLine = _pEditView->getLineIndent(matchedPairLine);
+
+			// aligned } indent with {
+			_pEditView->setLineIndent(curLine, indentAmountPrevLine);
+		}
+	}
+	else if (type == L_PYTHON)
+	{
+		if (((eolMode == SC_EOL_CRLF || eolMode == SC_EOL_LF) && ch == '\n') ||
+			(eolMode == SC_EOL_CR && ch == '\r'))
+		{
+			// Search the non-empty previous line
+			while (prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
+				prevLine--;
+
+			// Get previous line's Indent
+			if (prevLine >= 0)
+			{
+				indentAmountPrevLine = _pEditView->getLineIndent(prevLine);
+			}
+
+			_pEditView->execute(SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_POSIX);
+
+			auto startPos = _pEditView->execute(SCI_POSITIONFROMLINE, prevLine);
+			auto endPos = _pEditView->execute(SCI_GETLINEENDPOSITION, prevLine);
+			_pEditView->execute(SCI_SETTARGETRANGE, startPos, endPos);
+
+			// colon optionally followed by only whitespace and/or start-of-comment, but NOT on a line that is already a comment
+			const char colonExpr[] = ":[ \t]*(#|$)";
+
+			auto posColon = _pEditView->execute(SCI_SEARCHINTARGET, strlen(colonExpr), reinterpret_cast<LPARAM>(colonExpr));
+
+			// when colon found, additionally check that it is not in a comment, inside a string, etc.
+			if ((posColon >= 0) && (_pEditView->execute(SCI_GETSTYLEINDEXAT, posColon) == SCE_P_OPERATOR))
+			{
+				_pEditView->setLineIndent(curLine, indentAmountPrevLine + tabWidth);
+			}
+			else if (indentAmountPrevLine > 0)
+			{
+				_pEditView->setLineIndent(curLine, indentAmountPrevLine);
+			}
+		}
+	}
+	else // Basic indentation mode for other language types in advanced mode
+	{
+		if (((eolMode == SC_EOL_CRLF || eolMode == SC_EOL_LF) && ch == '\n') ||
+			(eolMode == SC_EOL_CR && ch == '\r'))
+		{
+			// Search the non-empty previous line
+			while (prevLine >= 0 && _pEditView->getLineLength(prevLine) == 0)
+				prevLine--;
+
+			if (prevLine >= 0)
+			{
+				indentAmountPrevLine = _pEditView->getLineIndent(prevLine);
+			}
+
+			if (indentAmountPrevLine > 0)
+			{
+				_pEditView->setLineIndent(curLine, indentAmountPrevLine);
+			}
+		}
+	}
 }
 
 #endif // NPP_LINUX

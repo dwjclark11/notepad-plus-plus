@@ -27,6 +27,8 @@
 #include <QPrinter>
 #include <QPainter>
 #include <QTextDocument>
+#include <QDateTime>
+#include <QLocale>
 
 // Local headers
 #include "NppCommands.h"
@@ -377,6 +379,12 @@ void NppCommands::registerEditCommands() {
     _handler.registerCommand(CMD_EDIT_LINE_DOWN, [this]() { editLineDown(); });
     _handler.registerCommand(CMD_EDIT_UPPERCASE, [this]() { editUpperCase(); });
     _handler.registerCommand(CMD_EDIT_LOWERCASE, [this]() { editLowerCase(); });
+    _handler.registerCommand(CMD_EDIT_PROPERCASE_FORCE, [this]() { editProperCaseForce(); });
+    _handler.registerCommand(CMD_EDIT_PROPERCASE_BLEND, [this]() { editProperCaseBlend(); });
+    _handler.registerCommand(CMD_EDIT_SENTENCECASE_FORCE, [this]() { editSentenceCaseForce(); });
+    _handler.registerCommand(CMD_EDIT_SENTENCECASE_BLEND, [this]() { editSentenceCaseBlend(); });
+    _handler.registerCommand(CMD_EDIT_INVERTCASE, [this]() { editInvertCase(); });
+    _handler.registerCommand(CMD_EDIT_RANDOMCASE, [this]() { editRandomCase(); });
     _handler.registerCommand(CMD_EDIT_BLOCK_COMMENT, [this]() { editBlockComment(); });
     _handler.registerCommand(CMD_EDIT_BLOCK_COMMENT_SET, [this]() { editBlockCommentSet(); });
     _handler.registerCommand(CMD_EDIT_BLOCK_UNCOMMENT, [this]() { editBlockUncomment(); });
@@ -404,6 +412,10 @@ void NppCommands::registerEditCommands() {
     _handler.registerCommand(CMD_EDIT_SORTLINES_RANDOMLY, [this]() { editSortLines(CMD_EDIT_SORTLINES_RANDOMLY); });
     _handler.registerCommand(CMD_EDIT_SORTLINES_LENGTH_ASC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LENGTH_ASC); });
     _handler.registerCommand(CMD_EDIT_SORTLINES_LENGTH_DESC, [this]() { editSortLines(CMD_EDIT_SORTLINES_LENGTH_DESC); });
+    _handler.registerCommand(CMD_EDIT_INSERT_DATETIME_SHORT, [this]() { editInsertDateTimeShort(); });
+    _handler.registerCommand(CMD_EDIT_INSERT_DATETIME_LONG, [this]() { editInsertDateTimeLong(); });
+    _handler.registerCommand(CMD_EDIT_INSERT_DATETIME_CUSTOMIZED, [this]() { editInsertDateTimeCustomized(); });
+    _handler.registerCommand(CMD_EDIT_TOGGLEREADONLY, [this]() { editToggleReadOnly(); });
 }
 
 void NppCommands::editUndo() {
@@ -681,6 +693,48 @@ void NppCommands::editLowerCase() {
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->convertSelectedTextToLowerCase();
+    }
+}
+
+void NppCommands::editProperCaseForce() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (view) {
+        view->convertSelectedTextTo(PROPERCASE_FORCE);
+    }
+}
+
+void NppCommands::editProperCaseBlend() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (view) {
+        view->convertSelectedTextTo(PROPERCASE_BLEND);
+    }
+}
+
+void NppCommands::editSentenceCaseForce() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (view) {
+        view->convertSelectedTextTo(SENTENCECASE_FORCE);
+    }
+}
+
+void NppCommands::editSentenceCaseBlend() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (view) {
+        view->convertSelectedTextTo(SENTENCECASE_BLEND);
+    }
+}
+
+void NppCommands::editInvertCase() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (view) {
+        view->convertSelectedTextTo(INVERTCASE);
+    }
+}
+
+void NppCommands::editRandomCase() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (view) {
+        view->convertSelectedTextTo(RANDOMCASE);
     }
 }
 
@@ -1103,7 +1157,15 @@ void NppCommands::editToggleReadOnly() {
     if (_pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
         if (buf) {
-            buf->setUserReadOnly(!buf->isUserReadOnly());
+            bool newReadOnly = !buf->isUserReadOnly();
+            buf->setUserReadOnly(newReadOnly);
+
+            // Update Scintilla read-only state
+            ScintillaEditView* view = getCurrentEditView();
+            if (view)
+            {
+                view->execute(SCI_SETREADONLY, newReadOnly ? 1 : 0);
+            }
         }
     }
 }
@@ -1162,11 +1224,77 @@ void NppCommands::editCurrentDirToClipboard() {
 }
 
 void NppCommands::editCopyAllNames() {
-    // Copy all file names to clipboard
+    if (!_pNotepad_plus) return;
+
+    QString result;
+    DocTabView* mainDocTab = _pNotepad_plus->getMainDocTab();
+    DocTabView* subDocTab = _pNotepad_plus->getSubDocTab();
+
+    std::vector<Buffer*> buffers;
+    if (mainDocTab)
+    {
+        for (size_t i = 0; i < mainDocTab->nbItem(); ++i)
+        {
+            BufferID bufID = mainDocTab->getBufferByIndex(i);
+            Buffer* buf = MainFileManager.getBufferByID(bufID);
+            if (buf) buffers.push_back(buf);
+        }
+    }
+    if (subDocTab)
+    {
+        for (size_t i = 0; i < subDocTab->nbItem(); ++i)
+        {
+            BufferID bufID = subDocTab->getBufferByIndex(i);
+            Buffer* buf = MainFileManager.getBufferByID(bufID);
+            if (buf && std::find(buffers.begin(), buffers.end(), buf) == buffers.end())
+                buffers.push_back(buf);
+        }
+    }
+
+    for (const auto* buf : buffers)
+    {
+        if (!result.isEmpty()) result += "\r\n";
+        result += QString::fromStdWString(buf->getFileName());
+    }
+
+    QApplication::clipboard()->setText(result);
 }
 
 void NppCommands::editCopyAllPaths() {
-    // Copy all file paths to clipboard
+    if (!_pNotepad_plus) return;
+
+    QString result;
+    DocTabView* mainDocTab = _pNotepad_plus->getMainDocTab();
+    DocTabView* subDocTab = _pNotepad_plus->getSubDocTab();
+
+    std::vector<Buffer*> buffers;
+    if (mainDocTab)
+    {
+        for (size_t i = 0; i < mainDocTab->nbItem(); ++i)
+        {
+            BufferID bufID = mainDocTab->getBufferByIndex(i);
+            Buffer* buf = MainFileManager.getBufferByID(bufID);
+            if (buf) buffers.push_back(buf);
+        }
+    }
+    if (subDocTab)
+    {
+        for (size_t i = 0; i < subDocTab->nbItem(); ++i)
+        {
+            BufferID bufID = subDocTab->getBufferByIndex(i);
+            Buffer* buf = MainFileManager.getBufferByID(bufID);
+            if (buf && std::find(buffers.begin(), buffers.end(), buf) == buffers.end())
+                buffers.push_back(buf);
+        }
+    }
+
+    for (const auto* buf : buffers)
+    {
+        if (!result.isEmpty()) result += "\r\n";
+        result += QString::fromStdWString(buf->getFullPathName());
+    }
+
+    QApplication::clipboard()->setText(result);
 }
 
 void NppCommands::editColumnMode() {
@@ -1186,6 +1314,78 @@ void NppCommands::editColumnModeTip() {
                    "       execute \"Begin/End Select in Column Mode\" command;\n"
                    "      Move caret to desired end of column block position, then\n"
                    "       execute \"Begin/End Select in Column Mode\" command again\n"));
+}
+
+void NppCommands::editInsertDateTimeShort() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view)
+        return;
+
+    QDateTime now = QDateTime::currentDateTime();
+    QLocale locale;
+    QString dateStr = locale.toString(now.date(), QLocale::ShortFormat);
+    QString timeStr = locale.toString(now.time(), QLocale::ShortFormat);
+
+    QString dateTimeStr;
+    const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+    if (nppGUI._dateTimeReverseDefaultOrder)
+        dateTimeStr = dateStr + " " + timeStr;
+    else
+        dateTimeStr = timeStr + " " + dateStr;
+
+    QByteArray utf8 = dateTimeStr.toUtf8();
+    view->execute(SCI_BEGINUNDOACTION);
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(""));
+    view->execute(SCI_ADDTEXT, utf8.length(), reinterpret_cast<LPARAM>(utf8.constData()));
+    view->execute(SCI_ENDUNDOACTION);
+}
+
+void NppCommands::editInsertDateTimeLong() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view)
+        return;
+
+    QDateTime now = QDateTime::currentDateTime();
+    QLocale locale;
+    QString dateStr = locale.toString(now.date(), QLocale::LongFormat);
+    QString timeStr = locale.toString(now.time(), QLocale::ShortFormat);
+
+    QString dateTimeStr;
+    const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+    if (nppGUI._dateTimeReverseDefaultOrder)
+        dateTimeStr = dateStr + " " + timeStr;
+    else
+        dateTimeStr = timeStr + " " + dateStr;
+
+    QByteArray utf8 = dateTimeStr.toUtf8();
+    view->execute(SCI_BEGINUNDOACTION);
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(""));
+    view->execute(SCI_ADDTEXT, utf8.length(), reinterpret_cast<LPARAM>(utf8.constData()));
+    view->execute(SCI_ENDUNDOACTION);
+}
+
+void NppCommands::editInsertDateTimeCustomized() {
+    ScintillaEditView* view = getCurrentEditView();
+    if (!view)
+        return;
+
+    QDateTime now = QDateTime::currentDateTime();
+    const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+
+    // Convert Windows-style format to Qt format
+    // Windows: yyyy-MM-dd HH:mm:ss, Qt uses same format specifiers
+    QString format = QString::fromStdWString(nppGUI._dateTimeFormat);
+    // Convert Windows 'tt' (AM/PM) to Qt 'AP'
+    format.replace("tt", "AP");
+    format.replace("t", "A");
+
+    QString dateTimeStr = now.toString(format);
+
+    QByteArray utf8 = dateTimeStr.toUtf8();
+    view->execute(SCI_BEGINUNDOACTION);
+    view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(""));
+    view->execute(SCI_ADDTEXT, utf8.length(), reinterpret_cast<LPARAM>(utf8.constData()));
+    view->execute(SCI_ENDUNDOACTION);
 }
 
 // ============================================================================

@@ -449,6 +449,19 @@ public:
 	bool isCcUniEolShown();
 	void toggleSyncScrollV();
 	void toggleSyncScrollH();
+	void doSynScroll(ScintillaEditView* whichView);
+
+	struct SyncInfo final
+	{
+		intptr_t _line = 0;
+		intptr_t _column = 0;
+		bool _isSynScrollV = false;
+		bool _isSynScrollH = false;
+
+		bool doSync() const {return (_isSynScrollV || _isSynScrollH); }
+	};
+
+	const SyncInfo& getSyncInfo() const { return _syncInfo; }
 
 	// View access for Qt implementation
 	DocTabView* getMainDocTab() { return &_mainDocTab; }
@@ -480,6 +493,14 @@ public:
 
 	// Recent file list accessor
 	LastRecentFileList& getLastRecentFileList() { return _lastRecentFileList; }
+
+#ifdef NPP_LINUX
+	// Plugin API message dispatch (replaces Win32 SendMessage for NPPM_* messages)
+	LRESULT handlePluginMessage(UINT message, WPARAM wParam, LPARAM lParam);
+
+	// Expose to MainWindow for auto-indent support on Linux
+	void maintainIndentation(wchar_t ch);
+#endif
 
 private:
 	Notepad_plus_Window* _pPublicInterface = nullptr;
@@ -582,16 +603,7 @@ private:
 	Sci_CharacterRangeFull _prevSelectedRange;
 
 	//Synchronized Scrolling
-	struct SyncInfo final
-	{
-		intptr_t _line = 0;
-		intptr_t _column = 0;
-		bool _isSynScrollV = false;
-		bool _isSynScrollH = false;
-
-		bool doSync() const {return (_isSynScrollV || _isSynScrollH); }
-	}
-	_syncInfo;
+	SyncInfo _syncInfo;
 
 	bool _isUDDocked = false;
 
@@ -720,7 +732,9 @@ private:
 
 	bool isConditionExprLine(intptr_t lineNumber);
 	intptr_t findMachedBracePos(size_t startPos, size_t endPos, char targetSymbol, char matchedSymbol);
+#ifndef NPP_LINUX
 	void maintainIndentation(wchar_t ch);
+#endif
 
 	void addHotSpot(ScintillaEditView* view = nullptr);
 	void removeAllHotSpot();
