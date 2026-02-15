@@ -2259,49 +2259,56 @@ void MainWindow::onFileCloseAll()
 
 void MainWindow::onFileCloseAllButCurrent()
 {
-    if (_pNotepad_plus) {
+    if (_pNotepad_plus)
+    {
         _pNotepad_plus->fileCloseAllButCurrent();
     }
 }
 
 void MainWindow::onFileCloseAllButPinned()
 {
-    if (_pNotepad_plus) {
+    if (_pNotepad_plus)
+    {
         _pNotepad_plus->fileCloseAllButPinned();
     }
 }
 
 void MainWindow::onFileCloseAllToLeft()
 {
-    if (_pNotepad_plus) {
+    if (_pNotepad_plus)
+    {
         _pNotepad_plus->fileCloseAllToLeft();
     }
 }
 
 void MainWindow::onFileCloseAllToRight()
 {
-    if (_pNotepad_plus) {
+    if (_pNotepad_plus)
+    {
         _pNotepad_plus->fileCloseAllToRight();
     }
 }
 
 void MainWindow::onFileCloseAllUnchanged()
 {
-    if (_pNotepad_plus) {
+    if (_pNotepad_plus)
+    {
         _pNotepad_plus->fileCloseAllUnchanged();
     }
 }
 
 void MainWindow::onFilePrint()
 {
-    if (_pNotepad_plus) {
+    if (_pNotepad_plus)
+    {
         _pNotepad_plus->filePrint(true);
     }
 }
 
 void MainWindow::onFilePrintNow()
 {
-    if (_pNotepad_plus) {
+    if (_pNotepad_plus)
+    {
         _pNotepad_plus->filePrint(false);
     }
 }
