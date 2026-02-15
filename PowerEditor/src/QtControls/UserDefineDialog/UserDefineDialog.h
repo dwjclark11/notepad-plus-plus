@@ -485,6 +485,7 @@ private:
 
     // Current language data
     std::unique_ptr<QtControls::QtUserLangContainer> _pCurrentUserLang;
+    std::unique_ptr<QtControls::QtUserLangContainer> _pLoadedUserLang;  // Converted from NppParameters
     QtControls::QtUserLangContainer* _pUserLang = nullptr;
     ScintillaEditView** _ppEditView = nullptr;
 

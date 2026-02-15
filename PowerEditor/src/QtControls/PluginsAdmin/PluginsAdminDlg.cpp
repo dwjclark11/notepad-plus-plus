@@ -442,12 +442,6 @@ bool PluginsAdminDlg::installPlugins()
         return false;
     }
 
-    // TODO: Implement installation logic
-    // This would typically involve:
-    // 1. Downloading the plugin package
-    // 2. Extracting to the plugins directory
-    // 3. Refreshing the installed list
-
     return exitToInstallRemovePlugins(pa_install, checked);
 }
 
@@ -460,7 +454,6 @@ bool PluginsAdminDlg::updatePlugins()
         return false;
     }
 
-    // TODO: Implement update logic
     return exitToInstallRemovePlugins(pa_update, checked);
 }
 
@@ -482,7 +475,6 @@ bool PluginsAdminDlg::removePlugins()
         return false;
     }
 
-    // TODO: Implement removal logic
     return exitToInstallRemovePlugins(pa_remove, checked);
 }
 

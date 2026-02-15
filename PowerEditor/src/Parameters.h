@@ -1110,8 +1110,25 @@ public:
 	}
 
 	const wchar_t* getName() const { return _name.c_str(); }
+	void setName(const wchar_t* name) { _name = name; }
 	const wchar_t* getExtention() const { return _ext.c_str(); }
+	void setExtention(const wchar_t* ext) { _ext = ext; }
 	const wchar_t* getUdlVersion() const { return _udlVersion.c_str(); }
+
+	bool isCaseIgnored() const { return _isCaseIgnored; }
+	void setCaseIgnored(bool v) { _isCaseIgnored = v; }
+	bool allowFoldOfComments() const { return _allowFoldOfComments; }
+	void setAllowFoldOfComments(bool v) { _allowFoldOfComments = v; }
+	int forcePureLC() const { return _forcePureLC; }
+	void setForcePureLC(int v) { _forcePureLC = v; }
+	int decimalSeparator() const { return _decimalSeparator; }
+	void setDecimalSeparator(int v) { _decimalSeparator = v; }
+	bool foldCompact() const { return _foldCompact; }
+	void setFoldCompact(bool v) { _foldCompact = v; }
+	bool isPrefix(int i) const { return (i >= 0 && i < SCE_USER_TOTAL_KEYWORD_GROUPS) ? _isPrefix[i] : false; }
+	void setPrefix(int i, bool v) { if (i >= 0 && i < SCE_USER_TOTAL_KEYWORD_GROUPS) _isPrefix[i] = v; }
+	const wchar_t* getKeywordList(int i) const { return (i >= 0 && i < SCE_USER_KWLIST_TOTAL) ? _keywordLists[i] : L""; }
+	void setKeywordList(int i, const wchar_t* list) { if (i >= 0 && i < SCE_USER_KWLIST_TOTAL) wcscpy_s(_keywordLists[i], max_char, list); }
 
 private:
 	StyleArray _styles;

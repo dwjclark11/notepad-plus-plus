@@ -53,11 +53,13 @@ namespace QtCommands {
 // CommandHandler Implementation
 // ============================================================================
 
-void CommandHandler::registerCommand(int id, CommandHandlerFunc handler) {
+void CommandHandler::registerCommand(int id, CommandHandlerFunc handler)
+{
     _handlers[id] = std::move(handler);
 }
 
-void CommandHandler::executeCommand(int id) {
+void CommandHandler::executeCommand(int id)
+{
     auto it = _handlers.find(id);
     if (it != _handlers.end() && it->second) {
         it->second();
@@ -69,11 +71,13 @@ bool CommandHandler::canExecute(int id) const {
     return it != _handlers.end() && it->second != nullptr;
 }
 
-void CommandHandler::unregisterCommand(int id) {
+void CommandHandler::unregisterCommand(int id)
+{
     _handlers.erase(id);
 }
 
-void CommandHandler::clearCommands() {
+void CommandHandler::clearCommands()
+{
     _handlers.clear();
 }
 
@@ -83,14 +87,17 @@ void CommandHandler::clearCommands() {
 
 NppCommands::NppCommands(Notepad_plus* notepad_plus)
     : _pNotepad_plus(notepad_plus)
-    , _pEditView(nullptr) {
+    , _pEditView(nullptr)
+{
 }
 
-NppCommands::~NppCommands() {
+NppCommands::~NppCommands()
+{
     _handler.clearCommands();
 }
 
-void NppCommands::initializeCommands() {
+void NppCommands::initializeCommands()
+{
     registerFileCommands();
     registerEditCommands();
     registerSearchCommands();
@@ -102,7 +109,8 @@ void NppCommands::initializeCommands() {
     registerSettingsCommands();
 }
 
-void NppCommands::execute(int commandID) {
+void NppCommands::execute(int commandID)
+{
     _handler.executeCommand(commandID);
 }
 
@@ -110,12 +118,14 @@ bool NppCommands::canExecute(int commandID) const {
     return _handler.canExecute(commandID);
 }
 
-void NppCommands::updateCommandState() {
+void NppCommands::updateCommandState()
+{
     // Update menu item states based on current document/context
     // This will be called to enable/disable menu items
 }
 
-ScintillaEditView* NppCommands::getCurrentEditView() {
+ScintillaEditView* NppCommands::getCurrentEditView()
+{
     if (_pNotepad_plus) {
         return _pNotepad_plus->getCurrentEditView();
     }
@@ -150,7 +160,8 @@ bool NppCommands::canPaste() const {
 // File Commands Registration
 // ============================================================================
 
-void NppCommands::registerFileCommands() {
+void NppCommands::registerFileCommands()
+{
     _handler.registerCommand(CMD_FILE_NEW, [this]() { fileNew(); });
     _handler.registerCommand(CMD_FILE_OPEN, [this]() { fileOpen(); });
     _handler.registerCommand(CMD_FILE_SAVE, [this]() { fileSave(); });
@@ -178,96 +189,112 @@ void NppCommands::registerFileCommands() {
     _handler.registerCommand(CMD_FILE_OPEN_DEFAULT_VIEWER, [this]() { fileOpenInDefaultViewer(); });
 }
 
-void NppCommands::fileNew() {
+void NppCommands::fileNew()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileNew();
     }
 }
 
-void NppCommands::fileOpen() {
+void NppCommands::fileOpen()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileOpen();
     }
 }
 
-void NppCommands::fileSave() {
+void NppCommands::fileSave()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileSave();
     }
 }
 
-void NppCommands::fileSaveAs() {
+void NppCommands::fileSaveAs()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileSaveAs();
     }
 }
 
-void NppCommands::fileSaveCopyAs() {
+void NppCommands::fileSaveCopyAs()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileSaveAs(BUFFER_INVALID, true);
     }
 }
 
-void NppCommands::fileSaveAll() {
+void NppCommands::fileSaveAll()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileSaveAll();
     }
 }
 
-void NppCommands::fileClose() {
+void NppCommands::fileClose()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileClose();
     }
 }
 
-void NppCommands::fileCloseAll() {
+void NppCommands::fileCloseAll()
+{
     if (_pNotepad_plus) {
         bool isSnapshotMode = NppParameters::getInstance().getNppGUI().isSnapshotMode();
         _pNotepad_plus->fileCloseAll(isSnapshotMode, false);
     }
 }
 
-void NppCommands::fileCloseAllButCurrent() {
+void NppCommands::fileCloseAllButCurrent()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileCloseAllButCurrent();
     }
 }
 
-void NppCommands::fileCloseAllButPinned() {
+void NppCommands::fileCloseAllButPinned()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileCloseAllButPinned();
     }
 }
 
-void NppCommands::fileCloseAllToLeft() {
+void NppCommands::fileCloseAllToLeft()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileCloseAllToLeft();
     }
 }
 
-void NppCommands::fileCloseAllToRight() {
+void NppCommands::fileCloseAllToRight()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileCloseAllToRight();
     }
 }
 
-void NppCommands::fileCloseAllUnchanged() {
+void NppCommands::fileCloseAllUnchanged()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileCloseAllUnchanged();
     }
 }
 
-void NppCommands::filePrint(bool showDialog) {
+void NppCommands::filePrint(bool showDialog)
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->filePrint(showDialog);
     }
 }
 
-void NppCommands::filePrintNow() {
+void NppCommands::filePrintNow()
+{
     filePrint(false);
 }
 
-void NppCommands::fileExit() {
+void NppCommands::fileExit()
+{
     // Emit close signal to main window
     if (_pNotepad_plus) {
         // Trigger application close
@@ -275,37 +302,43 @@ void NppCommands::fileExit() {
     }
 }
 
-void NppCommands::fileReload() {
+void NppCommands::fileReload()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileReload();
     }
 }
 
-void NppCommands::fileDelete() {
+void NppCommands::fileDelete()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileDelete();
     }
 }
 
-void NppCommands::fileRename() {
+void NppCommands::fileRename()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileRename();
     }
 }
 
-void NppCommands::fileLoadSession() {
+void NppCommands::fileLoadSession()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileLoadSession();
     }
 }
 
-void NppCommands::fileSaveSession() {
+void NppCommands::fileSaveSession()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fileSaveSession();
     }
 }
 
-void NppCommands::fileOpenFolderAsWorkspace() {
+void NppCommands::fileOpenFolderAsWorkspace()
+{
     if (_pNotepad_plus) {
         // Open folder dialog and add to file browser
         QString dir = QFileDialog::getExistingDirectory(nullptr,
@@ -322,7 +355,8 @@ void NppCommands::fileOpenFolderAsWorkspace() {
     }
 }
 
-void NppCommands::fileOpenContainingFolder() {
+void NppCommands::fileOpenContainingFolder()
+{
     // Open the folder containing the current file
     if (_pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
@@ -340,7 +374,8 @@ void NppCommands::fileOpenContainingFolder() {
     }
 }
 
-void NppCommands::fileOpenCmd() {
+void NppCommands::fileOpenCmd()
+{
     // Open command prompt in current directory
     if (_pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
@@ -356,7 +391,8 @@ void NppCommands::fileOpenCmd() {
     }
 }
 
-void NppCommands::fileOpenInDefaultViewer() {
+void NppCommands::fileOpenInDefaultViewer()
+{
     if (!_pNotepad_plus)
         return;
 
@@ -375,7 +411,8 @@ void NppCommands::fileOpenInDefaultViewer() {
 // Edit Commands Registration
 // ============================================================================
 
-void NppCommands::registerEditCommands() {
+void NppCommands::registerEditCommands()
+{
     _handler.registerCommand(CMD_EDIT_UNDO, [this]() { editUndo(); });
     _handler.registerCommand(CMD_EDIT_REDO, [this]() { editRedo(); });
     _handler.registerCommand(CMD_EDIT_CUT, [this]() { editCut(); });
@@ -442,21 +479,24 @@ void NppCommands::registerEditCommands() {
     _handler.registerCommand(CMD_EDIT_TOGGLEREADONLY, [this]() { editToggleReadOnly(); });
 }
 
-void NppCommands::editUndo() {
+void NppCommands::editUndo()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_UNDO);
     }
 }
 
-void NppCommands::editRedo() {
+void NppCommands::editRedo()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_REDO);
     }
 }
 
-void NppCommands::editCut() {
+void NppCommands::editCut()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         if (view->hasSelection()) {
@@ -469,7 +509,8 @@ void NppCommands::editCut() {
     }
 }
 
-void NppCommands::editCopy() {
+void NppCommands::editCopy()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         if (view->hasSelection()) {
@@ -481,35 +522,40 @@ void NppCommands::editCopy() {
     }
 }
 
-void NppCommands::editPaste() {
+void NppCommands::editPaste()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_PASTE);
     }
 }
 
-void NppCommands::editDelete() {
+void NppCommands::editDelete()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_CLEAR);
     }
 }
 
-void NppCommands::editSelectAll() {
+void NppCommands::editSelectAll()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_SELECTALL);
     }
 }
 
-void NppCommands::editBeginEndSelect(bool columnMode) {
+void NppCommands::editBeginEndSelect(bool columnMode)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->beginOrEndSelect(columnMode);
     }
 }
 
-void NppCommands::editInsertTab() {
+void NppCommands::editInsertTab()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         size_t selStartPos = view->execute(SCI_GETSELECTIONSTART);
@@ -530,7 +576,8 @@ void NppCommands::editInsertTab() {
     }
 }
 
-void NppCommands::editRemoveTab() {
+void NppCommands::editRemoveTab()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         size_t selStartPos = view->execute(SCI_GETSELECTIONSTART);
@@ -551,14 +598,16 @@ void NppCommands::editRemoveTab() {
     }
 }
 
-void NppCommands::editDuplicateLine() {
+void NppCommands::editDuplicateLine()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_LINEDUPLICATE);
     }
 }
 
-void NppCommands::editRemoveDuplicateLines() {
+void NppCommands::editRemoveDuplicateLines()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view) return;
 
@@ -625,7 +674,8 @@ void NppCommands::editRemoveDuplicateLines() {
     view->execute(SCI_ENDUNDOACTION);
 }
 
-void NppCommands::editRemoveAnyDuplicateLines() {
+void NppCommands::editRemoveAnyDuplicateLines()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_BEGINUNDOACTION);
@@ -634,14 +684,16 @@ void NppCommands::editRemoveAnyDuplicateLines() {
     }
 }
 
-void NppCommands::editTransposeLine() {
+void NppCommands::editTransposeLine()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_LINETRANSPOSE);
     }
 }
 
-void NppCommands::editSplitLines() {
+void NppCommands::editSplitLines()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         if (view->execute(SCI_GETSELECTIONS) == 1) {
@@ -674,7 +726,8 @@ void NppCommands::editSplitLines() {
     }
 }
 
-void NppCommands::editJoinLines() {
+void NppCommands::editJoinLines()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         size_t selStart = view->execute(SCI_GETSELECTIONSTART);
@@ -692,107 +745,123 @@ void NppCommands::editJoinLines() {
     }
 }
 
-void NppCommands::editLineUp() {
+void NppCommands::editLineUp()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->currentLinesUp();
     }
 }
 
-void NppCommands::editLineDown() {
+void NppCommands::editLineDown()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->currentLinesDown();
     }
 }
 
-void NppCommands::editUpperCase() {
+void NppCommands::editUpperCase()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->convertSelectedTextToUpperCase();
     }
 }
 
-void NppCommands::editLowerCase() {
+void NppCommands::editLowerCase()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->convertSelectedTextToLowerCase();
     }
 }
 
-void NppCommands::editProperCaseForce() {
+void NppCommands::editProperCaseForce()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->convertSelectedTextTo(PROPERCASE_FORCE);
     }
 }
 
-void NppCommands::editProperCaseBlend() {
+void NppCommands::editProperCaseBlend()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->convertSelectedTextTo(PROPERCASE_BLEND);
     }
 }
 
-void NppCommands::editSentenceCaseForce() {
+void NppCommands::editSentenceCaseForce()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->convertSelectedTextTo(SENTENCECASE_FORCE);
     }
 }
 
-void NppCommands::editSentenceCaseBlend() {
+void NppCommands::editSentenceCaseBlend()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->convertSelectedTextTo(SENTENCECASE_BLEND);
     }
 }
 
-void NppCommands::editInvertCase() {
+void NppCommands::editInvertCase()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->convertSelectedTextTo(INVERTCASE);
     }
 }
 
-void NppCommands::editRandomCase() {
+void NppCommands::editRandomCase()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->convertSelectedTextTo(RANDOMCASE);
     }
 }
 
-void NppCommands::editToggleComment() {
+void NppCommands::editToggleComment()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->doBlockComment(Notepad_plus::cm_toggle);
     }
 }
 
-void NppCommands::editBlockComment() {
+void NppCommands::editBlockComment()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->doBlockComment(Notepad_plus::cm_toggle);
     }
 }
 
-void NppCommands::editBlockCommentSet() {
+void NppCommands::editBlockCommentSet()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->doBlockComment(Notepad_plus::cm_comment);
     }
 }
 
-void NppCommands::editBlockUncomment() {
+void NppCommands::editBlockUncomment()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->doBlockComment(Notepad_plus::cm_uncomment);
     }
 }
 
-void NppCommands::editStreamComment() {
+void NppCommands::editStreamComment()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->doStreamComment();
     }
 }
 
-void NppCommands::editStreamUncomment() {
+void NppCommands::editStreamUncomment()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->undoStreamComment();
     }
@@ -868,15 +937,18 @@ static void doTrimLines(ScintillaEditView* view, const char* pattern)
     view->execute(SCI_ENDUNDOACTION);
 }
 
-void NppCommands::editTrimTrailing() {
+void NppCommands::editTrimTrailing()
+{
     doTrimLines(getCurrentEditView(), "trailing");
 }
 
-void NppCommands::editTrimLineHead() {
+void NppCommands::editTrimLineHead()
+{
     doTrimLines(getCurrentEditView(), "leading");
 }
 
-void NppCommands::editTrimBoth() {
+void NppCommands::editTrimBoth()
+{
     doTrimLines(getCurrentEditView(), "both");
 }
 
@@ -1004,19 +1076,23 @@ static void wsTabConvert(ScintillaEditView* view, SpaceTabMode whichWay)
     view->execute(SCI_ENDUNDOACTION);
 }
 
-void NppCommands::editTabToSpace() {
+void NppCommands::editTabToSpace()
+{
     wsTabConvert(getCurrentEditView(), SpaceTabMode::tab2Space);
 }
 
-void NppCommands::editSpaceToTabLeading() {
+void NppCommands::editSpaceToTabLeading()
+{
     wsTabConvert(getCurrentEditView(), SpaceTabMode::space2TabLeading);
 }
 
-void NppCommands::editSpaceToTabAll() {
+void NppCommands::editSpaceToTabAll()
+{
     wsTabConvert(getCurrentEditView(), SpaceTabMode::space2TabAll);
 }
 
-void NppCommands::editRemoveEmptyLines() {
+void NppCommands::editRemoveEmptyLines()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view) return;
 
@@ -1049,7 +1125,8 @@ void NppCommands::editRemoveEmptyLines() {
     view->execute(SCI_ENDUNDOACTION);
 }
 
-void NppCommands::editRemoveEmptyLinesWithBlank() {
+void NppCommands::editRemoveEmptyLinesWithBlank()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view) return;
 
@@ -1101,7 +1178,8 @@ void NppCommands::editRemoveEmptyLinesWithBlank() {
     view->execute(SCI_ENDUNDOACTION);
 }
 
-void NppCommands::editSortLines(int sortMode) {
+void NppCommands::editSortLines(int sortMode)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view) return;
 
@@ -1177,7 +1255,8 @@ void NppCommands::editSortLines(int sortMode) {
     }
 }
 
-void NppCommands::editToggleReadOnly() {
+void NppCommands::editToggleReadOnly()
+{
     if (_pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
         if (buf) {
@@ -1194,25 +1273,29 @@ void NppCommands::editToggleReadOnly() {
     }
 }
 
-void NppCommands::editToggleSystemReadOnly() {
+void NppCommands::editToggleSystemReadOnly()
+{
     if (_pNotepad_plus) {
         // Toggle system read-only attribute
     }
 }
 
-void NppCommands::editSetReadOnlyForAllDocs() {
+void NppCommands::editSetReadOnlyForAllDocs()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->changeReadOnlyUserModeForAllOpenedTabs(true);
     }
 }
 
-void NppCommands::editClearReadOnlyForAllDocs() {
+void NppCommands::editClearReadOnlyForAllDocs()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->changeReadOnlyUserModeForAllOpenedTabs(false);
     }
 }
 
-void NppCommands::editFullPathToClipboard() {
+void NppCommands::editFullPathToClipboard()
+{
     if (_pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
         if (buf) {
@@ -1222,7 +1305,8 @@ void NppCommands::editFullPathToClipboard() {
     }
 }
 
-void NppCommands::editFileNameToClipboard() {
+void NppCommands::editFileNameToClipboard()
+{
     if (_pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
         if (buf) {
@@ -1232,7 +1316,8 @@ void NppCommands::editFileNameToClipboard() {
     }
 }
 
-void NppCommands::editCurrentDirToClipboard() {
+void NppCommands::editCurrentDirToClipboard()
+{
     if (_pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
         if (buf) {
@@ -1247,7 +1332,8 @@ void NppCommands::editCurrentDirToClipboard() {
     }
 }
 
-void NppCommands::editCopyAllNames() {
+void NppCommands::editCopyAllNames()
+{
     if (!_pNotepad_plus) return;
 
     QString result;
@@ -1277,14 +1363,15 @@ void NppCommands::editCopyAllNames() {
 
     for (const auto* buf : buffers)
     {
-        if (!result.isEmpty()) result += "\r\n";
+        if (!result.isEmpty()) result += "\n";
         result += QString::fromStdWString(buf->getFileName());
     }
 
     QApplication::clipboard()->setText(result);
 }
 
-void NppCommands::editCopyAllPaths() {
+void NppCommands::editCopyAllPaths()
+{
     if (!_pNotepad_plus) return;
 
     QString result;
@@ -1314,20 +1401,22 @@ void NppCommands::editCopyAllPaths() {
 
     for (const auto* buf : buffers)
     {
-        if (!result.isEmpty()) result += "\r\n";
+        if (!result.isEmpty()) result += "\n";
         result += QString::fromStdWString(buf->getFullPathName());
     }
 
     QApplication::clipboard()->setText(result);
 }
 
-void NppCommands::editColumnMode() {
+void NppCommands::editColumnMode()
+{
     if (_pNotepad_plus) {
         // Show column editor dialog
     }
 }
 
-void NppCommands::editColumnModeTip() {
+void NppCommands::editColumnModeTip()
+{
     // Show column mode tip dialog
     QMessageBox::information(nullptr, QObject::tr("Column Mode Tip"),
         QObject::tr("There are 3 ways to switch to column-select mode:\n\n"
@@ -1340,7 +1429,8 @@ void NppCommands::editColumnModeTip() {
                    "       execute \"Begin/End Select in Column Mode\" command again\n"));
 }
 
-void NppCommands::editCopyBinary() {
+void NppCommands::editCopyBinary()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
         return;
@@ -1367,7 +1457,8 @@ void NppCommands::editCopyBinary() {
     QApplication::clipboard()->setMimeData(mimeData);
 }
 
-void NppCommands::editCutBinary() {
+void NppCommands::editCutBinary()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
         return;
@@ -1376,7 +1467,8 @@ void NppCommands::editCutBinary() {
     view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(""));
 }
 
-void NppCommands::editPasteBinary() {
+void NppCommands::editPasteBinary()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
         return;
@@ -1399,7 +1491,8 @@ void NppCommands::editPasteBinary() {
     }
 }
 
-void NppCommands::editPasteAsHtml() {
+void NppCommands::editPasteAsHtml()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
         return;
@@ -1413,7 +1506,8 @@ void NppCommands::editPasteAsHtml() {
     view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(htmlData.constData()));
 }
 
-void NppCommands::editPasteAsRtf() {
+void NppCommands::editPasteAsRtf()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
         return;
@@ -1427,7 +1521,8 @@ void NppCommands::editPasteAsRtf() {
     view->execute(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(rtfData.constData()));
 }
 
-void NppCommands::editSearchOnInternet() {
+void NppCommands::editSearchOnInternet()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
         return;
@@ -1477,7 +1572,8 @@ void NppCommands::editSearchOnInternet() {
     QDesktopServices::openUrl(QUrl(url));
 }
 
-void NppCommands::editInsertDateTimeShort() {
+void NppCommands::editInsertDateTimeShort()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
         return;
@@ -1501,7 +1597,8 @@ void NppCommands::editInsertDateTimeShort() {
     view->execute(SCI_ENDUNDOACTION);
 }
 
-void NppCommands::editInsertDateTimeLong() {
+void NppCommands::editInsertDateTimeLong()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
         return;
@@ -1525,7 +1622,8 @@ void NppCommands::editInsertDateTimeLong() {
     view->execute(SCI_ENDUNDOACTION);
 }
 
-void NppCommands::editInsertDateTimeCustomized() {
+void NppCommands::editInsertDateTimeCustomized()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view)
         return;
@@ -1553,7 +1651,8 @@ void NppCommands::editInsertDateTimeCustomized() {
 // Search Commands Registration
 // ============================================================================
 
-void NppCommands::registerSearchCommands() {
+void NppCommands::registerSearchCommands()
+{
     _handler.registerCommand(CMD_SEARCH_FIND, [this]() { searchFind(); });
     _handler.registerCommand(CMD_SEARCH_REPLACE, [this]() { searchReplace(); });
     _handler.registerCommand(CMD_SEARCH_MARK, [this]() { searchMark(); });
@@ -1610,37 +1709,43 @@ void NppCommands::registerSearchCommands() {
     _handler.registerCommand(CMD_SEARCH_GOPREVMARKER_DEF, [this]() { searchGoPrevMarker(SCE_UNIVERSAL_FOUND_STYLE); });
 }
 
-void NppCommands::searchFind() {
+void NppCommands::searchFind()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showFindReplaceDlg(FIND_DLG);
     }
 }
 
-void NppCommands::searchReplace() {
+void NppCommands::searchReplace()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showFindReplaceDlg(REPLACE_DLG);
     }
 }
 
-void NppCommands::searchMark() {
+void NppCommands::searchMark()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showFindReplaceDlg(MARK_DLG);
     }
 }
 
-void NppCommands::searchFindNext() {
+void NppCommands::searchFindNext()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->findNext(DIR_DOWN);
     }
 }
 
-void NppCommands::searchFindPrev() {
+void NppCommands::searchFindPrev()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->findNext(DIR_UP);
     }
 }
 
-void NppCommands::searchFindNextVolatile() {
+void NppCommands::searchFindNextVolatile()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         auto str = view->getSelectedTextToWChar();
@@ -1657,7 +1762,8 @@ void NppCommands::searchFindNextVolatile() {
     }
 }
 
-void NppCommands::searchFindPrevVolatile() {
+void NppCommands::searchFindPrevVolatile()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         auto str = view->getSelectedTextToWChar();
@@ -1674,25 +1780,29 @@ void NppCommands::searchFindPrevVolatile() {
     }
 }
 
-void NppCommands::searchFindInFiles() {
+void NppCommands::searchFindInFiles()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showFindReplaceDlg(FINDINFILES_DLG);
     }
 }
 
-void NppCommands::searchFindInProjects() {
+void NppCommands::searchFindInProjects()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showFindReplaceDlg(FINDINPROJECTS_DLG);
     }
 }
 
-void NppCommands::searchFindIncrement() {
+void NppCommands::searchFindIncrement()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showIncrementalFindDlg();
     }
 }
 
-void NppCommands::searchSetAndFindNext() {
+void NppCommands::searchSetAndFindNext()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         auto str = view->getSelectedTextToWChar();
@@ -1708,7 +1818,8 @@ void NppCommands::searchSetAndFindNext() {
     }
 }
 
-void NppCommands::searchSetAndFindPrev() {
+void NppCommands::searchSetAndFindPrev()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         auto str = view->getSelectedTextToWChar();
@@ -1724,25 +1835,29 @@ void NppCommands::searchSetAndFindPrev() {
     }
 }
 
-void NppCommands::searchGoToNextFound() {
+void NppCommands::searchGoToNextFound()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->gotoNextFoundResult();
     }
 }
 
-void NppCommands::searchGoToPrevFound() {
+void NppCommands::searchGoToPrevFound()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->gotoNextFoundResult(-1);
     }
 }
 
-void NppCommands::searchGoToLine() {
+void NppCommands::searchGoToLine()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showGoToLineDlg();
     }
 }
 
-void NppCommands::searchGoToMatchingBrace() {
+void NppCommands::searchGoToMatchingBrace()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         intptr_t braceAtCaret = -1;
@@ -1756,7 +1871,8 @@ void NppCommands::searchGoToMatchingBrace() {
     }
 }
 
-void NppCommands::searchSelectMatchingBraces() {
+void NppCommands::searchSelectMatchingBraces()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         intptr_t braceAtCaret = -1;
@@ -1772,7 +1888,8 @@ void NppCommands::searchSelectMatchingBraces() {
     }
 }
 
-void NppCommands::searchToggleBookmark() {
+void NppCommands::searchToggleBookmark()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         intptr_t lineno = view->getCurrentLineNumber();
@@ -1785,7 +1902,8 @@ void NppCommands::searchToggleBookmark() {
     }
 }
 
-void NppCommands::searchNextBookmark() {
+void NppCommands::searchNextBookmark()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         intptr_t lineno = view->getCurrentLineNumber();
@@ -1799,7 +1917,8 @@ void NppCommands::searchNextBookmark() {
     }
 }
 
-void NppCommands::searchPrevBookmark() {
+void NppCommands::searchPrevBookmark()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         intptr_t lineno = view->getCurrentLineNumber();
@@ -1814,50 +1933,58 @@ void NppCommands::searchPrevBookmark() {
     }
 }
 
-void NppCommands::searchClearBookmarks() {
+void NppCommands::searchClearBookmarks()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_MARKERDELETEALL, MARK_BOOKMARK);
     }
 }
 
-void NppCommands::searchCutMarkedLines() {
+void NppCommands::searchCutMarkedLines()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->cutMarkedLines();
     }
 }
 
-void NppCommands::searchCopyMarkedLines() {
+void NppCommands::searchCopyMarkedLines()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->copyMarkedLines();
     }
 }
 
-void NppCommands::searchPasteMarkedLines() {
+void NppCommands::searchPasteMarkedLines()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->pasteToMarkedLines();
     }
 }
 
-void NppCommands::searchDeleteMarkedLines() {
+void NppCommands::searchDeleteMarkedLines()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->deleteMarkedLines(true);
     }
 }
 
-void NppCommands::searchDeleteUnmarkedLines() {
+void NppCommands::searchDeleteUnmarkedLines()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->deleteMarkedLines(false);
     }
 }
 
-void NppCommands::searchInverseMarks() {
+void NppCommands::searchInverseMarks()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->inverseMarks();
     }
 }
 
-void NppCommands::searchMarkAllExt(int styleID) {
+void NppCommands::searchMarkAllExt(int styleID)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         auto selectedText = view->getSelectedTextToWChar(true);
@@ -1867,14 +1994,16 @@ void NppCommands::searchMarkAllExt(int styleID) {
     }
 }
 
-void NppCommands::searchUnmarkAllExt(int styleID) {
+void NppCommands::searchUnmarkAllExt(int styleID)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->clearIndicator(styleID);
     }
 }
 
-void NppCommands::searchMarkOneExt(int styleID) {
+void NppCommands::searchMarkOneExt(int styleID)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         Sci_CharacterRangeFull range;
@@ -1894,7 +2023,8 @@ void NppCommands::searchMarkOneExt(int styleID) {
     }
 }
 
-void NppCommands::searchClearAllMarks() {
+void NppCommands::searchClearAllMarks()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->clearIndicator(SCE_UNIVERSAL_FOUND_STYLE_EXT1);
@@ -1905,35 +2035,41 @@ void NppCommands::searchClearAllMarks() {
     }
 }
 
-void NppCommands::searchGoNextMarker(int styleID) {
+void NppCommands::searchGoNextMarker(int styleID)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         _pNotepad_plus->goToNextIndicator(styleID);
     }
 }
 
-void NppCommands::searchGoPrevMarker(int styleID) {
+void NppCommands::searchGoPrevMarker(int styleID)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         _pNotepad_plus->goToPreviousIndicator(styleID);
     }
 }
 
-void NppCommands::searchFindCharInRange() {
+void NppCommands::searchFindCharInRange()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showFindCharsInRangeDlg();
     }
 }
 
-void NppCommands::searchChangedNext() {
+void NppCommands::searchChangedNext()
+{
     // Navigate to next changed line
 }
 
-void NppCommands::searchChangedPrev() {
+void NppCommands::searchChangedPrev()
+{
     // Navigate to previous changed line
 }
 
-void NppCommands::searchClearChangeHistory() {
+void NppCommands::searchClearChangeHistory()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_EMPTYUNDOBUFFER);
@@ -1944,7 +2080,8 @@ void NppCommands::searchClearChangeHistory() {
 // View Commands Registration
 // ============================================================================
 
-void NppCommands::registerViewCommands() {
+void NppCommands::registerViewCommands()
+{
     _handler.registerCommand(CMD_VIEW_FULLSCREENTOGGLE, [this]() { viewFullScreen(); });
     _handler.registerCommand(CMD_VIEW_POSTIT, [this]() { viewPostIt(); });
     _handler.registerCommand(CMD_VIEW_DISTRACTIONFREE, [this]() { viewDistractionFree(); });
@@ -2032,31 +2169,36 @@ void NppCommands::registerViewCommands() {
     _handler.registerCommand(CMD_EDIT_LTR, [this]() { editTextDirection(false); });
 }
 
-void NppCommands::viewFullScreen() {
+void NppCommands::viewFullScreen()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->fullScreenToggle();
     }
 }
 
-void NppCommands::viewPostIt() {
+void NppCommands::viewPostIt()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->postItToggle();
     }
 }
 
-void NppCommands::viewDistractionFree() {
+void NppCommands::viewDistractionFree()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->distractionFreeToggle();
     }
 }
 
-void NppCommands::viewAlwaysOnTop() {
+void NppCommands::viewAlwaysOnTop()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->alwaysOnTopToggle();
     }
 }
 
-void NppCommands::viewWordWrap() {
+void NppCommands::viewWordWrap()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         bool isWrapped = !view->isWrap();
@@ -2064,7 +2206,8 @@ void NppCommands::viewWordWrap() {
     }
 }
 
-void NppCommands::viewWrapSymbol() {
+void NppCommands::viewWrapSymbol()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         bool visible = !view->isWrapSymbolVisible();
@@ -2072,35 +2215,40 @@ void NppCommands::viewWrapSymbol() {
     }
 }
 
-void NppCommands::viewHideLines() {
+void NppCommands::viewHideLines()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->hideLines();
     }
 }
 
-void NppCommands::viewZoomIn() {
+void NppCommands::viewZoomIn()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_ZOOMIN);
     }
 }
 
-void NppCommands::viewZoomOut() {
+void NppCommands::viewZoomOut()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_ZOOMOUT);
     }
 }
 
-void NppCommands::viewZoomRestore() {
+void NppCommands::viewZoomRestore()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->execute(SCI_SETZOOM, 0);
     }
 }
 
-void NppCommands::viewIndentGuide() {
+void NppCommands::viewIndentGuide()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         bool show = !view->isShownIndentGuide();
@@ -2108,207 +2256,240 @@ void NppCommands::viewIndentGuide() {
     }
 }
 
-void NppCommands::viewShowWhiteSpace() {
+void NppCommands::viewShowWhiteSpace()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showWhiteSpace(!_pNotepad_plus->isWhiteSpaceShown());
     }
 }
 
-void NppCommands::viewShowEOL() {
+void NppCommands::viewShowEOL()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showEOL(!_pNotepad_plus->isEOLShown());
     }
 }
 
-void NppCommands::viewShowAllCharacters() {
+void NppCommands::viewShowAllCharacters()
+{
     if (_pNotepad_plus) {
         bool show = !_pNotepad_plus->isAllCharactersShown();
         _pNotepad_plus->showInvisibleChars(show);
     }
 }
 
-void NppCommands::viewShowNpc() {
+void NppCommands::viewShowNpc()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showNpc(!_pNotepad_plus->isNpcShown());
     }
 }
 
-void NppCommands::viewShowNpcCcUniEol() {
+void NppCommands::viewShowNpcCcUniEol()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showCcUniEol(!_pNotepad_plus->isCcUniEolShown());
     }
 }
 
-void NppCommands::viewSyncScrollV() {
+void NppCommands::viewSyncScrollV()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->toggleSyncScrollV();
     }
 }
 
-void NppCommands::viewSyncScrollH() {
+void NppCommands::viewSyncScrollH()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->toggleSyncScrollH();
     }
 }
 
-void NppCommands::viewSummary() {
+void NppCommands::viewSummary()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showSummary();
     }
 }
 
-void NppCommands::viewMonitoring() {
+void NppCommands::viewMonitoring()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->toggleMonitoring();
     }
 }
 
-void NppCommands::viewFoldAll() {
+void NppCommands::viewFoldAll()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->foldAll(fold_collapse);
     }
 }
 
-void NppCommands::viewUnfoldAll() {
+void NppCommands::viewUnfoldAll()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->foldAll(fold_expand);
     }
 }
 
-void NppCommands::viewFoldCurrent() {
+void NppCommands::viewFoldCurrent()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->foldCurrentPos(fold_collapse);
     }
 }
 
-void NppCommands::viewUnfoldCurrent() {
+void NppCommands::viewUnfoldCurrent()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->foldCurrentPos(fold_expand);
     }
 }
 
-void NppCommands::viewFoldLevel(int level) {
+void NppCommands::viewFoldLevel(int level)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->foldLevel(level, fold_collapse);
     }
 }
 
-void NppCommands::viewUnfoldLevel(int level) {
+void NppCommands::viewUnfoldLevel(int level)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view) {
         view->foldLevel(level, fold_expand);
     }
 }
 
-void NppCommands::viewDocumentList() {
+void NppCommands::viewDocumentList()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->toggleDocumentList();
     }
 }
 
-void NppCommands::viewDocumentMap() {
+void NppCommands::viewDocumentMap()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->toggleDocumentMap();
     }
 }
 
-void NppCommands::viewFunctionList() {
+void NppCommands::viewFunctionList()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->toggleFunctionList();
     }
 }
 
-void NppCommands::viewFileBrowser() {
+void NppCommands::viewFileBrowser()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->toggleFileBrowser();
     }
 }
 
-void NppCommands::viewProjectPanel(int index) {
+void NppCommands::viewProjectPanel(int index)
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->toggleProjectPanel(index);
     }
 }
 
-void NppCommands::viewSwitchToProjectPanel(int index) {
+void NppCommands::viewSwitchToProjectPanel(int index)
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->switchToProjectPanel(index);
     }
 }
 
-void NppCommands::viewSwitchToFileBrowser() {
+void NppCommands::viewSwitchToFileBrowser()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->switchToFileBrowser();
     }
 }
 
-void NppCommands::viewSwitchToFuncList() {
+void NppCommands::viewSwitchToFuncList()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->switchToFunctionList();
     }
 }
 
-void NppCommands::viewSwitchToDocList() {
+void NppCommands::viewSwitchToDocList()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->switchToDocumentList();
     }
 }
 
-void NppCommands::viewSwitchToOtherView() {
+void NppCommands::viewSwitchToOtherView()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->switchEditViewTo(_pNotepad_plus->otherView());
     }
 }
 
-void NppCommands::viewTab(int index) {
+void NppCommands::viewTab(int index)
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->activateDoc(index);
     }
 }
 
-void NppCommands::viewTabNext() {
+void NppCommands::viewTabNext()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->activateNextDoc(true);
     }
 }
 
-void NppCommands::viewTabPrev() {
+void NppCommands::viewTabPrev()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->activateNextDoc(false);
     }
 }
 
-void NppCommands::viewTabStart() {
+void NppCommands::viewTabStart()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->activateDoc(0);
     }
 }
 
-void NppCommands::viewTabEnd() {
+void NppCommands::viewTabEnd()
+{
     if (_pNotepad_plus) {
         int count = _pNotepad_plus->getCurrentDocTab()->nbItem();
         _pNotepad_plus->activateDoc(count - 1);
     }
 }
 
-void NppCommands::viewTabMoveForward() {
+void NppCommands::viewTabMoveForward()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->moveTabForward();
     }
 }
 
-void NppCommands::viewTabMoveBackward() {
+void NppCommands::viewTabMoveBackward()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->moveTabBackward();
     }
 }
 
-void NppCommands::viewTabColour(int colorId) {
+void NppCommands::viewTabColour(int colorId)
+{
     if (!_pNotepad_plus) return;
 
     DocTabView* docTab = _pNotepad_plus->getCurrentDocTab();
@@ -2321,7 +2502,8 @@ void NppCommands::viewTabColour(int colorId) {
     }
 }
 
-void NppCommands::editTextDirection(bool isRTL) {
+void NppCommands::editTextDirection(bool isRTL)
+{
     ScintillaEditView* view = getCurrentEditView();
     if (!view) return;
 
@@ -2340,7 +2522,8 @@ void NppCommands::editTextDirection(bool isRTL) {
 // Macro Commands Registration
 // ============================================================================
 
-void NppCommands::registerMacroCommands() {
+void NppCommands::registerMacroCommands()
+{
     _handler.registerCommand(CMD_MACRO_STARTRECORDINGMACRO, [this]() { macroStartRecording(); });
     _handler.registerCommand(CMD_MACRO_STOPRECORDINGMACRO, [this]() { macroStopRecording(); });
     _handler.registerCommand(CMD_MACRO_PLAYBACKRECORDEDMACRO, [this]() { macroPlayback(); });
@@ -2348,31 +2531,36 @@ void NppCommands::registerMacroCommands() {
     _handler.registerCommand(CMD_MACRO_RUNMULTIMACRODLG, [this]() { macroRunMultiMacroDlg(); });
 }
 
-void NppCommands::macroStartRecording() {
+void NppCommands::macroStartRecording()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->startMacroRecording();
     }
 }
 
-void NppCommands::macroStopRecording() {
+void NppCommands::macroStopRecording()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->stopMacroRecording();
     }
 }
 
-void NppCommands::macroPlayback() {
+void NppCommands::macroPlayback()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->macroPlayback();
     }
 }
 
-void NppCommands::macroSaveCurrent() {
+void NppCommands::macroSaveCurrent()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->saveCurrentMacro();
     }
 }
 
-void NppCommands::macroRunMultiMacroDlg() {
+void NppCommands::macroRunMultiMacroDlg()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showRunMacroDlg();
     }
@@ -2382,7 +2570,8 @@ void NppCommands::macroRunMultiMacroDlg() {
 // Format Commands Registration
 // ============================================================================
 
-void NppCommands::registerFormatCommands() {
+void NppCommands::registerFormatCommands()
+{
     _handler.registerCommand(CMD_FORMAT_TODOS, [this]() { formatConvertToWindows(); });
     _handler.registerCommand(CMD_FORMAT_TOUNIX, [this]() { formatConvertToUnix(); });
     _handler.registerCommand(CMD_FORMAT_TOMAC, [this]() { formatConvertToMac(); });
@@ -2393,7 +2582,8 @@ void NppCommands::registerFormatCommands() {
     _handler.registerCommand(CMD_FORMAT_AS_UTF_8, [this]() { formatSetEncoding(4); });
 }
 
-void NppCommands::formatConvertToWindows() {
+void NppCommands::formatConvertToWindows()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
@@ -2404,7 +2594,8 @@ void NppCommands::formatConvertToWindows() {
     }
 }
 
-void NppCommands::formatConvertToUnix() {
+void NppCommands::formatConvertToUnix()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
@@ -2415,7 +2606,8 @@ void NppCommands::formatConvertToUnix() {
     }
 }
 
-void NppCommands::formatConvertToMac() {
+void NppCommands::formatConvertToMac()
+{
     ScintillaEditView* view = getCurrentEditView();
     if (view && _pNotepad_plus) {
         Buffer* buf = _pNotepad_plus->getCurrentBuffer();
@@ -2426,7 +2618,8 @@ void NppCommands::formatConvertToMac() {
     }
 }
 
-void NppCommands::formatSetEncoding(int encoding) {
+void NppCommands::formatSetEncoding(int encoding)
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->setEncoding(encoding);
     }
@@ -2436,11 +2629,13 @@ void NppCommands::formatSetEncoding(int encoding) {
 // Language Commands Registration
 // ============================================================================
 
-void NppCommands::registerLanguageCommands() {
+void NppCommands::registerLanguageCommands()
+{
     _handler.registerCommand(CMD_LANG_USER_DLG, [this]() { langUserDlg(); });
 }
 
-void NppCommands::langUserDlg() {
+void NppCommands::langUserDlg()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showUserDefineDlg();
     }
@@ -2450,11 +2645,13 @@ void NppCommands::langUserDlg() {
 // Run Commands Registration
 // ============================================================================
 
-void NppCommands::registerRunCommands() {
+void NppCommands::registerRunCommands()
+{
     _handler.registerCommand(CMD_EXECUTE, [this]() { executeRun(); });
 }
 
-void NppCommands::executeRun() {
+void NppCommands::executeRun()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showRunDlg();
     }
@@ -2464,11 +2661,13 @@ void NppCommands::executeRun() {
 // Settings Commands Registration
 // ============================================================================
 
-void NppCommands::registerSettingsCommands() {
+void NppCommands::registerSettingsCommands()
+{
     _handler.registerCommand(CMD_SETTING_PREFERENCE, [this]() { settingPreference(); });
 }
 
-void NppCommands::settingPreference() {
+void NppCommands::settingPreference()
+{
     if (_pNotepad_plus) {
         _pNotepad_plus->showPreferenceDlg();
     }

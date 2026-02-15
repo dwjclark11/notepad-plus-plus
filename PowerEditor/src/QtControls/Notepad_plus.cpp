@@ -47,6 +47,7 @@
 
 // MainWindow for panel management
 #include "MainWindow/Notepad_plus_Window.h"
+#include "UserDefineDialog/UserDefineDialog.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -73,6 +74,9 @@
 
 std::chrono::steady_clock::time_point g_nppStartTimePoint{};
 std::chrono::steady_clock::duration g_pluginsLoadingTime{};
+
+// Forward declaration for getMainWindow helper (defined later in this file)
+static QtControls::MainWindow::MainWindow* getMainWindow(ScintillaEditView& editView);
 
 // ============================================================================
 // Constructor and Destructor
@@ -603,8 +607,62 @@ bool Notepad_plus::fileSave(BufferID id)
             return fileSaveAs(bufferID);
         }
 
-        // TODO: Implement backup functionality
-        // For now, just save directly
+        const NppGUI& nppGUI = NppParameters::getInstance().getNppGUI();
+        BackupFeature backup = nppGUI._backup;
+
+        if (backup != bak_none && !buf->isLargeFile())
+        {
+            const wchar_t* fn = buf->getFullPathName();
+            QString srcPath = QString::fromWCharArray(fn);
+            QFileInfo fi(srcPath);
+            QString bakDir;
+
+            if (nppGUI._useDir && !nppGUI._backupDir.empty())
+            {
+                bakDir = QString::fromStdWString(nppGUI._backupDir);
+                if (!bakDir.endsWith('/'))
+                    bakDir += '/';
+            }
+            else
+            {
+                bakDir = fi.path() + '/';
+                if (backup == bak_verbose)
+                    bakDir += "nppBackup/";
+            }
+
+            QDir dir;
+            if (!dir.exists(bakDir))
+                dir.mkpath(bakDir);
+
+            QString bakPath;
+            if (backup == bak_simple)
+            {
+                bakPath = bakDir + fi.fileName() + ".bak";
+            }
+            else if (backup == bak_verbose)
+            {
+                QDateTime now = QDateTime::currentDateTime();
+                QString timestamp = now.toString("yyyy-MM-dd_HHmmss");
+                bakPath = bakDir + fi.fileName() + "." + timestamp + ".bak";
+            }
+
+            if (!bakPath.isEmpty())
+            {
+                // Remove existing backup if present (QFile::copy won't overwrite)
+                if (QFile::exists(bakPath))
+                    QFile::remove(bakPath);
+
+                if (!QFile::copy(srcPath, bakPath))
+                {
+                    int res = QMessageBox::question(nullptr,
+                        QObject::tr("File Backup Failed"),
+                        QObject::tr("The previous version of the file could not be saved into the backup directory at \"%1\".\n\nDo you want to save the current file anyway?").arg(bakDir),
+                        QMessageBox::Yes | QMessageBox::No);
+                    if (res == QMessageBox::No)
+                        return false;
+                }
+            }
+        }
 
         return doSave(bufferID, buf->getFullPathName(), false);
     }
@@ -1792,12 +1850,27 @@ int Notepad_plus::otherView()
 
 void Notepad_plus::checkSyncState()
 {
-    // TODO: Implement sync state checking
+    bool canDoSync = viewVisible(MAIN_VIEW) && viewVisible(SUB_VIEW);
+    if (!canDoSync)
+    {
+        _syncInfo._isSynScrollV = false;
+        _syncInfo._isSynScrollH = false;
+    }
 }
 
 void Notepad_plus::checkDocState()
 {
-    // TODO: Implement document state checking
+    Buffer* curBuf = _pEditView->getCurrentBuffer();
+    if (!curBuf)
+        return;
+
+    // Update the MainWindow UI (status bar, title)
+    auto* mainWin = getMainWindow(_mainEditView);
+    if (mainWin)
+    {
+        mainWin->updateStatusBar();
+        mainWin->updateTitle();
+    }
 }
 
 bool Notepad_plus::activateBuffer(BufferID id, int view, bool forceApplyHilite)
@@ -2011,8 +2084,21 @@ void Notepad_plus::hideView(int whichOne)
 
 void Notepad_plus::performPostReload(int whichOne)
 {
-    Q_UNUSED(whichOne);
-    // TODO: Implement post-reload actions
+    NppParameters& nppParam = NppParameters::getInstance();
+    const NppGUI& nppGUI = nppParam.getNppGUI();
+    bool toEnd = (nppGUI._fileAutoDetection & cdGo2end) ? true : false;
+    if (!toEnd)
+        return;
+    if (whichOne == MAIN_VIEW)
+    {
+        _mainEditView.setPositionRestoreNeeded(false);
+        _mainEditView.execute(SCI_DOCUMENTEND);
+    }
+    else
+    {
+        _subEditView.setPositionRestoreNeeded(false);
+        _subEditView.execute(SCI_DOCUMENTEND);
+    }
 }
 
 // ============================================================================
@@ -2300,11 +2386,11 @@ void Notepad_plus::distractionFreeToggle()
 
 void Notepad_plus::alwaysOnTopToggle()
 {
-	auto* mainWin = getMainWindow(_mainEditView);
-	if (mainWin)
-	{
-		mainWin->setAlwaysOnTop(!mainWin->isAlwaysOnTop());
-	}
+    auto* mainWin = getMainWindow(_mainEditView);
+    if (mainWin)
+    {
+        mainWin->setAlwaysOnTop(!mainWin->isAlwaysOnTop());
+    }
 }
 
 // ============================================================================
@@ -3370,10 +3456,9 @@ void Notepad_plus::setEncoding(int encoding)
 
 void Notepad_plus::showUserDefineDlg()
 {
-    // Show the User Defined Language dialog
-    // This dialog allows users to define custom language syntax highlighting
-    // For Qt, this would show the UserDefineDialog
-    // TODO: Implement when UserDefineDialog is fully ported
+    auto* mainWin = getMainWindow(_mainEditView);
+    if (mainWin)
+        QMetaObject::invokeMethod(mainWin, "onLanguageDefineUserLang");
 }
 
 void Notepad_plus::showRunDlg()
@@ -3972,18 +4057,27 @@ bool Notepad_plus::loadSession(Session& session, bool isSnapshotMode, const wcha
             const wchar_t* pLn = session._mainViewFiles[i]._langName.c_str();
             LangType langTypeToSet = L_TEXT;
 
-            // Try to determine language from menu name
-            // Simplified: just use text for now
             if (pLn && *pLn)
             {
-                // TODO: Map language name to LangType
-                langTypeToSet = L_TEXT;
+                langTypeToSet = NppParameters::getLangIDFromStr(pLn);
+
+                if (langTypeToSet == L_TEXT)
+                {
+                    // Check excluded language list
+                    for (size_t j = 0; j < nppGUI._excludedLangList.size(); ++j)
+                    {
+                        if (nppGUI._excludedLangList[j]._langName == pLn)
+                        {
+                            langTypeToSet = nppGUI._excludedLangList[j]._langType;
+                            break;
+                        }
+                    }
+                }
             }
 
             // Set position and other properties
             buf->setPosition(session._mainViewFiles[i], &_mainEditView);
             buf->setLangType(langTypeToSet);
-            // TODO: Handle user language name (pLn) if needed
             if (session._mainViewFiles[i]._encoding != -1)
                 buf->setEncodingNumber(session._mainViewFiles[i]._encoding);
 
@@ -4061,9 +4155,30 @@ bool Notepad_plus::loadSession(Session& session, bool isSnapshotMode, const wcha
             const wchar_t* pLn = session._subViewFiles[k]._langName.c_str();
             LangType typeToSet = L_TEXT;
 
+            if (pLn && *pLn)
+            {
+                typeToSet = NppParameters::getLangIDFromStr(pLn);
+
+                if (typeToSet == L_TEXT)
+                {
+                    for (size_t j = 0; j < nppGUI._excludedLangList.size(); ++j)
+                    {
+                        if (nppGUI._excludedLangList[j]._langName == pLn)
+                        {
+                            typeToSet = nppGUI._excludedLangList[j]._langType;
+                            break;
+                        }
+                    }
+                }
+            }
+
             buf->setPosition(session._subViewFiles[k], &_subEditView);
+            if (typeToSet == L_USER)
+            {
+                if (!lstrcmp(pLn, L"User Defined"))
+                    pLn = L"";
+            }
             buf->setLangType(typeToSet);
-            // TODO: Handle user language name (pLn) if needed
             buf->setEncodingNumber(session._subViewFiles[k]._encoding);
             buf->setUserReadOnly(session._subViewFiles[k]._isUserReadOnly ||
                                 nppGUI._isFullReadOnly ||

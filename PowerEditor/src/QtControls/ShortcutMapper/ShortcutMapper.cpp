@@ -7,6 +7,7 @@
 // at your option any later version.
 
 #include "ShortcutMapper.h"
+#include "../../menuCmdID.h"
 
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
@@ -21,9 +22,10 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QScrollBar>
-#include <QtWidgets/QInputDialog>
 #include <QtCore/QStringList>
 #include <QtGui/QKeyEvent>
+
+#include <QtWidgets/QDialog>
 
 #include <algorithm>
 #include <cctype>
@@ -109,7 +111,23 @@ void ShortcutMapper::loadShortcutsFromParameters() {
         data.shortcut = keyComboToString(data.keyCombo);
         data.isEnabled = sc.isValid();
         data.originalIndex = i;
-        // TODO: Set category based on command ID
+        int cmdId = sc.getID();
+        if (cmdId >= IDM_FILE && cmdId < IDM_EDIT)
+            data.category = tr("File");
+        else if (cmdId >= IDM_EDIT && cmdId < IDM_SEARCH)
+            data.category = tr("Edit");
+        else if (cmdId >= IDM_SEARCH && cmdId < IDM_VIEW)
+            data.category = tr("Search");
+        else if (cmdId >= IDM_VIEW && cmdId < IDM_FORMAT)
+            data.category = tr("View");
+        else if (cmdId >= IDM_FORMAT && cmdId < IDM_LANG)
+            data.category = tr("Format");
+        else if (cmdId >= IDM_LANG && cmdId < IDM_ABOUT)
+            data.category = tr("Language");
+        else if (cmdId >= IDM_SETTING && cmdId < IDM_EXECUTE)
+            data.category = tr("Settings");
+        else
+            data.category = tr("Other");
         _menuShortcuts.push_back(data);
     }
 
@@ -433,6 +451,160 @@ void ShortcutMapper::onItemSelectionChanged() {
     }
 }
 
+// ============================================================================
+// ShortcutEditDlg - Dialog for capturing a new keyboard shortcut
+// ============================================================================
+class ShortcutEditDlg : public QDialog
+{
+public:
+	explicit ShortcutEditDlg(const KeyCombo& current, QWidget* parent = nullptr)
+		: QDialog(parent)
+		, _combo(current)
+	{
+		setWindowTitle(tr("Modify Shortcut"));
+		setFixedSize(350, 160);
+
+		auto* layout = new QVBoxLayout(this);
+		layout->setSpacing(10);
+
+		auto* instrLabel = new QLabel(tr("Press a key combination:"), this);
+		layout->addWidget(instrLabel);
+
+		_displayLabel = new QLabel(this);
+		_displayLabel->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+		_displayLabel->setAlignment(Qt::AlignCenter);
+		_displayLabel->setMinimumHeight(36);
+		QFont displayFont = _displayLabel->font();
+		displayFont.setPointSize(12);
+		displayFont.setBold(true);
+		_displayLabel->setFont(displayFont);
+		updateDisplay();
+		layout->addWidget(_displayLabel);
+
+		layout->addStretch();
+
+		auto* btnLayout = new QHBoxLayout();
+		btnLayout->addStretch();
+		auto* okBtn = new QPushButton(tr("OK"), this);
+		auto* cancelBtn = new QPushButton(tr("Cancel"), this);
+		btnLayout->addWidget(okBtn);
+		btnLayout->addWidget(cancelBtn);
+		layout->addLayout(btnLayout);
+
+		connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
+		connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+	}
+
+	KeyCombo getKeyCombo() const { return _combo; }
+
+protected:
+	void keyPressEvent(QKeyEvent* event) override
+	{
+		int key = event->key();
+
+		// Ignore standalone modifier keys
+		if (key == Qt::Key_Control || key == Qt::Key_Shift ||
+		    key == Qt::Key_Alt || key == Qt::Key_Meta)
+		{
+			return;
+		}
+
+		// Don't capture Escape alone (let it close the dialog)
+		if (key == Qt::Key_Escape && event->modifiers() == Qt::NoModifier)
+		{
+			QDialog::keyPressEvent(event);
+			return;
+		}
+
+		Qt::KeyboardModifiers mods = event->modifiers();
+		_combo._isCtrl = (mods & Qt::ControlModifier) != 0;
+		_combo._isAlt = (mods & Qt::AltModifier) != 0;
+		_combo._isShift = (mods & Qt::ShiftModifier) != 0;
+
+		// Convert Qt key to VK-compatible key code
+		if (key >= Qt::Key_A && key <= Qt::Key_Z)
+			_combo._key = static_cast<unsigned char>('A' + (key - Qt::Key_A));
+		else if (key >= Qt::Key_0 && key <= Qt::Key_9)
+			_combo._key = static_cast<unsigned char>('0' + (key - Qt::Key_0));
+		else if (key >= Qt::Key_F1 && key <= Qt::Key_F24)
+			_combo._key = static_cast<unsigned char>(VK_F1 + (key - Qt::Key_F1));
+		else
+		{
+			switch (key)
+			{
+				case Qt::Key_Space:     _combo._key = VK_SPACE; break;
+				case Qt::Key_Return:
+				case Qt::Key_Enter:     _combo._key = VK_RETURN; break;
+				case Qt::Key_Tab:       _combo._key = VK_TAB; break;
+				case Qt::Key_Backspace: _combo._key = VK_BACK; break;
+				case Qt::Key_Delete:    _combo._key = VK_DELETE; break;
+				case Qt::Key_Insert:    _combo._key = VK_INSERT; break;
+				case Qt::Key_Home:      _combo._key = VK_HOME; break;
+				case Qt::Key_End:       _combo._key = VK_END; break;
+				case Qt::Key_PageUp:    _combo._key = VK_PRIOR; break;
+				case Qt::Key_PageDown:  _combo._key = VK_NEXT; break;
+				case Qt::Key_Left:      _combo._key = VK_LEFT; break;
+				case Qt::Key_Right:     _combo._key = VK_RIGHT; break;
+				case Qt::Key_Up:        _combo._key = VK_UP; break;
+				case Qt::Key_Down:      _combo._key = VK_DOWN; break;
+				case Qt::Key_Escape:    _combo._key = VK_ESCAPE; break;
+				default:                _combo._key = static_cast<unsigned char>(key & 0xFF); break;
+			}
+		}
+
+		updateDisplay();
+	}
+
+private:
+	void updateDisplay()
+	{
+		if (_combo._key == 0)
+		{
+			_displayLabel->setText(tr("(None)"));
+			return;
+		}
+		QStringList parts;
+		if (_combo._isCtrl) parts << QStringLiteral("Ctrl");
+		if (_combo._isAlt) parts << QStringLiteral("Alt");
+		if (_combo._isShift) parts << QStringLiteral("Shift");
+
+		QString keyStr;
+		if (_combo._key >= 'A' && _combo._key <= 'Z')
+			keyStr = QString(QChar::fromLatin1(_combo._key));
+		else if (_combo._key >= '0' && _combo._key <= '9')
+			keyStr = QString(QChar::fromLatin1(_combo._key));
+		else if (_combo._key >= VK_F1 && _combo._key <= VK_F24)
+			keyStr = QStringLiteral("F%1").arg(_combo._key - VK_F1 + 1);
+		else
+		{
+			switch (_combo._key)
+			{
+				case VK_SPACE:  keyStr = QStringLiteral("Space"); break;
+				case VK_RETURN: keyStr = QStringLiteral("Enter"); break;
+				case VK_TAB:    keyStr = QStringLiteral("Tab"); break;
+				case VK_BACK:   keyStr = QStringLiteral("Backspace"); break;
+				case VK_DELETE: keyStr = QStringLiteral("Delete"); break;
+				case VK_INSERT: keyStr = QStringLiteral("Insert"); break;
+				case VK_HOME:   keyStr = QStringLiteral("Home"); break;
+				case VK_END:    keyStr = QStringLiteral("End"); break;
+				case VK_PRIOR:  keyStr = QStringLiteral("PageUp"); break;
+				case VK_NEXT:   keyStr = QStringLiteral("PageDown"); break;
+				case VK_LEFT:   keyStr = QStringLiteral("Left"); break;
+				case VK_RIGHT:  keyStr = QStringLiteral("Right"); break;
+				case VK_UP:     keyStr = QStringLiteral("Up"); break;
+				case VK_DOWN:   keyStr = QStringLiteral("Down"); break;
+				case VK_ESCAPE: keyStr = QStringLiteral("Esc"); break;
+				default:        keyStr = QStringLiteral("Key%1").arg(_combo._key); break;
+			}
+		}
+		parts << keyStr;
+		_displayLabel->setText(parts.join(QStringLiteral("+")));
+	}
+
+	KeyCombo _combo;
+	QLabel* _displayLabel = nullptr;
+};
+
 void ShortcutMapper::onModifyClicked() {
     int currentRow = _grid->currentRow();
     if (currentRow < 0 || currentRow >= static_cast<int>(_shortcutIndex.size())) {
@@ -447,28 +619,26 @@ void ShortcutMapper::onModifyClicked() {
         return;
     }
 
-    // TODO: Open a proper shortcut edit dialog that captures key input
-    // For now, show a simple input dialog as a placeholder
-    bool ok;
-    QString text = QInputDialog::getText(getDialog(), tr("Modify Shortcut"),
-                                         tr("Enter new shortcut (e.g., Ctrl+N):"),
-                                         QLineEdit::Normal, QString(), &ok);
-    if (!ok || text.isEmpty()) {
+    // Get current key combo for this shortcut
+    KeyCombo currentCombo;
+    const std::vector<ShortcutData>* shortcuts = nullptr;
+    switch (_currentState) {
+        case GridState::STATE_MENU: shortcuts = &_menuShortcuts; break;
+        case GridState::STATE_MACRO: shortcuts = &_macroShortcuts; break;
+        case GridState::STATE_USER: shortcuts = &_userShortcuts; break;
+        case GridState::STATE_PLUGIN: shortcuts = &_pluginShortcuts; break;
+        case GridState::STATE_SCINTILLA: shortcuts = &_scintillaShortcuts; break;
+    }
+    if (shortcuts && originalIndex < shortcuts->size()) {
+        currentCombo = (*shortcuts)[originalIndex].keyCombo;
+    }
+
+    ShortcutEditDlg editDlg(currentCombo, getDialog());
+    if (editDlg.exec() != QDialog::Accepted) {
         return;
     }
 
-    // Parse the shortcut string (simplified parsing)
-    KeyCombo newCombo;
-    QString lowerText = text.toLower();
-    newCombo._isCtrl = lowerText.contains("ctrl");
-    newCombo._isAlt = lowerText.contains("alt");
-    newCombo._isShift = lowerText.contains("shift");
-
-    // Extract the key
-    QKeySequence seq(text);
-    if (!seq.isEmpty()) {
-        newCombo = ShortcutManager::qKeySequenceToKeyCombo(seq);
-    }
+    KeyCombo newCombo = editDlg.getKeyCombo();
 
     // Check for conflicts
     QString conflictLocation;

@@ -226,6 +226,7 @@ if(UNIX AND NOT APPLE)
     target_sources(QtControlsTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/QtControls/Stubs/QtControlsStubs.cpp
         ${CMAKE_SOURCE_DIR}/MISC/Common/CommonLinux.cpp
+        ${CMAKE_SOURCE_DIR}/pugixml/pugixml.cpp
     )
 
     # Add Platform implementation sources (needed by QtControls)
@@ -266,6 +267,8 @@ add_executable(IntegrationTests
     Integration/Phase5RegressionTest.h
     Integration/Phase6FinalGapRegressionTest.cpp
     Integration/Phase6FinalGapRegressionTest.h
+    Integration/Phase7TodoCleanupTest.cpp
+    Integration/Phase7TodoCleanupTest.h
     Integration/Stubs/NppParametersStub.cpp
     Integration/Stubs/CommandHandlerStub.cpp
 )

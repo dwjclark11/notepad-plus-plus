@@ -9,9 +9,11 @@
 #pragma once
 
 #include "../Window.h"
+#include "../../NppXml.h"
 #include <QToolBar>
 #include <QAction>
 #include <QIcon>
+#include <QPixmap>
 #include <QString>
 #include <vector>
 #include <memory>
@@ -97,8 +99,8 @@ public:
     ~ToolBar() override;
 
     // Initialization
-    void initTheme(void* toolIconsDocRoot);  // NppXml::Document
-    void initHideButtonsConf(void* toolButtonsDocRoot, const ToolBarButtonUnit* buttonUnitArray, int arraySize);
+    void initTheme(NppXml::Document toolIconsDocRoot);
+    void initHideButtonsConf(NppXml::Document toolButtonsDocRoot, const ToolBarButtonUnit* buttonUnitArray, int arraySize);
 
     virtual bool init(QWidget* parent, toolBarStatusType type,
                       const ToolBarButtonUnit* buttonUnitArray, int arraySize);
@@ -163,7 +165,7 @@ private:
     std::vector<iconLocator> _customIconVect;
     std::unique_ptr<bool[]> _toolbarStdButtonsConfArray;
     ToolbarPluginButtonsConf _toolbarPluginButtonsConf;
-    void* _toolIcons = nullptr;  // NppXml::Element equivalent
+    NppXml::Element _toolIcons{};
     int _dpi = 96;
 
     // Icon lists for different states
@@ -189,6 +191,8 @@ private:
     void setupIcons(toolBarStatusType type);
     void fillToolbar();
     void updateButtonImages();
+    void applyDisabledIcons();
+    static QPixmap generateDisabledPixmap(const QPixmap& src);
     QIcon getIconForCommand(int cmdID) const;
     QString getTooltipForCommand(int cmdID) const;
 };

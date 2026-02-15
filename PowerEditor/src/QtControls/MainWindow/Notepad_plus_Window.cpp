@@ -3727,11 +3727,15 @@ void MainWindow::onWindowCloneToOtherView()
 
 void MainWindow::onWindowList()
 {
-    // Show window list dialog
-    // TODO: Implement window list dialog
-    if (_pNotepad_plus) {
-        // Could show a dialog listing all open documents
+    if (!_pNotepad_plus || !_mainDocTab)
+        return;
+
+    if (!_windowsDlg)
+    {
+        _windowsDlg = new WindowsDlg(this);
     }
+    _windowsDlg->init(_pNotepad_plus, _mainDocTab);
+    _windowsDlg->doDialog();
 }
 
 // ============================================================================

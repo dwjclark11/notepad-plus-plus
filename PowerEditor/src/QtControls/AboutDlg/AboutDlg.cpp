@@ -14,6 +14,7 @@
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QTextEdit>
+#include <QtWidgets/QTextBrowser>
 #include <QtWidgets/QFrame>
 #include <QtWidgets/QDialog>
 #include <QtGui/QDesktopServices>
@@ -184,9 +185,39 @@ void AboutDlg::onOkClicked()
 
 void AboutDlg::onCreditsClicked()
 {
-    // TODO: Implement credits dialog
-    // For now, just open the GitHub contributors page
-    QDesktopServices::openUrl(QUrl("https://github.com/notepad-plus-plus/notepad-plus-plus/graphs/contributors"));
+    QDialog creditsDlg(getDialog());
+    creditsDlg.setWindowTitle(tr("Credits"));
+    creditsDlg.setFixedSize(420, 350);
+
+    auto* layout = new QVBoxLayout(&creditsDlg);
+    layout->setContentsMargins(12, 12, 12, 12);
+
+    auto* browser = new QTextBrowser(&creditsDlg);
+    browser->setOpenExternalLinks(true);
+    browser->setHtml(
+        QStringLiteral("<h3>Notepad++ Credits</h3>"
+        "<p><b>Creator and Lead Developer</b><br>"
+        "Don Ho &lt;don.h@free.fr&gt;</p>"
+        "<p><b>Scintilla Editor Component</b><br>"
+        "Neil Hodgson</p>"
+        "<p><b>Contributors</b><br>"
+        "The Notepad++ community contributors.<br>"
+        "See the full list at:<br>"
+        "<a href=\"https://github.com/notepad-plus-plus/notepad-plus-plus/graphs/contributors\">"
+        "GitHub Contributors</a></p>"
+        "<p><b>Translations</b><br>"
+        "Provided by the Notepad++ community.</p>"));
+    layout->addWidget(browser, 1);
+
+    auto* closeBtn = new QPushButton(tr("Close"), &creditsDlg);
+    QObject::connect(closeBtn, &QPushButton::clicked, &creditsDlg, &QDialog::accept);
+    auto* btnLayout = new QHBoxLayout();
+    btnLayout->addStretch();
+    btnLayout->addWidget(closeBtn);
+    btnLayout->addStretch();
+    layout->addLayout(btnLayout);
+
+    creditsDlg.exec();
 }
 
 void AboutDlg::onWebsiteLinkClicked()

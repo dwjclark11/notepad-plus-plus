@@ -22,6 +22,7 @@
 #include "../PluginsAdmin/PluginsAdminDlg.h"
 #include "../AboutDlg/CmdLineArgsDlg.h"
 #include "../AboutDlg/DebugInfoDlg.h"
+#include "../WindowsDlg/WindowsDlg.h"
 #include "../../MISC/PluginsManager/PluginsManager.h"
 
 #include <QMainWindow>
@@ -100,6 +101,8 @@ public:
     // Status bar operations
     void initStatusBar();
     void updateStatusBar();
+    void updateTitle();
+    void onLanguageDefineUserLang();
 
     // Panel management
     void showPanel(const QString& panelName, bool show);
@@ -258,7 +261,6 @@ private slots:
 
     // Language menu
     void onLanguageSelected(QAction* action);
-    void onLanguageDefineUserLang();
 
     // Settings menu
     void onSettingsPreferences();
@@ -338,8 +340,6 @@ private:
     void populatePluginsMenu();
     void onPluginCommandTriggered();
 
-    // Update UI state
-    void updateTitle();
     void updateDocumentState();
     void updateEncodingMenu();
 
@@ -423,6 +423,7 @@ private:
     QtControls::RunDlg::RunDlg* _runDlg = nullptr;
     QtControls::RunMacroDlg* _runMacroDlg = nullptr;
     NppFindReplace::FindReplaceDlg* _findReplaceDlg = nullptr;
+    WindowsDlg* _windowsDlg = nullptr;
 
     // View menu actions (for state management)
     QAction* _alwaysOnTopAction = nullptr;

@@ -507,6 +507,11 @@ public:
 
 	// Expose to MainWindow for auto-indent support on Linux
 	void maintainIndentation(wchar_t ch);
+
+	// Expose to MainWindow for change history navigation
+	int currentView() { return _activeView; }
+	void changedHistoryGoTo(int idGoTo);
+	void clearChangesHistory(int iView);
 #endif
 
 private:
@@ -671,9 +676,11 @@ private:
 	bool reloadLang();
 	bool loadStyles();
 
+#ifndef NPP_LINUX
 	int currentView() {
 		return _activeView;
 	}
+#endif
 
 	int otherFromView(int whichOne) {
 		return (whichOne == MAIN_VIEW?SUB_VIEW:MAIN_VIEW);
@@ -873,8 +880,10 @@ private:
 
 	HBITMAP generateSolidColourMenuItemIcon(COLORREF colour);
 
+#ifndef NPP_LINUX
 	void clearChangesHistory(int iView);
 	void changedHistoryGoTo(int idGoTo);
+#endif
 
 	HMENU createMenuFromMenu(HMENU hSourceMenu, const std::vector<int>& commandIds);
 	BOOL notifyTBShowMenu(LPNMTOOLBARW lpnmtb, const char* menuPosId);

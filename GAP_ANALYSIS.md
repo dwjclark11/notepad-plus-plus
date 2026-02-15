@@ -1,6 +1,6 @@
 # Notepad++ Linux Qt6 Port — Gap Analysis Report
 
-**Date**: 2026-02-15 (Phase 6 complete)
+**Date**: 2026-02-15 (Phase 7 complete — all TODOs resolved)
 **Methodology**: Automated code analysis of Windows (`WinControls/`, `ScintillaComponent/`) and Linux (`QtControls/`, `QtCore/`, `Platform/`) source trees, cross-referenced with official Notepad++ documentation.
 
 ---
@@ -22,7 +22,7 @@ The Linux Qt6 port contains **~55,000–60,000 lines** across ~95 files in `QtCo
 | Plugin notifications | 33 events | 33 implemented | ~0% gap |
 | Plugin API messages | 118+ | 118+ implemented | ~0% gap |
 | Toolbar icons | Full icon sets | freedesktop icons | ~0% gap |
-| TODOs in Linux code | — | ~2 | — |
+| TODOs in Linux code | — | 0 actionable (23 intentional stubs) | — |
 | "Not Implemented" dialogs | — | 0 | — |
 
 ---
@@ -359,6 +359,26 @@ The Linux Qt6 port contains **~55,000–60,000 lines** across ~95 files in `QtCo
 51. ~~**Plugin API messages (118+)**~~ — Full NPPM_* message dispatcher in NppPluginMessages.cpp
 52. ~~**Plugin Admin backend**~~ — Download, install, update, remove, repository fetch, compatibility check, hash verification
 
+### Phase 6 — Final Gap Closure — COMPLETED
+53. ~~**Paste as HTML/RTF, Copy/Cut/Paste Binary**~~ — QMimeData with html/rtf formats, binary clipboard via Scintilla
+54. ~~**Search on Internet, Open in Default Viewer**~~ — QDesktopServices::openUrl() with configurable search engine
+55. ~~**Always on Top, Tab Coloring, RTL/LTR**~~ — Qt::WindowStaysOnTopHint, QTabBar::setTabTextColor (5 colors), SCI_SETBIDIRECTIONAL
+56. ~~**7 Deferred Plugin Notifications**~~ — NPPN_SHORTCUTREMAPPED through NPPN_TOOLBARICONSETCHANGED
+57. ~~**Change History Navigation**~~ — SCI_SETCHANGEHISTORY + changedHistoryGoTo
+
+### Phase 7 — TODO/FIXME/Stub Cleanup — COMPLETED
+58. ~~**Backup before save**~~ — Simple/verbose backup with custom directory support
+59. ~~**checkSyncState/checkDocState/performPostReload**~~ — Document state management and post-reload restoration
+60. ~~**showUserDefineDlg**~~ — Wired to existing UserDefineDialog
+61. ~~**Session language mapping**~~ — getLangIDFromStr() for per-file language restoration
+62. ~~**Clipboard history persistence**~~ — QSettings save/load with 20-entry limit
+63. ~~**Window List dialog**~~ — Wired to existing WindowsDlg
+64. ~~**Credits dialog**~~ — Inline QDialog with QTextBrowser
+65. ~~**Shortcut category + edit dialog**~~ — IDM range classification, key-capture ShortcutEditDlg
+66. ~~**Toolbar theme/icons (7 items)**~~ — XML parsing, button hiding, icon management, disabled states
+67. ~~**UserDefineDialog type safety (4 FIXMEs)**~~ — qtUlcToUlc/ulcToQtUlc conversion helpers
+68. ~~**PluginsAdmin TODO cleanup (3 items)**~~ — Removed misleading comments
+
 ---
 
 ## Architecture Notes
@@ -397,6 +417,84 @@ The `#ifndef NPP_LINUX` guard on `NppCommands.cpp` was fixed to `#ifdef NPP_LINU
 - **Mark tab fix**: Changed from line-marker-only (`SCI_MARKERADD`) to proper text highlighting via `SCI_SETINDICATORCURRENT` + `SCI_INDICATORFILLRANGE`. Navigation uses efficient `SCI_INDICATORSTART`/`SCI_INDICATOREND` boundary jumping instead of O(n) character scan
 - **Find All in All Open Docs**: Iterates all open buffers via callbacks, searches each with Scintilla, populates FinderPanel QTreeWidget with file headers and line-level results. Buffer restoration after iteration prevents unexpected tab switch
 - **Find in Projects**: New tab in FindReplaceDlg with project panel checkboxes (1/2/3). `getAllFilePaths()` added to ProjectPanel for recursive file enumeration
+
+### Phase 7 — TODO/FIXME/Stub Cleanup — COMPLETED
+
+Code audit revealed 51 TODO/FIXME/stub items across the Linux codebase. All 28 actionable items resolved; 23 intentional compatibility stubs remain by design.
+
+#### Functional TODOs (Real feature gaps)
+
+| # | File | Line | TODO | Priority | Description |
+|---|------|------|------|----------|-------------|
+| 1 | QtControls/Notepad_plus.cpp | 606 | Backup before save | P2 | Create backup copy before overwriting file |
+| 2 | QtControls/Notepad_plus.cpp | 1795 | checkSyncState() | P3 | Verify sync state between views |
+| 3 | QtControls/Notepad_plus.cpp | 1800 | checkDocState() | P3 | Verify document dirty/readonly state |
+| 4 | QtControls/Notepad_plus.cpp | 2015 | performPostReload() | P2 | Re-apply highlights, bookmarks, fold state after file reload |
+| 5 | QtControls/Notepad_plus.cpp | 3376 | showUserDefineDlg() | P2 | Wire up UserDefineDialog (dialog is ported but not connected) |
+| 6 | QtControls/Notepad_plus.cpp | 3979 | Map language name to LangType | P2 | Session loading: restore per-file language |
+| 7 | QtControls/Notepad_plus.cpp | 3986 | Handle user language name | P2 | Session loading: restore UDL name |
+| 8 | QtControls/Notepad_plus.cpp | 4066 | Handle user language name (sub view) | P2 | Same as #7 for sub-view files |
+| 9 | Platform/Linux/Clipboard.cpp | 444 | saveHistory() | P2 | Persist clipboard history to QSettings |
+| 10 | Platform/Linux/Clipboard.cpp | 448 | loadHistory() | P2 | Restore clipboard history from QSettings |
+| 11 | MainWindow/Notepad_plus_Window.cpp | 3731 | Window List dialog | P2 | Connect to existing WindowsDlg |
+| 12 | AboutDlg/AboutDlg.cpp | 187 | Credits dialog | P3 | Show inline credits (currently opens GitHub URL) |
+| 13 | ShortcutMapper/ShortcutMapper.cpp | 112 | Shortcut category | P3 | Categorize shortcuts by command type |
+| 14 | ShortcutMapper/ShortcutMapper.cpp | 450 | Shortcut edit dialog | P2 | Proper key-capture dialog for editing shortcuts |
+
+#### ToolBar Theme/Icon TODOs (Cosmetic)
+
+| # | File | Line | TODO | Priority | Description |
+|---|------|------|------|----------|-------------|
+| 15 | ToolBar/ToolBar.cpp | 42 | Theme initialization from XML | P3 | Load toolbar theme from XML config |
+| 16 | ToolBar/ToolBar.cpp | 49 | Button hiding from XML | P3 | Hide toolbar buttons per XML config |
+| 17 | ToolBar/ToolBar.cpp | 217 | Custom icon changing | P3 | Change individual toolbar icons |
+| 18 | ToolBar/ToolBar.cpp | 223 | Icon replacement | P3 | Replace toolbar icon set |
+| 19 | ToolBar/ToolBar.cpp | 236 | Convert iconHandles to QIcon | P3 | Icon handle conversion |
+| 20 | ToolBar/ToolBar.cpp | 402-432 | Disabled icons (4 places) | P3 | Set disabled state icons for normal/dark mode |
+| 21 | ToolBar/ToolBar.cpp | 656 | Gray background for band | P3 | Set gray background for toolbar band |
+
+#### UserDefineDialog FIXMEs (Type Safety)
+
+| # | File | Line | FIXME | Priority | Description |
+|---|------|------|-------|----------|-------------|
+| 22 | UserDefineDialog.cpp | 1689 | Type mismatch | P3 | QtUserLangContainer vs UserLangContainer |
+| 23 | UserDefineDialog.cpp | 1750 | Private member access | P3 | _name is private in UserLangContainer |
+| 24 | UserDefineDialog.cpp | 1791 | Type mismatch | P3 | QtUserLangContainer vs UserLangContainer |
+| 25 | UserDefineDialog.cpp | 1882 | Type mismatch | P3 | QtUserLangContainer vs UserLangContainer |
+
+#### PluginsAdmin Backend TODOs
+
+| # | File | Line | TODO | Priority | Description |
+|---|------|------|------|----------|-------------|
+| 26 | PluginsAdminDlg.cpp | 445 | Install logic | P3 | TODO comment before exitToInstallRemovePlugins (function exists) |
+| 27 | PluginsAdminDlg.cpp | 463 | Update logic | P3 | TODO comment before exitToInstallRemovePlugins (function exists) |
+| 28 | PluginsAdminDlg.cpp | 485 | Remove logic | P3 | TODO comment before exitToInstallRemovePlugins (function exists) |
+
+#### Intentional Compatibility Stubs (No action needed)
+
+| # | File | Description | Notes |
+|---|------|-------------|-------|
+| 29-33 | DockingManager.cpp | 5 compatibility stubs | By design — Qt docking uses different API |
+| 34-36 | QtCore/Parameters.cpp | clearMenu/createMenu/write stubs | Qt menu handling differs from Win32 |
+| 37-39 | QtCore/LastRecentFileList.cpp | initMenu/updateMenu stubs | Compatible with Qt dynamic menu |
+| 40 | QtCore/NppDarkMode.cpp | Dark mode stubs | Qt uses native theme engine |
+| 41 | QtCore/Win32_IO_File.cpp | Win32 I/O stubs | Replaced by std::filesystem |
+| 42 | QtCore/NppIO.cpp | MOC stubs | Required by Qt meta-object system |
+| 43 | QtCore/NativeLangSpeaker.cpp | changePreferenceDlgLang stub | PreferenceDlg uses own translation |
+| 44 | Shortcut/Shortcut.h | Accelerator/ScintillaAccelerator stubs | Qt handles keyboard shortcuts natively |
+| 45 | RunDlg/RunDlg.h | Macro list stub | Compatible with Qt implementation |
+| 46-51 | Notepad_plus.cpp | 3 "not implemented" comments | Placeholder docs, skip absent files, setUntitledTabRenamedStatus |
+
+#### Summary: Actionable Items
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Functional TODOs | 14 | **Resolved** — All implemented in Phase 7 |
+| Toolbar theme/icon | 7 | **Resolved** — XML parsing, icon management, disabled states |
+| UserDefineDialog FIXMEs | 4 | **Resolved** — Type-safe conversion helpers added |
+| PluginsAdmin comments | 3 | **Resolved** — Misleading TODO comments removed |
+| Intentional stubs | 23 | **No action** — by design |
+| **Total resolved** | **28/28** | |
 
 ### Platform Abstraction Layer
 All 7 PAL interfaces are fully implemented for Linux — this is a solid foundation.

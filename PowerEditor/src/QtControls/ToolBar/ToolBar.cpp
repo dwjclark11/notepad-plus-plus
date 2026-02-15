@@ -8,12 +8,72 @@
 
 #include "ToolBar.h"
 #include "../../menuCmdID.h"
+#include "../../Parameters.h"
 #include <QToolButton>
 #include <QStyle>
 #include <QMenu>
 #include <QMainWindow>
 #include <QApplication>
+#include <QPainter>
+#include <QPalette>
+#include <QImage>
 #include <QDebug>
+#include <filesystem>
+#include <cstring>
+
+// Icon list indices matching Windows ImageListSet enum
+enum ToolbarIconList
+{
+	HLIST_DEFAULT,
+	HLIST_DISABLE,
+	HLIST_DEFAULT2,
+	HLIST_DISABLE2,
+	HLIST_DEFAULT_DM,
+	HLIST_DISABLE_DM,
+	HLIST_DEFAULT_DM2,
+	HLIST_DISABLE_DM2
+};
+
+struct ToolbarIconIdUnit
+{
+	const char* _id;
+	bool _hasDisabledIcon;
+};
+
+static const ToolbarIconIdUnit toolbarIconIDs[] = {
+	{ "new", false },
+	{ "open", false },
+	{ "save", true },
+	{ "save-all", true },
+	{ "close", false },
+	{ "close-all", false },
+	{ "print", false },
+	{ "cut", true },
+	{ "copy", true },
+	{ "paste", true },
+	{ "undo", true },
+	{ "redo", true },
+	{ "find", false },
+	{ "replace", false },
+	{ "zoom-in", false },
+	{ "zoom-out", false },
+	{ "sync-vertical", false },
+	{ "sync-horizontal", false },
+	{ "word-wrap", false },
+	{ "all-chars", false },
+	{ "indent-guide", false },
+	{ "udl-dlg", false },
+	{ "doc-map", false },
+	{ "doc-list", false },
+	{ "function-list", false },
+	{ "folder-as-workspace", false },
+	{ "monitoring", true },
+	{ "record", true },
+	{ "stop-record", true },
+	{ "playback", true },
+	{ "playback-multiple", true },
+	{ "save-macro", true }
+};
 
 namespace QtControls {
 
@@ -37,24 +97,125 @@ ToolBar::~ToolBar()
     destroy();
 }
 
-void ToolBar::initTheme(void* toolIconsDocRoot)
+void ToolBar::initTheme(NppXml::Document toolIconsDocRoot)
 {
-    // TODO: Implement theme initialization from XML
-    // For now, this is a placeholder matching the Windows interface
-    (void)toolIconsDocRoot;
+    _toolIcons = NppXml::firstChildElement(toolIconsDocRoot, "NotepadPlus");
+    if (_toolIcons)
+    {
+        _toolIcons = NppXml::firstChildElement(_toolIcons, "ToolBarIcons");
+        if (_toolIcons)
+        {
+            namespace fs = std::filesystem;
+            fs::path iconFolderDir = NppParameters::getInstance().getUserPath();
+            iconFolderDir /= L"toolbarIcons";
+
+            const char* folderName = NppXml::attribute(_toolIcons, "icoFolderName");
+            if (folderName && folderName[0] != '\0')
+                iconFolderDir /= folderName;
+            else
+                iconFolderDir /= "default";
+
+            size_t i = 0;
+            std::string disabledSuffix = "_disabled";
+            std::string ext = ".ico";
+            for (const ToolbarIconIdUnit& icoUnit : toolbarIconIDs)
+            {
+                fs::path locator = iconFolderDir;
+                locator /= icoUnit._id;
+                locator.replace_extension(ext);
+                if (fs::exists(locator))
+                {
+                    QString loc = QString::fromStdString(locator.string());
+                    _customIconVect.push_back(iconLocator(HLIST_DEFAULT, i, loc));
+                    _customIconVect.push_back(iconLocator(HLIST_DEFAULT2, i, loc));
+                    _customIconVect.push_back(iconLocator(HLIST_DEFAULT_DM, i, loc));
+                    _customIconVect.push_back(iconLocator(HLIST_DEFAULT_DM2, i, loc));
+                }
+
+                if (icoUnit._hasDisabledIcon)
+                {
+                    fs::path locatorDis = iconFolderDir;
+                    locatorDis /= icoUnit._id;
+                    locatorDis += disabledSuffix;
+                    locatorDis.replace_extension(ext);
+                    if (fs::exists(locatorDis))
+                    {
+                        QString loc = QString::fromStdString(locatorDis.string());
+                        _customIconVect.push_back(iconLocator(HLIST_DISABLE, i, loc));
+                        _customIconVect.push_back(iconLocator(HLIST_DISABLE2, i, loc));
+                        _customIconVect.push_back(iconLocator(HLIST_DISABLE_DM, i, loc));
+                        _customIconVect.push_back(iconLocator(HLIST_DISABLE_DM2, i, loc));
+                    }
+                }
+                ++i;
+            }
+        }
+    }
 }
 
-void ToolBar::initHideButtonsConf(void* toolButtonsDocRoot, const ToolBarButtonUnit* buttonUnitArray, int arraySize)
+void ToolBar::initHideButtonsConf(NppXml::Document toolButtonsDocRoot, const ToolBarButtonUnit* buttonUnitArray, int arraySize)
 {
-    // TODO: Implement button hiding configuration from XML
-    // For now, initialize all buttons as visible
-    (void)toolButtonsDocRoot;
-    (void)buttonUnitArray;
+    NppXml::Element toolButtons = NppXml::firstChildElement(toolButtonsDocRoot, "NotepadPlus");
+    if (toolButtons)
+    {
+        toolButtons = NppXml::firstChildElement(toolButtons, "ToolbarButtons");
+        if (toolButtons)
+        {
+            // Standard toolbar buttons
+            NppXml::Element standardToolButtons = NppXml::firstChildElement(toolButtons, "Standard");
+            if (standardToolButtons)
+            {
+                _toolbarStdButtonsConfArray = std::make_unique<bool[]>(arraySize);
 
-    if (arraySize > 0) {
-        _toolbarStdButtonsConfArray = std::make_unique<bool[]>(arraySize);
-        for (int i = 0; i < arraySize; ++i) {
-            _toolbarStdButtonsConfArray[i] = true;
+                const char* isHideAll = NppXml::attribute(standardToolButtons, "hideAll");
+                if (isHideAll && (std::strcmp(isHideAll, "yes") == 0))
+                {
+                    for (int i = 0; i < arraySize; ++i)
+                        _toolbarStdButtonsConfArray[i] = false;
+                }
+                else
+                {
+                    for (int i = 0; i < arraySize; ++i)
+                        _toolbarStdButtonsConfArray[i] = true;
+
+                    for (NppXml::Element childNode = NppXml::firstChildElement(standardToolButtons, "Button");
+                        childNode;
+                        childNode = NppXml::nextSiblingElement(childNode, "Button"))
+                    {
+                        int cmdID = NppXml::intAttribute(childNode, "id", -1);
+                        int index = NppXml::intAttribute(childNode, "index", -1);
+                        const char* isHide = NppXml::attribute(childNode, "hide");
+
+                        if (cmdID > -1 && index > -1 && isHide && (std::strcmp(isHide, "yes") == 0))
+                        {
+                            if (index < arraySize && buttonUnitArray[index]._cmdID == cmdID)
+                                _toolbarStdButtonsConfArray[index] = false;
+                        }
+                    }
+                }
+            }
+
+            // Plugin toolbar buttons
+            NppXml::Element pluginToolButtons = NppXml::firstChildElement(toolButtons, "Plugin");
+            if (pluginToolButtons)
+            {
+                const char* isHideAll = NppXml::attribute(pluginToolButtons, "hideAll");
+                if (isHideAll && (std::strcmp(isHideAll, "yes") == 0))
+                {
+                    _toolbarPluginButtonsConf._isHideAll = true;
+                    return;
+                }
+
+                for (NppXml::Element childNode = NppXml::firstChildElement(pluginToolButtons, "Button");
+                    childNode;
+                    childNode = NppXml::nextSiblingElement(childNode, "Button"))
+                {
+                    bool doShow = true;
+                    const char* isHide = NppXml::attribute(childNode, "hide");
+                    doShow = !isHide || (std::strcmp(isHide, "yes") != 0);
+                    _toolbarPluginButtonsConf._showPluginButtonsArray.push_back(doShow);
+                }
+            }
         }
     }
 }
@@ -212,19 +373,47 @@ void ToolBar::setCheck(int ID2Check, bool willBeChecked) const
 
 bool ToolBar::change2CustomIconsIfAny()
 {
-    if (_customIconVect.empty()) return false;
+    if (!_toolIcons) return false;
 
-    // TODO: Implement custom icon changing
+    for (size_t i = 0, len = _customIconVect.size(); i < len; ++i)
+        changeIcons(_customIconVect[i]._listIndex, _customIconVect[i]._iconIndex, _customIconVect[i]._iconLocation.toStdWString().c_str());
     return true;
 }
 
 bool ToolBar::changeIcons(size_t whichLst, size_t iconIndex, const wchar_t* iconLocation) const
 {
-    // TODO: Implement icon replacement
-    (void)whichLst;
-    (void)iconIndex;
-    (void)iconLocation;
-    return false;
+    if (!iconLocation) return false;
+
+    QString path = QString::fromWCharArray(iconLocation);
+    QIcon icon(path);
+    if (icon.isNull()) return false;
+
+    // Find the action at the given icon index
+    if (iconIndex >= _pTBB.size()) return false;
+    int cmdID = _pTBB[iconIndex]->_cmdID;
+    if (cmdID == 0) return false;
+
+    auto it = _cmdToAction.find(cmdID);
+    if (it == _cmdToAction.end() || !it->second) return false;
+
+    // For disabled icon lists, add the pixmap as a disabled mode icon
+    if (whichLst == HLIST_DISABLE || whichLst == HLIST_DISABLE2 ||
+        whichLst == HLIST_DISABLE_DM || whichLst == HLIST_DISABLE_DM2)
+    {
+        QIcon currentIcon = it->second->icon();
+        QPixmap pm = QPixmap(path);
+        if (!pm.isNull())
+        {
+            currentIcon.addPixmap(pm, QIcon::Disabled, QIcon::Off);
+            it->second->setIcon(currentIcon);
+        }
+    }
+    else
+    {
+        it->second->setIcon(icon);
+    }
+
+    return true;
 }
 
 void ToolBar::registerDynBtn(unsigned int message, void* iconHandles, void* absentIco)
@@ -233,11 +422,30 @@ void ToolBar::registerDynBtn(unsigned int message, void* iconHandles, void* abse
     // Note: Only possible before init!
     if (_widget || message == 0) return;
 
-    // TODO: Convert iconHandles to QIcon
     DynamicCmdIcoBmp dynBtn;
     dynBtn._message = static_cast<int>(message);
-    (void)iconHandles;
-    (void)absentIco;
+
+    // On Linux, iconHandles is expected to be a QIcon* or null
+    QIcon* iconPtr = static_cast<QIcon*>(iconHandles);
+    if (iconPtr && !iconPtr->isNull())
+    {
+        dynBtn._icon = *iconPtr;
+        dynBtn._iconDarkMode = *iconPtr;
+    }
+    else
+    {
+        // Use absent icon as fallback
+        QIcon* absentPtr = static_cast<QIcon*>(absentIco);
+        if (absentPtr && !absentPtr->isNull())
+        {
+            dynBtn._icon = *absentPtr;
+            dynBtn._iconDarkMode = *absentPtr;
+        }
+        else
+        {
+            dynBtn._icon = QIcon::fromTheme("application-x-addon");
+        }
+    }
 
     _vDynBtnReg.push_back(dynBtn);
     _nbDynButtons = _vDynBtnReg.size();
@@ -250,7 +458,14 @@ void ToolBar::registerDynBtnDM(unsigned int message, void* iconHandles)
 
     DynamicCmdIcoBmp dynBtn;
     dynBtn._message = static_cast<int>(message);
-    (void)iconHandles;
+
+    // On Linux, iconHandles is expected to be a QIcon* or null
+    QIcon* iconPtr = static_cast<QIcon*>(iconHandles);
+    if (iconPtr && !iconPtr->isNull())
+    {
+        dynBtn._icon = *iconPtr;
+        dynBtn._iconDarkMode = *iconPtr;
+    }
 
     _vDynBtnReg.push_back(dynBtn);
     _nbDynButtons = _vDynBtnReg.size();
@@ -399,7 +614,7 @@ void ToolBar::setDefaultImageList()
 
 void ToolBar::setDisableImageList()
 {
-    // TODO: Set disabled icons
+    applyDisabledIcons();
 }
 
 void ToolBar::setDefaultImageList2()
@@ -409,7 +624,7 @@ void ToolBar::setDefaultImageList2()
 
 void ToolBar::setDisableImageList2()
 {
-    // TODO: Set disabled icons
+    applyDisabledIcons();
 }
 
 void ToolBar::setDefaultImageListDM()
@@ -419,7 +634,7 @@ void ToolBar::setDefaultImageListDM()
 
 void ToolBar::setDisableImageListDM()
 {
-    // TODO: Set disabled icons for dark mode
+    applyDisabledIcons();
 }
 
 void ToolBar::setDefaultImageListDM2()
@@ -429,7 +644,49 @@ void ToolBar::setDefaultImageListDM2()
 
 void ToolBar::setDisableImageListDM2()
 {
-    // TODO: Set disabled icons for dark mode
+    applyDisabledIcons();
+}
+
+QPixmap ToolBar::generateDisabledPixmap(const QPixmap& src)
+{
+    if (src.isNull()) return src;
+
+    QImage img = src.toImage().convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < img.height(); ++y)
+    {
+        QRgb* line = reinterpret_cast<QRgb*>(img.scanLine(y));
+        for (int x = 0; x < img.width(); ++x)
+        {
+            QRgb pixel = line[x];
+            int alpha = qAlpha(pixel);
+            int gray = qGray(pixel);
+            // Reduce opacity to 40% and convert to grayscale
+            line[x] = qRgba(gray, gray, gray, alpha * 40 / 100);
+        }
+    }
+    return QPixmap::fromImage(img);
+}
+
+void ToolBar::applyDisabledIcons()
+{
+    for (auto& [cmdID, action] : _cmdToAction)
+    {
+        if (!action) continue;
+        QIcon icon = action->icon();
+        if (icon.isNull()) continue;
+
+        // Check if the icon already has a disabled pixmap set
+        QPixmap disabledPm = icon.pixmap(16, 16, QIcon::Disabled, QIcon::Off);
+        QPixmap normalPm = icon.pixmap(16, 16, QIcon::Normal, QIcon::Off);
+
+        // If disabled and normal look identical, generate a grayed version
+        if (disabledPm.toImage() == normalPm.toImage())
+        {
+            QPixmap grayPm = generateDisabledPixmap(normalPm);
+            icon.addPixmap(grayPm, QIcon::Disabled, QIcon::Off);
+            action->setIcon(icon);
+        }
+    }
 }
 
 QIcon ToolBar::getIconForCommand(int cmdID) const
@@ -653,8 +910,14 @@ bool ReBar::getIDVisible(int id)
 
 void ReBar::setGrayBackground(int id)
 {
-    // TODO: Set gray background for band
-    (void)id;
+    auto it = _bandWidgets.find(id);
+    if (it != _bandWidgets.end() && it->second)
+    {
+        QPalette pal = it->second->palette();
+        pal.setColor(QPalette::Window, QColor(0xe0, 0xe0, 0xe0));
+        it->second->setAutoFillBackground(true);
+        it->second->setPalette(pal);
+    }
 }
 
 int ReBar::getNewID()

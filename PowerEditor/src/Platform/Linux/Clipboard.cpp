@@ -15,6 +15,7 @@
 #include <QTimer>
 #include <QDebug>
 #include <QDateTime>
+#include <QSettings>
 
 namespace PlatformLayer {
 
@@ -441,11 +442,43 @@ public:
     }
 
     void saveHistory() override {
-        // TODO: Save to QSettings
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope,
+                           QStringLiteral("notepad-plus-plus"), QStringLiteral("clipboard"));
+        int count = static_cast<int>(std::min(_entries.size(), _maxSize));
+        settings.setValue(QStringLiteral("ClipboardHistory/count"), count);
+        for (int i = 0; i < count; ++i)
+        {
+            const ClipboardHistoryEntry& entry = _entries[i];
+            if (entry.isBinary)
+                continue;
+            QString text = QString::fromUtf8(
+                reinterpret_cast<const char*>(entry.data.data.data()),
+                static_cast<int>(entry.data.data.size()));
+            settings.setValue(QStringLiteral("ClipboardHistory/entry_%1").arg(i), text);
+        }
     }
 
     void loadHistory() override {
-        // TODO: Load from QSettings
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope,
+                           QStringLiteral("notepad-plus-plus"), QStringLiteral("clipboard"));
+        int count = settings.value(QStringLiteral("ClipboardHistory/count"), 0).toInt();
+        if (count <= 0)
+            return;
+        if (count > static_cast<int>(_maxSize))
+            count = static_cast<int>(_maxSize);
+        _entries.clear();
+        for (int i = 0; i < count; ++i)
+        {
+            QString key = QStringLiteral("ClipboardHistory/entry_%1").arg(i);
+            if (!settings.contains(key))
+                continue;
+            QString text = settings.value(key).toString();
+            QByteArray utf8 = text.toUtf8();
+            ClipboardData data;
+            data.format = ClipboardFormat::UnicodeText;
+            data.data.assign(utf8.begin(), utf8.end());
+            _entries.emplace_back(data);
+        }
     }
 
 private:
