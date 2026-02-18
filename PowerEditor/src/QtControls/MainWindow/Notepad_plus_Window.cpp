@@ -200,6 +200,27 @@ bool MainWindow::init(Notepad_plus* pNotepad_plus)
                 case IDM_SEARCH_GOTOLINE: onSearchGoToLine(); break;
 
                 // View commands
+                case IDM_VIEW_ZOOMIN:
+                {
+                    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+                    if (view) view->execute(SCI_ZOOMIN);
+                    updateStatusBar();
+                    break;
+                }
+                case IDM_VIEW_ZOOMOUT:
+                {
+                    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+                    if (view) view->execute(SCI_ZOOMOUT);
+                    updateStatusBar();
+                    break;
+                }
+                case IDM_VIEW_ZOOMRESTORE:
+                {
+                    ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
+                    if (view) view->execute(SCI_SETZOOM, 0);
+                    updateStatusBar();
+                    break;
+                }
                 case IDM_VIEW_FULLSCREENTOGGLE: onViewFullScreen(); break;
                 case IDM_VIEW_POSTIT: onViewPostIt(); break;
                 case IDM_VIEW_ALWAYSONTOP: onViewAlwaysOnTop(); break;
@@ -1041,6 +1062,7 @@ void MainWindow::createViewMenu()
         if (_pNotepad_plus) {
             ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
             if (view) view->execute(SCI_ZOOMIN);
+            updateStatusBar();
         }
     });
     zoomInAction->setShortcut(QKeySequence::ZoomIn);
@@ -1049,6 +1071,7 @@ void MainWindow::createViewMenu()
         if (_pNotepad_plus) {
             ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
             if (view) view->execute(SCI_ZOOMOUT);
+            updateStatusBar();
         }
     });
     zoomOutAction->setShortcut(QKeySequence::ZoomOut);
@@ -1057,6 +1080,7 @@ void MainWindow::createViewMenu()
         if (_pNotepad_plus) {
             ScintillaEditView* view = _pNotepad_plus->getCurrentEditView();
             if (view) view->execute(SCI_SETZOOM, 0);
+            updateStatusBar();
         }
     });
 

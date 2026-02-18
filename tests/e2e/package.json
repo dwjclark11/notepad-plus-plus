@@ -1,0 +1,10 @@
+{
+	"name": "npp-e2e-tests",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "End-to-end tests for Notepad++ Qt6 port",
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.12.1"
+	}
+}
