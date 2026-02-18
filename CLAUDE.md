@@ -121,93 +121,65 @@ The Linux port is functional but incomplete. See `REMAINING_WORK.md` for current
 - `QtCore::Buffer::getFullPathName()` - Path retrieval
 - `QtCore::Buffer::setUnsync()` - Sync tracking
 
-### Testing with Computer Use MCP
+### Offscreen Computer Use MCP (E2E Testing)
 
-When using Claude Code's computer-use MCP with the Notepad++ Qt6 port:
+The `computer-use-offscreen` MCP server creates isolated virtual X11 displays
+(via Xvfb) for headless GUI testing. It is registered as a Claude Code MCP tool
+and used by the E2E test suite under `tests/e2e/`.
 
-**Screenshot Configuration (Wayland/KDE)**
-The default computer-use-mcp uses nut-tree-fork/nut-js which has X11 compatibility issues on Wayland. To fix this:
+**Setup**
+```bash
+# Build the MCP server (one-time)
+cd tools/computer-use-mcp && npm install && npm run build
 
-1. Install spectacle (KDE's screenshot tool):
-   ```bash
-   sudo pacman -S spectacle
-   ```
+# System dependencies (Arch Linux)
+sudo pacman -S xorg-server-xvfb xdotool ffmpeg xorg-xdpyinfo openbox wmctrl
+```
 
-2. Patch the MCP server to use spectacle instead of nut-js for screenshots:
-   - File: `~/.local/share/fnm/node-versions/v24.3.0/installation/lib/node_modules/computer-use-mcp/dist/tools/computer.js`
-   - Replace `screen.grab()` with `execAsync('spectacle -b -o <tmpfile>')`
-   - Use `readFileSync()` to read the screenshot file
+**Interactive use from Claude Code**
 
-3. Environment variables needed:
-   ```bash
-   export DISPLAY=:0
-   export WAYLAND_DISPLAY=wayland-0
-   export XDG_SESSION_TYPE=wayland
-   export XAUTHORITY=/run/user/1000/xauth_<hash>
-   ```
+The MCP tools are available as `mcp__computer-use-offscreen__*`:
+```
+create_session  — Create a virtual display (e.g. 1280x720)
+destroy_session — Tear down a session
+run_in_session  — Launch a process inside the virtual display
+wait_for_window — Wait for a window title to appear
+find_windows    — List windows in the session
+computer        — Screenshots, mouse clicks, keyboard input
+```
 
-**Screenshot Timeout Fix (Critical)**
-Claude Code has a hardcoded 10-second timeout for MCP tools. The default screenshot implementation (`spectacle`) takes ~11 seconds, causing timeouts. The fix involves:
+Typical workflow:
+1. `create_session` with desired resolution
+2. `run_in_session` to launch Notepad++ (use `-m` flag for multi-instance)
+3. Wait 3-4 seconds for Qt to initialize, then `run_in_session` with
+   `wmctrl -r "Notepad++" -e 0,0,0,<width>,<height>` to resize the window
+4. Use `computer` with `action: "get_screenshot"` to see the display
+5. Use `computer` with `action: "left_click"` / `"key"` / `"type"` to interact
+6. `destroy_session` when done
 
-1. **Replace `spectacle` with `ffmpeg`** in `computer.js`:
-   ```javascript
-   // Before (slow):
-   await execAsync(`spectacle -b -o "${tmpFile}"`, { timeout: 30000 });
+**E2E Test Suite**
 
-   // After (fast):
-   await execAsync(`ffmpeg -f x11grab -i :0 -vframes 1 "${tmpFile}" -y`, { timeout: 5000 });
-   ```
+Automated E2E tests live in `tests/e2e/`. See `tests/e2e/README.md` for full
+documentation on running tests and writing new ones.
 
-2. **Remove delays and optimize polling**:
-   - Remove `await setTimeout(1000)` initial delay
-   - Reduce polling: `while (!existsSync(tmpFile) && attempts < 20)` with `setTimeout(50)`
+```bash
+# Run all E2E tests
+./tests/e2e/run-all.sh
 
-3. **Use sharp instead of Jimp** for image processing (faster resize)
+# Run tests matching a keyword
+./tests/e2e/run-all.sh zoom
 
-4. **Skip crosshair drawing** (pixel-by-pixel JavaScript is slow for 4K displays)
+# Run a single test
+node tests/e2e/test-zoom-toolbar.mjs
+```
 
-5. **Reconnect MCP server** after changes:
-   ```bash
-   claude mcp remove computer-use
-   claude mcp add --transport stdio computer-use -- /home/josh/.local/bin/computer-use-mcp-wrapper.sh
-   ```
-
-**Debugging Screenshot Issues**
-If screenshots fail with `ETIMEDOUT` or `Connection closed`:
-
-1. Test MCP server directly:
-   ```bash
-   echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"computer","arguments":{"action":"get_screenshot"}}}' | /home/josh/.local/bin/computer-use-mcp-wrapper.sh
-   ```
-   - If this works but Claude fails, the MCP server needs reconnection
-
-2. Check timing of individual components:
-   ```bash
-   time spectacle -b -o /tmp/test.png        # Should be < 10s
-   time ffmpeg -f x11grab -i :0 -vframes 1 /tmp/test.png -y  # Should be < 1s
-   ```
-
-3. Verify MCP server status:
-   ```bash
-   claude mcp list
-   ```
-
-4. Common errors:
-   - `spawnSync /bin/sh ETIMEDOUT` - Screenshot tool too slow, use ffmpeg
-   - `Connection closed` - MCP server crashed or needs reconnection
-   - `Screenshot file not created` - Display/permissions issue with X11
-
-**Keyboard Automation**
-When screenshots are unavailable, keyboard commands work reliably:
-- `ctrl+n` - New file
-- `ctrl+s` - Save
-- `ctrl+shift+s` - Save As (use absolute paths like `/home/josh/filename.txt`)
-- `ctrl+a` - Select all (useful for replacing filename in save dialog)
-
-**Known Quirks**
-- The Qt6 save dialog may interpret `++` in filenames as `==` due to keyboard event handling
-- Use absolute paths (starting with `/`) to ensure files save to correct location
-- Use `ctrl+shift+s` (Save As) rather than `ctrl+s` for first save to specify location
+**Tips**
+- Always launch Notepad++ with `-m` (multi-instance) to avoid conflicts with
+  any running instance on the host
+- Keep `type()` calls short (under ~20 chars) to avoid xdotool timeouts
+- Use `sleep` after clicks/key presses to let the UI settle before screenshots
+- The default virtual display is 1280x720; toolbar button coordinates are
+  measured from this resolution with the window maximized via wmctrl
 
 ## Coding Standards
 
